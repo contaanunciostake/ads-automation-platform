@@ -402,6 +402,109 @@ class FacebookDataService:
         else:
             return {"success": False, "error": f"Status inválido: {current_status}"}
 
+    def get_campaign_details(self, campaign_id: str) -> Dict[str, Any]:
+        """Buscar detalhes completos de uma campanha para edição"""
+        try:
+            # Buscar dados básicos da campanha
+            campaign_fields = [
+                'id', 'name', 'status', 'objective', 'created_time', 'updated_time',
+                'start_time', 'stop_time', 'daily_budget', 'lifetime_budget',
+                'budget_remaining', 'bid_strategy', 'buying_type', 'special_ad_categories'
+            ]
+            
+            campaign_url = f"/{campaign_id}"
+            campaign_params = {
+                'fields': ','.join(campaign_fields),
+                'access_token': self.access_token
+            }
+            
+            campaign_result = self._make_request(campaign_url, campaign_params)
+            
+            if "error" in campaign_result:
+                return {"success": False, "error": campaign_result["error"]}
+            
+            # Buscar AdSets da campanha
+            adsets_url = f"/{campaign_id}/adsets"
+            adsets_params = {
+                'fields': 'id,name,status,daily_budget,lifetime_budget,targeting,optimization_goal,bid_amount',
+                'access_token': self.access_token
+            }
+            
+            adsets_result = self._make_request(adsets_url, adsets_params)
+            
+            # Buscar Ads da campanha
+            ads_url = f"/{campaign_id}/ads"
+            ads_params = {
+                'fields': 'id,name,status,creative',
+                'access_token': self.access_token
+            }
+            
+            ads_result = self._make_request(ads_url, ads_params)
+            
+            return {
+                "success": True,
+                "campaign": {
+                    "basic_info": campaign_result,
+                    "adsets": adsets_result.get("data", []),
+                    "ads": ads_result.get("data", [])
+                }
+            }
+            
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def update_campaign(self, campaign_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Atualizar configurações de uma campanha"""
+        try:
+            # Preparar dados para atualização
+            update_params = {}
+            
+            # Mapear campos do frontend para a API do Facebook
+            field_mapping = {
+                'name': 'name',
+                'status': 'status',
+                'daily_budget': 'daily_budget',
+                'lifetime_budget': 'lifetime_budget',
+                'start_time': 'start_time',
+                'stop_time': 'stop_time',
+                'bid_strategy': 'bid_strategy',
+                'special_ad_categories': 'special_ad_categories'
+            }
+            
+            for frontend_field, api_field in field_mapping.items():
+                if frontend_field in update_data:
+                    value = update_data[frontend_field]
+                    
+                    # Converter valores de orçamento para centavos se necessário
+                    if frontend_field in ['daily_budget', 'lifetime_budget'] and value:
+                        # Se o valor está em reais, converter para centavos
+                        if isinstance(value, (int, float)) and value < 1000:
+                            value = int(value * 100)
+                    
+                    update_params[api_field] = value
+            
+            if not update_params:
+                return {"success": False, "error": "Nenhum campo válido para atualizar"}
+            
+            # Fazer requisição de atualização
+            update_params['access_token'] = self.access_token
+            result = self._make_post_request(f"/{campaign_id}", update_params)
+            
+            if "error" in result:
+                return {"success": False, "error": result["error"]}
+            
+            # Buscar dados atualizados da campanha
+            updated_campaign = self.get_campaign_details(campaign_id)
+            
+            return {
+                "success": True,
+                "message": "Campanha atualizada com sucesso",
+                "campaign": updated_campaign.get("campaign", {})
+            }
+            
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
 # Instanciar o serviço usando variáveis de ambiente
 FACEBOOK_ACCESS_TOKEN = os.getenv("FACEBOOK_ACCESS_TOKEN")
 FACEBOOK_AD_ACCOUNT_ID = os.getenv("FACEBOOK_AD_ACCOUNT_ID")

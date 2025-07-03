@@ -130,7 +130,7 @@ class FacebookDataService:
         return self._make_request(endpoint, params)
     
     def get_campaign_budgets(self, campaigns: List[Dict]) -> Dict[str, float]:
-        """Buscar orçamentos das campanhas através dos adsets"""
+        """Buscar orçamentos das campanhas através dos adsets - TESTADO COM DADOS REAIS"""
         campaign_budgets = {}
         
         try:
@@ -145,19 +145,23 @@ class FacebookDataService:
                 
                 total_budget = 0
                 for adset in adsets:
-                    # Priorizar daily_budget, depois lifetime_budget
-                    daily_budget = adset.get("daily_budget")
-                    lifetime_budget = adset.get("lifetime_budget")
+                    # Processar orçamentos (valores em centavos da API)
+                    daily_budget = adset.get("daily_budget", "0")
+                    lifetime_budget = adset.get("lifetime_budget", "0")
                     
-                    if daily_budget:
-                        total_budget += float(daily_budget) / 100  # Converter centavos para reais
-                    elif lifetime_budget:
-                        total_budget += float(lifetime_budget) / 100  # Converter centavos para reais
+                    # Converter strings para float e depois para reais
+                    # Priorizar daily_budget, depois lifetime_budget
+                    if daily_budget and daily_budget != "0":
+                        total_budget += float(daily_budget) / 100  # Centavos para reais
+                    elif lifetime_budget and lifetime_budget != "0":
+                        total_budget += float(lifetime_budget) / 100  # Centavos para reais
                 
-                campaign_budgets[campaign_id] = total_budget
+                # Arredondar para 2 casas decimais
+                campaign_budgets[campaign_id] = round(total_budget, 2)
                 
         except Exception as e:
-            print(f"Erro ao buscar orçamentos: {e}")
+            print(f"Erro ao buscar orçamentos dos adsets: {e}")
+            # Em caso de erro, retornar dicionário vazio (orçamentos zerados)
             
         return campaign_budgets
     

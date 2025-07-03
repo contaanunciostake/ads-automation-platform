@@ -91,26 +91,16 @@ function App() {
         
         // Atualizar campanhas
         const campaigns = summary?.campaigns || []
-        setCampaigns(campaigns.map(campaign => {
-          // Processar orçamento - valores já vêm em centavos da API do Facebook
-          let budget = 0
-          if (campaign.daily_budget) {
-            budget = parseFloat(campaign.daily_budget) / 100 // Converter de centavos para reais
-          } else if (campaign.lifetime_budget) {
-            budget = parseFloat(campaign.lifetime_budget) / 100 // Converter de centavos para reais
-          }
-          
-          return {
-            id: campaign.id,
-            name: campaign.name,
-            platform: "facebook_ads",
-            status: campaign.status.toLowerCase(),
-            budget: budget,
-            objective: campaign.objective,
-            created_time: campaign.created_time,
-            updated_time: campaign.updated_time
-          }
-        }))
+        setCampaigns(campaigns.map(campaign => ({
+          id: campaign.id,
+          name: campaign.name,
+          platform: "facebook_ads",
+          status: campaign.status.toLowerCase(),
+          budget: campaign.budget || 0, // Usar campo budget já processado pelo backend
+          objective: campaign.objective,
+          created_time: campaign.created_time,
+          updated_time: campaign.updated_time
+        })))
         
         setLastSync(new Date().toLocaleString())
       } else {

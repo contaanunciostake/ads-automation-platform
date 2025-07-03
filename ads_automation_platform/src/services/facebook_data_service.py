@@ -1,0 +1,242 @@
+"""
+Serviço para buscar dados reais da Facebook Marketing API.
+Este módulo fornece funcionalidades para coletar campanhas, conjuntos de anúncios, anúncios e insights de performance.
+"""
+
+import requests
+import os
+import json
+from typing import Dict, List, Any, Optional
+from datetime import datetime, timedelta
+
+class FacebookDataService:
+    """Serviço para buscar dados reais da Facebook Marketing API"""
+    
+    def __init__(self, access_token: str, ad_account_id: str):
+        self.access_token = access_token
+        self.ad_account_id = ad_account_id
+        self.base_url = "https://graph.facebook.com/v23.0"
+        self.account_prefix = f"act_{ad_account_id}"
+    
+    def _make_request(self, endpoint: str, params: dict = None) -> Dict[str, Any]:
+        """Fazer requisição para a Facebook API"""
+        url = f"{self.base_url}/{endpoint}"
+        
+        default_params = {"access_token": self.access_token}
+        if params:
+            default_params.update(params)
+        
+        try:
+            response = requests.get(url, params=default_params)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Erro na requisição à Facebook API: {e}")
+            return {"error": str(e)}
+    
+    def get_ad_account_info(self) -> Dict[str, Any]:
+        """Buscar informações da conta de anúncios"""
+        endpoint = self.account_prefix
+        params = {
+            "fields": "id,name,account_status,currency,timezone_name,business_name,business"
+        }
+        return self._make_request(endpoint, params)
+    
+    def get_campaigns(self, limit: int = 50) -> Dict[str, Any]:
+        """Buscar campanhas da conta de anúncios"""
+        endpoint = f"{self.account_prefix}/campaigns"
+        params = {
+            "fields": "id,name,status,objective,created_time,updated_time,start_time,stop_time,daily_budget,lifetime_budget",
+            "limit": limit
+        }
+        return self._make_request(endpoint, params)
+    
+    def get_adsets(self, campaign_id: str = None, limit: int = 50) -> Dict[str, Any]:
+        """Buscar conjuntos de anúncios"""
+        if campaign_id:
+            endpoint = f"{campaign_id}/adsets"
+        else:
+            endpoint = f"{self.account_prefix}/adsets"
+        
+        params = {
+            "fields": "id,name,status,campaign_id,created_time,updated_time,start_time,end_time,daily_budget,lifetime_budget,targeting,optimization_goal,billing_event",
+            "limit": limit
+        }
+        return self._make_request(endpoint, params)
+    
+    def get_ads(self, adset_id: str = None, limit: int = 50) -> Dict[str, Any]:
+        """Buscar anúncios"""
+        if adset_id:
+            endpoint = f"{adset_id}/ads"
+        else:
+            endpoint = f"{self.account_prefix}/ads"
+        
+        params = {
+            "fields": "id,name,status,adset_id,campaign_id,created_time,updated_time,creative",
+            "limit": limit
+        }
+        return self._make_request(endpoint, params)
+    
+    def get_campaign_insights(self, campaign_id: str, date_preset: str = "last_7_days") -> Dict[str, Any]:
+        """Buscar insights de performance de uma campanha"""
+        endpoint = f"{campaign_id}/insights"
+        params = {
+            "fields": "impressions,clicks,ctr,cpc,cpm,spend,reach,frequency,actions,cost_per_action_type,video_views,video_p25_watched_actions,video_p50_watched_actions,video_p75_watched_actions,video_p100_watched_actions",
+            "date_preset": date_preset
+        }
+        return self._make_request(endpoint, params)
+    
+    def get_adset_insights(self, adset_id: str, date_preset: str = "last_7_days") -> Dict[str, Any]:
+        """Buscar insights de performance de um conjunto de anúncios"""
+        endpoint = f"{adset_id}/insights"
+        params = {
+            "fields": "impressions,clicks,ctr,cpc,cpm,spend,reach,frequency,actions,cost_per_action_type",
+            "date_preset": date_preset
+        }
+        return self._make_request(endpoint, params)
+    
+    def get_ad_insights(self, ad_id: str, date_preset: str = "last_7_days") -> Dict[str, Any]:
+        """Buscar insights de performance de um anúncio"""
+        endpoint = f"{ad_id}/insights"
+        params = {
+            "fields": "impressions,clicks,ctr,cpc,cpm,spend,reach,frequency,actions,cost_per_action_type",
+            "date_preset": date_preset
+        }
+        return self._make_request(endpoint, params)
+    
+    def get_account_insights(self, date_preset: str = "last_7_days") -> Dict[str, Any]:
+        """Buscar insights de performance da conta de anúncios"""
+        endpoint = f"{self.account_prefix}/insights"
+        params = {
+            "fields": "impressions,clicks,ctr,cpc,cpm,spend,reach,frequency,actions,cost_per_action_type,account_currency,account_id,account_name",
+            "date_preset": date_preset
+        }
+        return self._make_request(endpoint, params)
+    
+    def get_insights_with_date_range(self, object_id: str, object_type: str, start_date: str, end_date: str) -> Dict[str, Any]:
+        """Buscar insights com intervalo de datas específico"""
+        if object_type == "account":
+            endpoint = f"{self.account_prefix}/insights"
+        else:
+            endpoint = f"{object_id}/insights"
+        
+        params = {
+            "fields": "impressions,clicks,ctr,cpc,cpm,spend,reach,frequency,actions,cost_per_action_type",
+            "time_range": json.dumps({
+                "since": start_date,
+                "until": end_date
+            })
+        }
+        return self._make_request(endpoint, params)
+    
+    def get_dashboard_summary(self) -> Dict[str, Any]:
+        """Buscar resumo para dashboard com dados agregados"""
+        try:
+            # Buscar informações da conta
+            account_info = self.get_ad_account_info()
+            
+            # Buscar campanhas ativas
+            campaigns_response = self.get_campaigns()
+            campaigns = campaigns_response.get("data", [])
+            
+            # Buscar insights da conta para os últimos 7 dias
+            account_insights = self.get_account_insights("last_7_days")
+            insights_data = account_insights.get("data", [{}])[0] if account_insights.get("data") else {}
+            
+            # Buscar insights para os últimos 30 dias para comparação
+            account_insights_30d = self.get_account_insights("last_30_days")
+            insights_30d = account_insights_30d.get("data", [{}])[0] if account_insights_30d.get("data") else {}
+            
+            # Contar campanhas por status
+            campaign_stats = {
+                "active": len([c for c in campaigns if c.get("status") == "ACTIVE"]),
+                "paused": len([c for c in campaigns if c.get("status") == "PAUSED"]),
+                "total": len(campaigns)
+            }
+            
+            # Preparar resumo
+            summary = {
+                "account_info": {
+                    "id": account_info.get("id"),
+                    "name": account_info.get("name"),
+                    "currency": account_info.get("currency"),
+                    "business_name": account_info.get("business_name"),
+                    "status": account_info.get("account_status")
+                },
+                "campaign_stats": campaign_stats,
+                "performance_7d": {
+                    "impressions": int(insights_data.get("impressions", 0)),
+                    "clicks": int(insights_data.get("clicks", 0)),
+                    "spend": float(insights_data.get("spend", 0)),
+                    "ctr": float(insights_data.get("ctr", 0)),
+                    "cpc": float(insights_data.get("cpc", 0)),
+                    "cpm": float(insights_data.get("cpm", 0)),
+                    "reach": int(insights_data.get("reach", 0))
+                },
+                "performance_30d": {
+                    "impressions": int(insights_30d.get("impressions", 0)),
+                    "clicks": int(insights_30d.get("clicks", 0)),
+                    "spend": float(insights_30d.get("spend", 0)),
+                    "ctr": float(insights_30d.get("ctr", 0)),
+                    "cpc": float(insights_30d.get("cpc", 0)),
+                    "cpm": float(insights_30d.get("cpm", 0)),
+                    "reach": int(insights_30d.get("reach", 0))
+                },
+                "campaigns": campaigns[:10],  # Primeiras 10 campanhas
+                "last_updated": datetime.now().isoformat()
+            }
+            
+            return {"success": True, "data": summary}
+            
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
+    def get_campaign_performance_chart_data(self, days: int = 7) -> Dict[str, Any]:
+        """Buscar dados para gráficos de performance por dia"""
+        try:
+            # Calcular datas
+            end_date = datetime.now().date()
+            start_date = end_date - timedelta(days=days-1)
+            
+            # Buscar insights por dia
+            endpoint = f"{self.account_prefix}/insights"
+            params = {
+                "fields": "impressions,clicks,spend,ctr,cpc,date_start",
+                "time_range": json.dumps({
+                    "since": start_date.strftime("%Y-%m-%d"),
+                    "until": end_date.strftime("%Y-%m-%d")
+                }),
+                "time_increment": 1  # Dados diários
+            }
+            
+            response = self._make_request(endpoint, params)
+            
+            if "data" in response:
+                chart_data = []
+                for day_data in response["data"]:
+                    chart_data.append({
+                        "date": day_data.get("date_start"),
+                        "impressions": int(day_data.get("impressions", 0)),
+                        "clicks": int(day_data.get("clicks", 0)),
+                        "spend": float(day_data.get("spend", 0)),
+                        "ctr": float(day_data.get("ctr", 0)),
+                        "cpc": float(day_data.get("cpc", 0))
+                    })
+                
+                return {"success": True, "data": chart_data}
+            else:
+                return {"success": False, "error": "Nenhum dado encontrado"}
+                
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+# Instanciar o serviço usando variáveis de ambiente
+FACEBOOK_ACCESS_TOKEN = os.getenv("FACEBOOK_ACCESS_TOKEN")
+FACEBOOK_AD_ACCOUNT_ID = os.getenv("FACEBOOK_AD_ACCOUNT_ID")
+
+facebook_data_service = None
+if FACEBOOK_ACCESS_TOKEN and FACEBOOK_AD_ACCOUNT_ID:
+    facebook_data_service = FacebookDataService(FACEBOOK_ACCESS_TOKEN, FACEBOOK_AD_ACCOUNT_ID)
+else:
+    print("ATENÇÃO: FACEBOOK_ACCESS_TOKEN ou FACEBOOK_AD_ACCOUNT_ID não configurados. O serviço de dados do Facebook não estará disponível.")
+

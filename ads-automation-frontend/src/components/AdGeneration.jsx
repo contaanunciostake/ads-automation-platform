@@ -73,7 +73,7 @@ const AdGeneration = () => {
     setDashboardError(null)
 
     try {
-      const response = await fetch('http://localhost:5000/api/facebook/dashboard', {
+      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/dashboard-summary', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -83,7 +83,22 @@ const AdGeneration = () => {
       const result = await response.json()
 
       if (result.success) {
-        setDashboardData(result.data)
+        const summary = result.data
+        const performance_7d = summary.performance_7d || {}
+        const campaign_stats = summary.campaign_stats || {}
+        
+        // Formatar dados no formato esperado pelo componente
+        const formattedData = {
+          impressions: performance_7d.impressions || 0,
+          clicks: performance_7d.clicks || 0,
+          spent: performance_7d.spend || 0,  // 'spend' do backend para 'spent' do frontend
+          active_campaigns: campaign_stats.active || 0,
+          ctr: performance_7d.ctr || 0,
+          cpc: performance_7d.cpc || 0,
+          cpm: performance_7d.cpm || 0
+        }
+        
+        setDashboardData(formattedData)
         setLastUpdated(new Date().toLocaleString('pt-BR'))
       } else {
         setDashboardError(result.error || 'Erro ao carregar dados do dashboard')
@@ -100,7 +115,7 @@ const AdGeneration = () => {
     setIsLoadingCampaigns(true)
 
     try {
-      const response = await fetch('http://localhost:5000/api/facebook/campaigns', {
+      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/campaigns', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -110,7 +125,7 @@ const AdGeneration = () => {
       const result = await response.json()
 
       if (result.success) {
-        setCampaigns(result.campaigns || [])
+        setCampaigns(result.data || [])
       } else {
         console.error('Erro ao carregar campanhas:', result.error)
       }
@@ -169,7 +184,7 @@ const AdGeneration = () => {
         formDataToSend.append('creative_image', selectedImage)
       }
 
-      const response = await fetch('http://localhost:5000/api/ad-generation/generate', {
+      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/ad-generation/generate', {
         method: 'POST',
         body: formDataToSend
       })

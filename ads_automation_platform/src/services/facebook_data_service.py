@@ -129,6 +129,38 @@ class FacebookDataService:
         }
         return self._make_request(endpoint, params)
     
+    def get_campaign_budgets(self, campaigns: List[Dict]) -> Dict[str, float]:
+        """Buscar orçamentos das campanhas através dos adsets"""
+        campaign_budgets = {}
+        
+        try:
+            for campaign in campaigns:
+                campaign_id = campaign.get("id")
+                if not campaign_id:
+                    continue
+                
+                # Buscar adsets da campanha
+                adsets_response = self.get_adsets(campaign_id)
+                adsets = adsets_response.get("data", [])
+                
+                total_budget = 0
+                for adset in adsets:
+                    # Priorizar daily_budget, depois lifetime_budget
+                    daily_budget = adset.get("daily_budget")
+                    lifetime_budget = adset.get("lifetime_budget")
+                    
+                    if daily_budget:
+                        total_budget += float(daily_budget) / 100  # Converter centavos para reais
+                    elif lifetime_budget:
+                        total_budget += float(lifetime_budget) / 100  # Converter centavos para reais
+                
+                campaign_budgets[campaign_id] = total_budget
+                
+        except Exception as e:
+            print(f"Erro ao buscar orçamentos: {e}")
+            
+        return campaign_budgets
+    
     def get_dashboard_summary(self) -> Dict[str, Any]:
         """Buscar resumo para dashboard com dados agregados"""
         try:
@@ -189,6 +221,17 @@ class FacebookDataService:
             if cpm_30d == 0 and impressions_30d > 0 and spend_30d > 0:
                 cpm_30d = (spend_30d / impressions_30d) * 1000
             
+            # Buscar orçamentos das campanhas através dos adsets
+            campaign_budgets = self.get_campaign_budgets(campaigns)
+            
+            # Adicionar orçamentos às campanhas
+            campaigns_with_budgets = []
+            for campaign in campaigns[:10]:  # Primeiras 10 campanhas
+                campaign_with_budget = campaign.copy()
+                campaign_id = campaign.get("id")
+                campaign_with_budget["budget"] = campaign_budgets.get(campaign_id, 0)
+                campaigns_with_budgets.append(campaign_with_budget)
+            
             # Preparar resumo
             summary = {
                 "account_info": {
@@ -217,7 +260,7 @@ class FacebookDataService:
                     "cpm": round(cpm_30d, 2),
                     "reach": int(insights_30d.get("reach", 0))
                 },
-                "campaigns": campaigns[:10],  # Primeiras 10 campanhas
+                "campaigns": campaigns_with_budgets,
                 "last_updated": datetime.now().isoformat()
             }
             

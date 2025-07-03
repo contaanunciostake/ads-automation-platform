@@ -316,28 +316,45 @@ class FacebookDataService:
         """Fazer requisição POST para a Facebook API"""
         url = f"{self.base_url}/{endpoint}"
         
-        # Preparar dados para envio
+        # Preparar dados para envio (form data como na documentação oficial)
         post_data = {"access_token": self.access_token}
         if data:
             post_data.update(data)
         
+        # Headers para form data (como no exemplo oficial do Facebook)
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+        
         try:
-            response = requests.post(url, data=post_data)
+            print(f"DEBUG: Fazendo POST para {url} com dados: {post_data}")
+            response = requests.post(url, data=post_data, headers=headers)
+            
+            print(f"DEBUG: Status Code: {response.status_code}")
+            print(f"DEBUG: Response Content: {response.text}")
+            
             response.raise_for_status()
             
             # Verificar se a resposta tem conteúdo JSON
             if response.content:
                 try:
-                    return response.json()
+                    result = response.json()
+                    print(f"DEBUG: JSON Response: {result}")
+                    return result
                 except json.JSONDecodeError:
                     # Se não conseguir decodificar JSON, assumir sucesso
+                    print("DEBUG: Não foi possível decodificar JSON, assumindo sucesso")
                     return {"success": True}
             else:
                 # Se não há conteúdo, assumir sucesso
+                print("DEBUG: Resposta vazia, assumindo sucesso")
                 return {"success": True}
                 
         except requests.exceptions.RequestException as e:
             print(f"Erro na requisição POST à Facebook API: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"DEBUG: Response Status: {e.response.status_code}")
+                print(f"DEBUG: Response Text: {e.response.text}")
             return {"error": str(e)}
     
     def pause_campaign(self, campaign_id: str) -> Dict[str, Any]:
@@ -348,7 +365,11 @@ class FacebookDataService:
         try:
             result = self._make_post_request(endpoint, data)
             if "error" not in result:
-                return {"success": True, "message": "Campanha pausada com sucesso"}
+                return {
+                    "success": True, 
+                    "message": "Campanha pausada com sucesso",
+                    "new_status": "PAUSED"
+                }
             else:
                 return {"success": False, "error": result["error"]}
         except Exception as e:
@@ -362,7 +383,11 @@ class FacebookDataService:
         try:
             result = self._make_post_request(endpoint, data)
             if "error" not in result:
-                return {"success": True, "message": "Campanha ativada com sucesso"}
+                return {
+                    "success": True, 
+                    "message": "Campanha ativada com sucesso",
+                    "new_status": "ACTIVE"
+                }
             else:
                 return {"success": False, "error": result["error"]}
         except Exception as e:

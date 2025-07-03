@@ -228,42 +228,85 @@ const AdGeneration = () => {
 
   // Função para redimensionar imagem usando Canvas
   const resizeImage = (file, targetWidth, targetHeight, quality = 0.9) => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      // Validações iniciais
+      if (!file || !file.type.startsWith('image/')) {
+        reject(new Error('Arquivo não é uma imagem válida'))
+        return
+      }
+
+      if (!targetWidth || !targetHeight || targetWidth <= 0 || targetHeight <= 0) {
+        reject(new Error('Dimensões de destino inválidas'))
+        return
+      }
+
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')
       const img = new Image()
       
+      // Timeout para evitar travamento
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout ao carregar imagem'))
+      }, 10000)
+      
       img.onload = () => {
-        // Calcular dimensões mantendo proporção e centralizando
-        const sourceAspectRatio = img.width / img.height
-        const targetAspectRatio = targetWidth / targetHeight
+        clearTimeout(timeout)
         
-        let sourceX = 0, sourceY = 0, sourceWidth = img.width, sourceHeight = img.height
-        
-        if (sourceAspectRatio > targetAspectRatio) {
-          // Imagem mais larga - cortar laterais
-          sourceWidth = img.height * targetAspectRatio
-          sourceX = (img.width - sourceWidth) / 2
-        } else {
-          // Imagem mais alta - cortar topo/fundo
-          sourceHeight = img.width / targetAspectRatio
-          sourceY = (img.height - sourceHeight) / 2
+        try {
+          // Calcular dimensões mantendo proporção e centralizando
+          const sourceAspectRatio = img.width / img.height
+          const targetAspectRatio = targetWidth / targetHeight
+          
+          let sourceX = 0, sourceY = 0, sourceWidth = img.width, sourceHeight = img.height
+          
+          if (sourceAspectRatio > targetAspectRatio) {
+            // Imagem mais larga - cortar laterais
+            sourceWidth = img.height * targetAspectRatio
+            sourceX = (img.width - sourceWidth) / 2
+          } else {
+            // Imagem mais alta - cortar topo/fundo
+            sourceHeight = img.width / targetAspectRatio
+            sourceY = (img.height - sourceHeight) / 2
+          }
+          
+          canvas.width = targetWidth
+          canvas.height = targetHeight
+          
+          // Limpar canvas
+          ctx.clearRect(0, 0, targetWidth, targetHeight)
+          
+          // Desenhar imagem redimensionada e cortada
+          ctx.drawImage(
+            img,
+            sourceX, sourceY, sourceWidth, sourceHeight,
+            0, 0, targetWidth, targetHeight
+          )
+          
+          // Converter para blob
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(blob)
+            } else {
+              reject(new Error('Falha ao gerar blob da imagem'))
+            }
+          }, 'image/jpeg', quality)
+          
+        } catch (error) {
+          reject(new Error('Erro ao processar imagem: ' + error.message))
         }
-        
-        canvas.width = targetWidth
-        canvas.height = targetHeight
-        
-        // Desenhar imagem redimensionada e cortada
-        ctx.drawImage(
-          img,
-          sourceX, sourceY, sourceWidth, sourceHeight,
-          0, 0, targetWidth, targetHeight
-        )
-        
-        canvas.toBlob(resolve, 'image/jpeg', quality)
       }
       
-      img.src = URL.createObjectURL(file)
+      img.onerror = () => {
+        clearTimeout(timeout)
+        reject(new Error('Erro ao carregar imagem'))
+      }
+      
+      try {
+        img.src = URL.createObjectURL(file)
+      } catch (error) {
+        clearTimeout(timeout)
+        reject(new Error('Erro ao criar URL da imagem: ' + error.message))
+      }
     })
   }
 
@@ -279,6 +322,12 @@ const AdGeneration = () => {
 
     try {
       for (const file of files) {
+        // Verificar se é um arquivo de imagem válido
+        if (!file.type.startsWith('image/')) {
+          console.warn('Arquivo ignorado (não é imagem):', file.name)
+          continue
+        }
+
         const fileProcessed = {
           originalFile: file,
           originalPreview: URL.createObjectURL(file),
@@ -296,45 +345,71 @@ const AdGeneration = () => {
 
         // Gerar versão para cada formato único
         for (const [aspectRatio, placement] of Object.entries(uniqueFormats)) {
-          const resizedBlob = await resizeImage(file, placement.width, placement.height)
-          const resizedFile = new File([resizedBlob], `${file.name.split('.')[0]}_${aspectRatio.replace(':', 'x')}.jpg`, {
-            type: 'image/jpeg'
-          })
+          try {
+            const resizedBlob = await resizeImage(file, placement.width, placement.height)
+            
+            if (!resizedBlob) {
+              console.error('Falha ao redimensionar imagem para', aspectRatio)
+              continue
+            }
 
-          fileProcessed.versions.push({
-            aspectRatio,
-            placement,
-            file: resizedFile,
-            preview: URL.createObjectURL(resizedBlob),
-            width: placement.width,
-            height: placement.height,
-            placements: formData.placements.filter(p => {
-              const pl = placements.find(pl => pl.value === p)
-              return pl && pl.aspectRatio === aspectRatio
+            const fileName = file.name.split('.')[0] || 'imagem'
+            const resizedFile = new File([resizedBlob], `${fileName}_${aspectRatio.replace(':', 'x')}.jpg`, {
+              type: 'image/jpeg'
             })
-          })
+
+            fileProcessed.versions.push({
+              aspectRatio,
+              placement,
+              file: resizedFile,
+              preview: URL.createObjectURL(resizedBlob),
+              width: placement.width,
+              height: placement.height,
+              placements: formData.placements.filter(p => {
+                const pl = placements.find(pl => pl.value === p)
+                return pl && pl.aspectRatio === aspectRatio
+              })
+            })
+          } catch (resizeError) {
+            console.error('Erro ao redimensionar para', aspectRatio, ':', resizeError)
+          }
         }
 
-        processed.push(fileProcessed)
+        if (fileProcessed.versions.length > 0) {
+          processed.push(fileProcessed)
+        }
       }
 
       setProcessedImages(processed)
+      
+      if (processed.length === 0) {
+        alert('Nenhuma imagem foi processada com sucesso. Verifique os arquivos e tente novamente.')
+      }
     } catch (error) {
       console.error('Erro ao processar imagens:', error)
-      alert('Erro ao processar imagens. Tente novamente.')
+      alert('Erro ao processar imagens: ' + error.message)
     } finally {
       setIsProcessingImages(false)
     }
   }
 
-  // Função para reprocessar quando posicionamentos mudam
-  useEffect(() => {
+  // Função para reprocessar quando posicionamentos mudam (removida dependência circular)
+  const reprocessImages = async () => {
     if (selectedFiles.length > 0 && formData.placements.length > 0) {
-      processImagesForPlacements(selectedFiles)
+      await processImagesForPlacements(selectedFiles)
     } else {
       setProcessedImages([])
     }
-  }, [formData.placements])
+  }
+
+  // UseEffect separado para reprocessar imagens
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      reprocessImages()
+    }, 300) // Debounce de 300ms
+
+    return () => clearTimeout(timeoutId)
+  }, [formData.placements.join(','), selectedFiles.length])
 
   // Função para buscar dados do dashboard
   const fetchDashboardData = async () => {
@@ -504,13 +579,50 @@ const AdGeneration = () => {
   }
 
   const handleFileUpload = (event) => {
-    const files = Array.from(event.target.files)
-    setSelectedFiles(files)
-    
-    if (formData.placements.length > 0) {
+    try {
+      const files = Array.from(event.target.files)
+      
+      // Validações básicas
+      if (!files || files.length === 0) {
+        alert('Nenhum arquivo selecionado')
+        return
+      }
+
+      // Verificar se posicionamentos foram selecionados
+      if (formData.placements.length === 0) {
+        alert('Selecione os posicionamentos primeiro para gerar as versões corretas das imagens')
+        return
+      }
+
+      // Validar tipos de arquivo
+      const invalidFiles = files.filter(file => !file.type.startsWith('image/'))
+      if (invalidFiles.length > 0) {
+        alert(`Arquivos inválidos detectados: ${invalidFiles.map(f => f.name).join(', ')}. Apenas imagens são aceitas.`)
+        return
+      }
+
+      // Validar tamanho dos arquivos (30MB por arquivo)
+      const maxSize = 30 * 1024 * 1024 // 30MB
+      const oversizedFiles = files.filter(file => file.size > maxSize)
+      if (oversizedFiles.length > 0) {
+        alert(`Arquivos muito grandes: ${oversizedFiles.map(f => f.name).join(', ')}. Tamanho máximo: 30MB por arquivo.`)
+        return
+      }
+
+      // Limitar número de arquivos para carrossel
+      if (formData.creative_type === 'carousel' && files.length > 10) {
+        alert('Máximo de 10 arquivos para carrossel')
+        return
+      }
+
+      console.log(`Processando ${files.length} arquivo(s) para ${formData.placements.length} posicionamento(s)`)
+      
+      setSelectedFiles(files)
       processImagesForPlacements(files)
-    } else {
-      alert('Selecione os posicionamentos primeiro para gerar as versões corretas das imagens')
+      
+    } catch (error) {
+      console.error('Erro no upload de arquivos:', error)
+      alert('Erro ao processar arquivos: ' + error.message)
     }
   }
 

@@ -363,7 +363,7 @@ class AdCopyGenerator:
             prompt_parts.append(f"Público-alvo: {target_audience}")
         
         if results["image_analysis"]:
-            prompt_parts.append(f"Contexto visual: {results["image_analysis"]}")
+            prompt_parts.append(f"Contexto visual: {results['image_analysis']}")
         
         prompt_parts.append(f"Objetivo da campanha: {ad_objective}")
         

@@ -154,6 +154,41 @@ class FacebookDataService:
                 "total": len(campaigns)
             }
             
+            # Calcular métricas derivadas se os dados básicos existirem
+            impressions_7d = int(insights_data.get("impressions", 0))
+            clicks_7d = int(insights_data.get("clicks", 0))
+            spend_7d = float(insights_data.get("spend", 0))
+            
+            # Calcular CTR, CPC e CPM se não estiverem disponíveis ou estiverem zerados
+            ctr_7d = float(insights_data.get("ctr", 0))
+            if ctr_7d == 0 and impressions_7d > 0 and clicks_7d > 0:
+                ctr_7d = (clicks_7d / impressions_7d) * 100
+            
+            cpc_7d = float(insights_data.get("cpc", 0))
+            if cpc_7d == 0 and clicks_7d > 0 and spend_7d > 0:
+                cpc_7d = spend_7d / clicks_7d
+            
+            cpm_7d = float(insights_data.get("cpm", 0))
+            if cpm_7d == 0 and impressions_7d > 0 and spend_7d > 0:
+                cpm_7d = (spend_7d / impressions_7d) * 1000
+            
+            # Fazer o mesmo para 30 dias
+            impressions_30d = int(insights_30d.get("impressions", 0))
+            clicks_30d = int(insights_30d.get("clicks", 0))
+            spend_30d = float(insights_30d.get("spend", 0))
+            
+            ctr_30d = float(insights_30d.get("ctr", 0))
+            if ctr_30d == 0 and impressions_30d > 0 and clicks_30d > 0:
+                ctr_30d = (clicks_30d / impressions_30d) * 100
+            
+            cpc_30d = float(insights_30d.get("cpc", 0))
+            if cpc_30d == 0 and clicks_30d > 0 and spend_30d > 0:
+                cpc_30d = spend_30d / clicks_30d
+            
+            cpm_30d = float(insights_30d.get("cpm", 0))
+            if cpm_30d == 0 and impressions_30d > 0 and spend_30d > 0:
+                cpm_30d = (spend_30d / impressions_30d) * 1000
+            
             # Preparar resumo
             summary = {
                 "account_info": {
@@ -165,21 +200,21 @@ class FacebookDataService:
                 },
                 "campaign_stats": campaign_stats,
                 "performance_7d": {
-                    "impressions": int(insights_data.get("impressions", 0)),
-                    "clicks": int(insights_data.get("clicks", 0)),
-                    "spend": float(insights_data.get("spend", 0)),
-                    "ctr": float(insights_data.get("ctr", 0)),
-                    "cpc": float(insights_data.get("cpc", 0)),
-                    "cpm": float(insights_data.get("cpm", 0)),
+                    "impressions": impressions_7d,
+                    "clicks": clicks_7d,
+                    "spend": spend_7d,
+                    "ctr": round(ctr_7d, 2),
+                    "cpc": round(cpc_7d, 2),
+                    "cpm": round(cpm_7d, 2),
                     "reach": int(insights_data.get("reach", 0))
                 },
                 "performance_30d": {
-                    "impressions": int(insights_30d.get("impressions", 0)),
-                    "clicks": int(insights_30d.get("clicks", 0)),
-                    "spend": float(insights_30d.get("spend", 0)),
-                    "ctr": float(insights_30d.get("ctr", 0)),
-                    "cpc": float(insights_30d.get("cpc", 0)),
-                    "cpm": float(insights_30d.get("cpm", 0)),
+                    "impressions": impressions_30d,
+                    "clicks": clicks_30d,
+                    "spend": spend_30d,
+                    "ctr": round(ctr_30d, 2),
+                    "cpc": round(cpc_30d, 2),
+                    "cpm": round(cpm_30d, 2),
                     "reach": int(insights_30d.get("reach", 0))
                 },
                 "campaigns": campaigns[:10],  # Primeiras 10 campanhas

@@ -429,13 +429,42 @@ class AdCopyGenerator:
             return True
         return False
 
-# Exemplo de uso
-if __name__ == "__main__":
-    # Inicializar o gerador
+def create_ad_copy_generator() -> AdCopyGenerator:
+    """
+    Criar e configurar uma instância do AdCopyGenerator com provedores disponíveis.
+    
+    Returns:
+        AdCopyGenerator: Instância configurada com provedores de LLM
+    """
     generator = AdCopyGenerator()
     
-    # Adicionar provedores (em produção, usar variáveis de ambiente para as chaves)
+    # Sempre adicionar o provedor local como padrão
     generator.add_provider("local", LocalLLMProvider(), is_default=True)
+    
+    # Configurar OpenAI se a chave estiver disponível
+    openai_key = os.getenv("OPENAI_API_KEY")
+    if openai_key:
+        try:
+            generator.add_provider("openai", OpenAIProvider(openai_key))
+            # Se OpenAI estiver disponível, usá-lo como padrão
+            generator.set_default_provider("openai")
+        except Exception as e:
+            print(f"Erro ao configurar OpenAI: {e}")
+    
+    # Configurar Hugging Face se a chave estiver disponível
+    huggingface_key = os.getenv("HUGGINGFACE_API_KEY")
+    if huggingface_key:
+        try:
+            generator.add_provider("huggingface", HuggingFaceProvider(huggingface_key))
+        except Exception as e:
+            print(f"Erro ao configurar Hugging Face: {e}")
+    
+    return generator
+
+# Exemplo de uso
+if __name__ == "__main__":
+    # Inicializar o gerador usando a função de configuração
+    generator = create_ad_copy_generator()
     
     # Exemplo de geração de anúncios
     result = generator.generate_ad_variations(

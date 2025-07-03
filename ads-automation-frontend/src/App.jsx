@@ -161,6 +161,49 @@ function App() {
     }
   }
 
+  // Função para pausar/ativar campanhas
+  const toggleCampaignStatus = async (campaignId, currentStatus) => {
+    try {
+      setLoading(true)
+      
+      const response = await fetch(`${API_BASE_URL}/facebook/campaigns/${campaignId}/toggle`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          current_status: currentStatus
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Atualizar o status da campanha localmente
+        setCampaigns(prevCampaigns => 
+          prevCampaigns.map(campaign => 
+            campaign.id === campaignId 
+              ? { ...campaign, status: data.new_status.toLowerCase() }
+              : campaign
+          )
+        )
+        
+        // Mostrar mensagem de sucesso
+        alert(`Campanha ${data.new_status === 'ACTIVE' ? 'ativada' : 'pausada'} com sucesso!`)
+        
+        // Atualizar dados do dashboard
+        await fetchDashboardData()
+      } else {
+        alert(`Erro: ${data.error}`)
+      }
+    } catch (err) {
+      alert('Erro de conexão ao alterar status da campanha')
+      console.error('Erro:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Carregar dados iniciais
   useEffect(() => {
     fetchBusinessManagers()
@@ -415,7 +458,12 @@ function App() {
                             <Badge variant={campaign.status === 'active' ? 'default' : 'secondary'}>
                               {campaign.status === 'active' ? 'Ativa' : 'Pausada'}
                             </Badge>
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => toggleCampaignStatus(campaign.id, campaign.status)}
+                              disabled={loading}
+                            >
                               {campaign.status === 'active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                             </Button>
                             <Button size="sm" variant="outline">

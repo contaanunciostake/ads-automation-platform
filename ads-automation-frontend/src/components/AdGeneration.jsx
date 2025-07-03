@@ -250,72 +250,76 @@ const AdGeneration = () => {
         return
       }
 
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')
-      const img = new Image()
-      
-      // Timeout para evitar travamento
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout ao carregar imagem'))
-      }, 10000)
-      
-      img.onload = () => {
-        clearTimeout(timeout)
-        
-        try {
-          // Calcular dimensões mantendo proporção e centralizando
-          const sourceAspectRatio = img.width / img.height
-          const targetAspectRatio = targetWidth / targetHeight
-          
-          let sourceX = 0, sourceY = 0, sourceWidth = img.width, sourceHeight = img.height
-          
-          if (sourceAspectRatio > targetAspectRatio) {
-            // Imagem mais larga - cortar laterais
-            sourceWidth = img.height * targetAspectRatio
-            sourceX = (img.width - sourceWidth) / 2
-          } else {
-            // Imagem mais alta - cortar topo/fundo
-            sourceHeight = img.width / targetAspectRatio
-            sourceY = (img.height - sourceHeight) / 2
-          }
-          
-          canvas.width = targetWidth
-          canvas.height = targetHeight
-          
-          // Limpar canvas
-          ctx.clearRect(0, 0, targetWidth, targetHeight)
-          
-          // Desenhar imagem redimensionada e cortada
-          ctx.drawImage(
-            img,
-            sourceX, sourceY, sourceWidth, sourceHeight,
-            0, 0, targetWidth, targetHeight
-          )
-          
-          // Converter para blob
-          canvas.toBlob((blob) => {
-            if (blob) {
-              resolve(blob)
-            } else {
-              reject(new Error('Falha ao gerar blob da imagem'))
-            }
-          }, 'image/jpeg', quality)
-          
-        } catch (error) {
-          reject(new Error('Erro ao processar imagem: ' + error.message))
-        }
-      }
-      
-      img.onerror = () => {
-        clearTimeout(timeout)
-        reject(new Error('Erro ao carregar imagem'))
-      }
-      
       try {
-        img.src = URL.createObjectURL(file)
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        
+        // Criar elemento de imagem de forma mais robusta
+        const img = document.createElement('img')
+        
+        // Timeout para evitar travamento
+        const timeout = setTimeout(() => {
+          reject(new Error('Timeout ao carregar imagem'))
+        }, 10000)
+        
+        img.onload = function() {
+          clearTimeout(timeout)
+          
+          try {
+            // Calcular dimensões mantendo proporção e centralizando
+            const sourceAspectRatio = this.width / this.height
+            const targetAspectRatio = targetWidth / targetHeight
+            
+            let sourceX = 0, sourceY = 0, sourceWidth = this.width, sourceHeight = this.height
+            
+            if (sourceAspectRatio > targetAspectRatio) {
+              // Imagem mais larga - cortar laterais
+              sourceWidth = this.height * targetAspectRatio
+              sourceX = (this.width - sourceWidth) / 2
+            } else {
+              // Imagem mais alta - cortar topo/fundo
+              sourceHeight = this.width / targetAspectRatio
+              sourceY = (this.height - sourceHeight) / 2
+            }
+            
+            canvas.width = targetWidth
+            canvas.height = targetHeight
+            
+            // Limpar canvas
+            ctx.clearRect(0, 0, targetWidth, targetHeight)
+            
+            // Desenhar imagem redimensionada e cortada
+            ctx.drawImage(
+              this,
+              sourceX, sourceY, sourceWidth, sourceHeight,
+              0, 0, targetWidth, targetHeight
+            )
+            
+            // Converter para blob
+            canvas.toBlob((blob) => {
+              if (blob) {
+                resolve(blob)
+              } else {
+                reject(new Error('Falha ao gerar blob da imagem'))
+              }
+            }, 'image/jpeg', quality)
+            
+          } catch (error) {
+            reject(new Error('Erro ao processar imagem: ' + error.message))
+          }
+        }
+        
+        img.onerror = function() {
+          clearTimeout(timeout)
+          reject(new Error('Erro ao carregar imagem'))
+        }
+        
+        // Criar URL do arquivo de forma segura
+        const fileURL = URL.createObjectURL(file)
+        img.src = fileURL
+        
       } catch (error) {
-        clearTimeout(timeout)
-        reject(new Error('Erro ao criar URL da imagem: ' + error.message))
+        reject(new Error('Erro ao inicializar processamento: ' + error.message))
       }
     })
   }
@@ -427,7 +431,7 @@ const AdGeneration = () => {
     setDashboardError(null)
 
     try {
-      const chartResponse = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/chart-data?days=7', {
+      const chartResponse = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook-data/chart-data?days=7', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -436,7 +440,7 @@ const AdGeneration = () => {
 
       const chartResult = await chartResponse.json()
 
-      const summaryResponse = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/dashboard-summary', {
+      const summaryResponse = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook-data/dashboard-summary', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -487,7 +491,7 @@ const AdGeneration = () => {
   const fetchPages = async () => {
     setIsLoadingPages(true)
     try {
-      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/pages', {
+      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook-data/pages', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -529,7 +533,7 @@ const AdGeneration = () => {
 
     setIsGeneratingAudience(true)
     try {
-      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/generate-audience', {
+      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook-data/generate-audience', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -744,7 +748,7 @@ const AdGeneration = () => {
     setIsSearchingCities(true)
     
     try {
-      const response = await fetch(`https://ads-automation-backend-otpl.onrender.com/api/facebook/cities/search?q=${encodeURIComponent(query)}`)
+      const response = await fetch(`https://ads-automation-backend-otpl.onrender.com/api/facebook-data/cities/search?q=${encodeURIComponent(query)}`)
       const result = await response.json()
 
       if (result.success) {
@@ -826,7 +830,7 @@ const AdGeneration = () => {
   // Buscar cidades no raio do mapa
   const getCitiesInRadius = async () => {
     try {
-      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/location/radius-cities', {
+      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook-data/location/radius-cities', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -85,6 +85,7 @@ class FacebookAdsAPI:
         }
         return self._make_request("POST", endpoint, data=data)
 
+
 # --- Exemplo de uso e configuração (para ser usado em rotas ou serviços) ---
 
 # Carregar credenciais de variáveis de ambiente (MELHOR PRÁTICA PARA PRODUÇÃO)
@@ -170,4 +171,18 @@ if FACEBOOK_ACCESS_TOKEN and FACEBOOK_AD_ACCOUNT_ID:
 #         return jsonify({"error": str(e)}), 500
 
 
+# ===============================
+# NOVOS COMPONENTES REQUERIDOS
+# ===============================
 
+class APIIntegrationService:
+    def __init__(self):
+        if not FACEBOOK_ACCESS_TOKEN or not FACEBOOK_AD_ACCOUNT_ID:
+            raise ValueError("Variáveis de ambiente do Facebook não estão configuradas.")
+        self.api = FacebookAdsAPI(FACEBOOK_ACCESS_TOKEN, FACEBOOK_AD_ACCOUNT_ID)
+
+    def get_api(self):
+        return self.api
+
+def create_api_instance():
+    return APIIntegrationService().get_api()

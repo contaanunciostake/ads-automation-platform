@@ -1389,3 +1389,305 @@ def optimize_images():
         print(f"💥 DEBUG: Exceção capturada: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
+
+# ===== ENDPOINTS PARA SISTEMA DE LOCALIZAÇÃO =====
+
+@facebook_bp.route('/cities/search', methods=['GET'])
+def search_cities():
+    """Buscar cidades brasileiras por nome"""
+    try:
+        query = request.args.get('q', '').strip()
+        
+        if not query or len(query) < 2:
+            return jsonify({
+                'success': False,
+                'error': 'Query deve ter pelo menos 2 caracteres'
+            }), 400
+        
+        # Lista de cidades brasileiras (amostra - em produção usar base de dados completa)
+        cities_database = [
+            {'name': 'São Paulo', 'state': 'SP', 'lat': -23.5505, 'lng': -46.6333, 'population': 12325232},
+            {'name': 'Rio de Janeiro', 'state': 'RJ', 'lat': -22.9068, 'lng': -43.1729, 'population': 6748000},
+            {'name': 'Brasília', 'state': 'DF', 'lat': -15.7942, 'lng': -47.8822, 'population': 3055149},
+            {'name': 'Salvador', 'state': 'BA', 'lat': -12.9714, 'lng': -38.5014, 'population': 2886698},
+            {'name': 'Fortaleza', 'state': 'CE', 'lat': -3.7319, 'lng': -38.5267, 'population': 2686612},
+            {'name': 'Belo Horizonte', 'state': 'MG', 'lat': -19.9191, 'lng': -43.9386, 'population': 2521564},
+            {'name': 'Manaus', 'state': 'AM', 'lat': -3.1190, 'lng': -60.0217, 'population': 2219580},
+            {'name': 'Curitiba', 'state': 'PR', 'lat': -25.4284, 'lng': -49.2733, 'population': 1948626},
+            {'name': 'Recife', 'state': 'PE', 'lat': -8.0476, 'lng': -34.8770, 'population': 1653461},
+            {'name': 'Goiânia', 'state': 'GO', 'lat': -16.6869, 'lng': -49.2648, 'population': 1536097},
+            {'name': 'Belém', 'state': 'PA', 'lat': -1.4558, 'lng': -48.5044, 'population': 1499641},
+            {'name': 'Porto Alegre', 'state': 'RS', 'lat': -30.0346, 'lng': -51.2177, 'population': 1488252},
+            {'name': 'Guarulhos', 'state': 'SP', 'lat': -23.4538, 'lng': -46.5333, 'population': 1392121},
+            {'name': 'Campinas', 'state': 'SP', 'lat': -22.9099, 'lng': -47.0626, 'population': 1213792},
+            {'name': 'São Luís', 'state': 'MA', 'lat': -2.5387, 'lng': -44.2825, 'population': 1108975},
+            {'name': 'São Gonçalo', 'state': 'RJ', 'lat': -22.8267, 'lng': -43.0537, 'population': 1084839},
+            {'name': 'Maceió', 'state': 'AL', 'lat': -9.6658, 'lng': -35.7353, 'population': 1025360},
+            {'name': 'Duque de Caxias', 'state': 'RJ', 'lat': -22.7856, 'lng': -43.3117, 'population': 924624},
+            {'name': 'Natal', 'state': 'RN', 'lat': -5.7945, 'lng': -35.2110, 'population': 890480},
+            {'name': 'Teresina', 'state': 'PI', 'lat': -5.0892, 'lng': -42.8019, 'population': 868075},
+            {'name': 'Campo Grande', 'state': 'MS', 'lat': -20.4697, 'lng': -54.6201, 'population': 906092},
+            {'name': 'Nova Iguaçu', 'state': 'RJ', 'lat': -22.7592, 'lng': -43.4511, 'population': 823302},
+            {'name': 'São Bernardo do Campo', 'state': 'SP', 'lat': -23.6914, 'lng': -46.5646, 'population': 844483},
+            {'name': 'João Pessoa', 'state': 'PB', 'lat': -7.1195, 'lng': -34.8450, 'population': 817511},
+            {'name': 'Santo André', 'state': 'SP', 'lat': -23.6633, 'lng': -46.5307, 'population': 721368},
+            {'name': 'Jaboatão dos Guararapes', 'state': 'PE', 'lat': -8.1130, 'lng': -35.0149, 'population': 706867},
+            {'name': 'Osasco', 'state': 'SP', 'lat': -23.5329, 'lng': -46.7918, 'population': 699944},
+            {'name': 'São José dos Campos', 'state': 'SP', 'lat': -23.2237, 'lng': -45.9009, 'population': 729737},
+            {'name': 'Ribeirão Preto', 'state': 'SP', 'lat': -21.1775, 'lng': -47.8208, 'population': 703293},
+            {'name': 'Uberlândia', 'state': 'MG', 'lat': -18.9113, 'lng': -48.2622, 'population': 699097},
+            {'name': 'Contagem', 'state': 'MG', 'lat': -19.9317, 'lng': -44.0536, 'population': 668949},
+            {'name': 'Sorocaba', 'state': 'SP', 'lat': -23.5015, 'lng': -47.4526, 'population': 687357},
+            {'name': 'Aracaju', 'state': 'SE', 'lat': -10.9472, 'lng': -37.0731, 'population': 664908},
+            {'name': 'Feira de Santana', 'state': 'BA', 'lat': -12.2664, 'lng': -38.9663, 'population': 619609},
+            {'name': 'Cuiabá', 'state': 'MT', 'lat': -15.6014, 'lng': -56.0979, 'population': 650912},
+            {'name': 'Joinville', 'state': 'SC', 'lat': -26.3045, 'lng': -48.8487, 'population': 597658},
+            {'name': 'Aparecida de Goiânia', 'state': 'GO', 'lat': -16.8173, 'lng': -49.2437, 'population': 542090},
+            {'name': 'Londrina', 'state': 'PR', 'lat': -23.3045, 'lng': -51.1696, 'population': 575377},
+            {'name': 'Ananindeua', 'state': 'PA', 'lat': -1.3656, 'lng': -48.3722, 'population': 535547},
+            {'name': 'Porto Velho', 'state': 'RO', 'lat': -8.7612, 'lng': -63.9004, 'population': 539354},
+            {'name': 'Niterói', 'state': 'RJ', 'lat': -22.8833, 'lng': -43.1036, 'population': 515317},
+            {'name': 'Belford Roxo', 'state': 'RJ', 'lat': -22.7631, 'lng': -43.3997, 'population': 513118},
+            {'name': 'Caxias do Sul', 'state': 'RS', 'lat': -29.1678, 'lng': -51.1794, 'population': 517451},
+            {'name': 'Campos dos Goytacazes', 'state': 'RJ', 'lat': -21.7587, 'lng': -41.3298, 'population': 507548},
+            {'name': 'Macapá', 'state': 'AP', 'lat': 0.0389, 'lng': -51.0664, 'population': 512902},
+            {'name': 'Vila Velha', 'state': 'ES', 'lat': -20.3297, 'lng': -40.2925, 'population': 501325},
+            {'name': 'Mauá', 'state': 'SP', 'lat': -23.6678, 'lng': -46.4611, 'population': 477552},
+            {'name': 'São João de Meriti', 'state': 'RJ', 'lat': -22.8048, 'lng': -43.3722, 'population': 472906},
+            {'name': 'Florianópolis', 'state': 'SC', 'lat': -27.5954, 'lng': -48.5480, 'population': 508826},
+            {'name': 'Santos', 'state': 'SP', 'lat': -23.9618, 'lng': -46.3322, 'population': 433656},
+            {'name': 'Diadema', 'state': 'SP', 'lat': -23.6861, 'lng': -46.6228, 'population': 426757},
+            {'name': 'Jundiaí', 'state': 'SP', 'lat': -23.1864, 'lng': -46.8842, 'population': 423006},
+            {'name': 'Carapicuíba', 'state': 'SP', 'lat': -23.5222, 'lng': -46.8361, 'population': 394465},
+            {'name': 'Piracicaba', 'state': 'SP', 'lat': -22.7253, 'lng': -47.6492, 'population': 407252},
+            {'name': 'Cariacica', 'state': 'ES', 'lat': -20.2619, 'lng': -40.4175, 'population': 383917},
+            {'name': 'Olinda', 'state': 'PE', 'lat': -8.0089, 'lng': -34.8553, 'population': 393115},
+            {'name': 'Canoas', 'state': 'RS', 'lat': -29.9177, 'lng': -51.1844, 'population': 348208},
+            {'name': 'Betim', 'state': 'MG', 'lat': -19.9681, 'lng': -44.1987, 'population': 444784},
+            {'name': 'Caucaia', 'state': 'CE', 'lat': -3.7361, 'lng': -38.6531, 'population': 368328},
+            {'name': 'Vitória', 'state': 'ES', 'lat': -20.3155, 'lng': -40.3128, 'population': 365855},
+            {'name': 'Ribeirão das Neves', 'state': 'MG', 'lat': -19.7669, 'lng': -44.0869, 'population': 334858},
+            {'name': 'Paulista', 'state': 'PE', 'lat': -7.9406, 'lng': -34.8728, 'population': 331774},
+            {'name': 'Petrópolis', 'state': 'RJ', 'lat': -22.5047, 'lng': -43.1778, 'population': 306678},
+            {'name': 'Várzea Grande', 'state': 'MT', 'lat': -15.6467, 'lng': -56.1325, 'population': 284971},
+            {'name': 'Blumenau', 'state': 'SC', 'lat': -26.9194, 'lng': -49.0661, 'population': 361855},
+            {'name': 'Uberaba', 'state': 'MG', 'lat': -19.7517, 'lng': -47.9319, 'population': 337092},
+            {'name': 'Santarém', 'state': 'PA', 'lat': -2.4093, 'lng': -54.7081, 'population': 306480},
+            {'name': 'Volta Redonda', 'state': 'RJ', 'lat': -22.5231, 'lng': -44.1044, 'population': 273988},
+            {'name': 'Novo Hamburgo', 'state': 'RS', 'lat': -29.6783, 'lng': -51.1306, 'population': 247032},
+            {'name': 'Bauru', 'state': 'SP', 'lat': -22.3147, 'lng': -49.0608, 'population': 379297},
+            {'name': 'Juiz de Fora', 'state': 'MG', 'lat': -21.7642, 'lng': -43.3467, 'population': 573285},
+            {'name': 'Praia Grande', 'state': 'SP', 'lat': -24.0058, 'lng': -46.4028, 'population': 330845},
+            {'name': 'Pelotas', 'state': 'RS', 'lat': -31.7654, 'lng': -52.3376, 'population': 343651},
+            {'name': 'Suzano', 'state': 'SP', 'lat': -23.5425, 'lng': -46.3108, 'population': 300559},
+            {'name': 'Taboão da Serra', 'state': 'SP', 'lat': -23.6092, 'lng': -46.7581, 'population': 281639},
+            {'name': 'São Vicente', 'state': 'SP', 'lat': -23.9633, 'lng': -46.3914, 'population': 365798},
+            {'name': 'Franca', 'state': 'SP', 'lat': -20.5386, 'lng': -47.4006, 'population': 358539},
+            {'name': 'Maringá', 'state': 'PR', 'lat': -23.4205, 'lng': -51.9331, 'population': 430157},
+            {'name': 'Montes Claros', 'state': 'MG', 'lat': -16.7289, 'lng': -43.8647, 'population': 413487},
+            {'name': 'São Carlos', 'state': 'SP', 'lat': -22.0175, 'lng': -47.8908, 'population': 254484},
+            {'name': 'Taubaté', 'state': 'SP', 'lat': -23.0205, 'lng': -45.5633, 'population': 317915},
+            {'name': 'Limeira', 'state': 'SP', 'lat': -22.5647, 'lng': -47.4017, 'population': 308482},
+            {'name': 'Suzano', 'state': 'SP', 'lat': -23.5425, 'lng': -46.3108, 'population': 300559},
+            {'name': 'Guarujá', 'state': 'SP', 'lat': -23.9939, 'lng': -46.2564, 'population': 322750},
+            {'name': 'Caruaru', 'state': 'PE', 'lat': -8.2839, 'lng': -35.9761, 'population': 367309},
+            {'name': 'Anápolis', 'state': 'GO', 'lat': -16.3281, 'lng': -48.9531, 'population': 391772},
+            {'name': 'Cascavel', 'state': 'PR', 'lat': -24.9558, 'lng': -53.4552, 'population': 332333},
+            {'name': 'Petrolina', 'state': 'PE', 'lat': -9.3891, 'lng': -40.5030, 'population': 354317},
+            {'name': 'Campina Grande', 'state': 'PB', 'lat': -7.2306, 'lng': -35.8811, 'population': 411807},
+            {'name': 'Viamão', 'state': 'RS', 'lat': -30.0811, 'lng': -51.0233, 'population': 255224},
+            {'name': 'Barueri', 'state': 'SP', 'lat': -23.5106, 'lng': -46.8761, 'population': 276601},
+            {'name': 'Arapiraca', 'state': 'AL', 'lat': -9.7517, 'lng': -36.6611, 'population': 234185},
+            {'name': 'Embu das Artes', 'state': 'SP', 'lat': -23.6489, 'lng': -46.8522, 'population': 271028},
+            {'name': 'Colombo', 'state': 'PR', 'lat': -25.2917, 'lng': -49.2244, 'population': 240840},
+            {'name': 'Jacareí', 'state': 'SP', 'lat': -23.3053, 'lng': -45.9658, 'population': 235416},
+            {'name': 'Indaiatuba', 'state': 'SP', 'lat': -23.0922, 'lng': -47.2181, 'population': 256223},
+            {'name': 'Cotia', 'state': 'SP', 'lat': -23.6039, 'lng': -46.9189, 'population': 253608},
+            {'name': 'Americana', 'state': 'SP', 'lat': -22.7394, 'lng': -47.3314, 'population': 229322},
+            {'name': 'Marília', 'state': 'SP', 'lat': -22.2139, 'lng': -49.9456, 'population': 240590},
+            {'name': 'Presidente Prudente', 'state': 'SP', 'lat': -22.1256, 'lng': -51.3889, 'population': 230371},
+            {'name': 'Araraquara', 'state': 'SP', 'lat': -21.7947, 'lng': -48.1756, 'population': 238339},
+            {'name': 'Itaquaquecetuba', 'state': 'SP', 'lat': -23.4864, 'lng': -46.3481, 'population': 365392},
+            {'name': 'Rio Branco', 'state': 'AC', 'lat': -9.9747, 'lng': -67.8243, 'population': 413418},
+            {'name': 'Magé', 'state': 'RJ', 'lat': -22.6558, 'lng': -43.0403, 'population': 245071},
+            {'name': 'Gravataí', 'state': 'RS', 'lat': -29.9442, 'lng': -50.9928, 'population': 281519},
+            {'name': 'Itabuna', 'state': 'BA', 'lat': -14.7856, 'lng': -39.2803, 'population': 213223},
+            {'name': 'São José do Rio Preto', 'state': 'SP', 'lat': -20.8197, 'lng': -49.3794, 'population': 464983},
+            {'name': 'Foz do Iguaçu', 'state': 'PR', 'lat': -25.5478, 'lng': -54.5881, 'population': 258823},
+            {'name': 'Vitória da Conquista', 'state': 'BA', 'lat': -14.8661, 'lng': -40.8394, 'population': 341597},
+            {'name': 'Ponta Grossa', 'state': 'PR', 'lat': -25.0950, 'lng': -50.1619, 'population': 355336},
+            {'name': 'Ilhéus', 'state': 'BA', 'lat': -14.7889, 'lng': -39.0397, 'population': 164844},
+            {'name': 'Mossoró', 'state': 'RN', 'lat': -5.1875, 'lng': -37.3439, 'population': 295619},
+            {'name': 'Juazeiro do Norte', 'state': 'CE', 'lat': -7.2128, 'lng': -39.3153, 'population': 276264},
+            {'name': 'Imperatriz', 'state': 'MA', 'lat': -5.5264, 'lng': -47.4919, 'population': 259980},
+            {'name': 'Dourados', 'state': 'MS', 'lat': -22.2211, 'lng': -54.8056, 'population': 225495},
+            {'name': 'Chapecó', 'state': 'SC', 'lat': -27.1009, 'lng': -52.6156, 'population': 224013},
+            {'name': 'Rondonópolis', 'state': 'MT', 'lat': -16.4706, 'lng': -54.6356, 'population': 230179},
+            {'name': 'Sobral', 'state': 'CE', 'lat': -3.6861, 'lng': -40.3492, 'population': 208935},
+            {'name': 'Blumenau', 'state': 'SC', 'lat': -26.9194, 'lng': -49.0661, 'population': 361855}
+        ]
+        
+        # Filtrar cidades que correspondem à query
+        query_lower = query.lower()
+        matching_cities = []
+        
+        for city in cities_database:
+            city_name_lower = city['name'].lower()
+            if query_lower in city_name_lower:
+                matching_cities.append({
+                    'id': f"{city['name']}_{city['state']}",
+                    'name': city['name'],
+                    'state': city['state'],
+                    'full_name': f"{city['name']}, {city['state']}",
+                    'lat': city['lat'],
+                    'lng': city['lng'],
+                    'population': city['population']
+                })
+        
+        # Ordenar por relevância (exato primeiro, depois por população)
+        matching_cities.sort(key=lambda x: (
+            0 if x['name'].lower().startswith(query_lower) else 1,
+            -x['population']
+        ))
+        
+        # Limitar a 10 resultados
+        matching_cities = matching_cities[:10]
+        
+        return jsonify({
+            'success': True,
+            'cities': matching_cities,
+            'total': len(matching_cities)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Erro ao buscar cidades: {str(e)}'
+        }), 500
+
+@facebook_bp.route('/cities/coordinates', methods=['POST'])
+def get_city_coordinates():
+    """Obter coordenadas de uma cidade específica"""
+    try:
+        data = request.get_json()
+        city_name = data.get('city_name', '').strip()
+        state = data.get('state', '').strip()
+        
+        if not city_name:
+            return jsonify({
+                'success': False,
+                'error': 'Nome da cidade é obrigatório'
+            }), 400
+        
+        # Aqui você pode integrar com uma API de geocoding real
+        # Por enquanto, vamos usar dados mock
+        mock_coordinates = {
+            'São Paulo': {'lat': -23.5505, 'lng': -46.6333},
+            'Rio de Janeiro': {'lat': -22.9068, 'lng': -43.1729},
+            'Brasília': {'lat': -15.7942, 'lng': -47.8822},
+            'Salvador': {'lat': -12.9714, 'lng': -38.5014},
+            'Fortaleza': {'lat': -3.7319, 'lng': -38.5267},
+            'Belo Horizonte': {'lat': -19.9191, 'lng': -43.9386},
+            'Manaus': {'lat': -3.1190, 'lng': -60.0217},
+            'Curitiba': {'lat': -25.4284, 'lng': -49.2733},
+            'Recife': {'lat': -8.0476, 'lng': -34.8770},
+            'Porto Alegre': {'lat': -30.0346, 'lng': -51.2177}
+        }
+        
+        coordinates = mock_coordinates.get(city_name)
+        
+        if not coordinates:
+            return jsonify({
+                'success': False,
+                'error': 'Cidade não encontrada'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'city': city_name,
+            'state': state,
+            'coordinates': coordinates
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Erro ao obter coordenadas: {str(e)}'
+        }), 500
+
+@facebook_bp.route('/location/radius-cities', methods=['POST'])
+def get_cities_in_radius():
+    """Obter cidades dentro de um raio específico"""
+    try:
+        data = request.get_json()
+        center_lat = data.get('lat')
+        center_lng = data.get('lng')
+        radius_km = data.get('radius', 50)  # Default 50km
+        
+        if not center_lat or not center_lng:
+            return jsonify({
+                'success': False,
+                'error': 'Coordenadas do centro são obrigatórias'
+            }), 400
+        
+        # Função para calcular distância entre dois pontos
+        import math
+        
+        def calculate_distance(lat1, lng1, lat2, lng2):
+            R = 6371  # Raio da Terra em km
+            
+            lat1_rad = math.radians(lat1)
+            lng1_rad = math.radians(lng1)
+            lat2_rad = math.radians(lat2)
+            lng2_rad = math.radians(lng2)
+            
+            dlat = lat2_rad - lat1_rad
+            dlng = lng2_rad - lng1_rad
+            
+            a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlng/2)**2
+            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+            
+            return R * c
+        
+        # Lista de cidades para verificar (usar a mesma base de dados)
+        cities_in_radius = []
+        
+        # Mock de algumas cidades para demonstração
+        sample_cities = [
+            {'name': 'São Paulo', 'state': 'SP', 'lat': -23.5505, 'lng': -46.6333},
+            {'name': 'Guarulhos', 'state': 'SP', 'lat': -23.4538, 'lng': -46.5333},
+            {'name': 'Osasco', 'state': 'SP', 'lat': -23.5329, 'lng': -46.7918},
+            {'name': 'Santo André', 'state': 'SP', 'lat': -23.6633, 'lng': -46.5307},
+            {'name': 'São Bernardo do Campo', 'state': 'SP', 'lat': -23.6914, 'lng': -46.5646}
+        ]
+        
+        for city in sample_cities:
+            distance = calculate_distance(center_lat, center_lng, city['lat'], city['lng'])
+            if distance <= radius_km:
+                cities_in_radius.append({
+                    'name': city['name'],
+                    'state': city['state'],
+                    'full_name': f"{city['name']}, {city['state']}",
+                    'lat': city['lat'],
+                    'lng': city['lng'],
+                    'distance_km': round(distance, 2)
+                })
+        
+        # Ordenar por distância
+        cities_in_radius.sort(key=lambda x: x['distance_km'])
+        
+        return jsonify({
+            'success': True,
+            'center': {'lat': center_lat, 'lng': center_lng},
+            'radius_km': radius_km,
+            'cities': cities_in_radius,
+            'total': len(cities_in_radius)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Erro ao buscar cidades no raio: {str(e)}'
+        }), 500
+

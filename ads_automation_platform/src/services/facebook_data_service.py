@@ -515,3 +515,359 @@ if FACEBOOK_ACCESS_TOKEN and FACEBOOK_AD_ACCOUNT_ID:
 else:
     print("ATENÇÃO: FACEBOOK_ACCESS_TOKEN ou FACEBOOK_AD_ACCOUNT_ID não configurados. O serviço de dados do Facebook não estará disponível.")
 
+
+    # ===== NOVOS MÉTODOS PARA MELHORIAS =====
+    
+    def get_pages(self) -> Dict[str, Any]:
+        """Buscar páginas vinculadas à Business Manager"""
+        try:
+            # Primeiro, tentar buscar páginas através da conta de anúncios
+            endpoint = f"{self.account_prefix}/pages"
+            params = {
+                "fields": "id,name,category,access_token"
+            }
+            
+            result = self._make_request(endpoint, params)
+            
+            if "data" in result and result["data"]:
+                return {
+                    "success": True,
+                    "pages": result["data"]
+                }
+            
+            # Se não encontrar páginas através da conta, tentar através do usuário
+            endpoint = "me/accounts"
+            params = {
+                "fields": "id,name,category,access_token"
+            }
+            
+            result = self._make_request(endpoint, params)
+            
+            if "data" in result:
+                return {
+                    "success": True,
+                    "pages": result["data"]
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": "Nenhuma página encontrada"
+                }
+                
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    def get_business_managers(self) -> Dict[str, Any]:
+        """Buscar Business Managers do usuário"""
+        try:
+            endpoint = "me/businesses"
+            params = {
+                "fields": "id,name,created_time,updated_time,verification_status"
+            }
+            
+            result = self._make_request(endpoint, params)
+            
+            if "data" in result:
+                return {
+                    "success": True,
+                    "businesses": result["data"]
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": "Nenhuma Business Manager encontrada"
+                }
+                
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    def get_ad_creatives(self, limit: int = 50) -> Dict[str, Any]:
+        """Buscar criativos de anúncios"""
+        try:
+            endpoint = f"{self.account_prefix}/adcreatives"
+            params = {
+                "fields": "id,name,status,object_story_spec,image_url,video_id,thumbnail_url",
+                "limit": limit
+            }
+            
+            result = self._make_request(endpoint, params)
+            
+            if "data" in result:
+                return {
+                    "success": True,
+                    "creatives": result["data"]
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": "Nenhum criativo encontrado"
+                }
+                
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    def create_campaign(self, campaign_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Criar uma nova campanha"""
+        try:
+            endpoint = f"{self.account_prefix}/campaigns"
+            
+            # Preparar dados da campanha
+            post_data = {
+                "name": campaign_data.get("name"),
+                "objective": campaign_data.get("objective", "CONVERSIONS"),
+                "status": campaign_data.get("status", "PAUSED"),
+                "special_ad_categories": campaign_data.get("special_ad_categories", [])
+            }
+            
+            # Adicionar orçamento se fornecido
+            if campaign_data.get("daily_budget"):
+                post_data["daily_budget"] = int(float(campaign_data["daily_budget"]) * 100)  # Converter para centavos
+            elif campaign_data.get("lifetime_budget"):
+                post_data["lifetime_budget"] = int(float(campaign_data["lifetime_budget"]) * 100)  # Converter para centavos
+            
+            # Adicionar datas se fornecidas
+            if campaign_data.get("start_time"):
+                post_data["start_time"] = campaign_data["start_time"]
+            if campaign_data.get("stop_time"):
+                post_data["stop_time"] = campaign_data["stop_time"]
+            
+            result = self._make_post_request(endpoint, post_data)
+            
+            if "id" in result:
+                return {
+                    "success": True,
+                    "campaign_id": result["id"],
+                    "message": "Campanha criada com sucesso"
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": result.get("error", "Erro ao criar campanha")
+                }
+                
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    def create_adset(self, adset_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Criar um novo conjunto de anúncios"""
+        try:
+            endpoint = f"{self.account_prefix}/adsets"
+            
+            # Preparar dados do adset
+            post_data = {
+                "name": adset_data.get("name"),
+                "campaign_id": adset_data.get("campaign_id"),
+                "status": adset_data.get("status", "PAUSED"),
+                "optimization_goal": adset_data.get("optimization_goal", "CONVERSIONS"),
+                "billing_event": adset_data.get("billing_event", "IMPRESSIONS"),
+                "targeting": json.dumps(adset_data.get("targeting", {}))
+            }
+            
+            # Adicionar orçamento
+            if adset_data.get("daily_budget"):
+                post_data["daily_budget"] = int(float(adset_data["daily_budget"]) * 100)  # Converter para centavos
+            elif adset_data.get("lifetime_budget"):
+                post_data["lifetime_budget"] = int(float(adset_data["lifetime_budget"]) * 100)  # Converter para centavos
+            
+            # Adicionar datas
+            if adset_data.get("start_time"):
+                post_data["start_time"] = adset_data["start_time"]
+            if adset_data.get("end_time"):
+                post_data["end_time"] = adset_data["end_time"]
+            
+            result = self._make_post_request(endpoint, post_data)
+            
+            if "id" in result:
+                return {
+                    "success": True,
+                    "adset_id": result["id"],
+                    "message": "Conjunto de anúncios criado com sucesso"
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": result.get("error", "Erro ao criar conjunto de anúncios")
+                }
+                
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    def create_ad_creative(self, creative_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Criar um criativo de anúncio"""
+        try:
+            endpoint = f"{self.account_prefix}/adcreatives"
+            
+            # Preparar dados do criativo
+            post_data = {
+                "name": creative_data.get("name"),
+                "object_story_spec": json.dumps(creative_data.get("object_story_spec", {}))
+            }
+            
+            result = self._make_post_request(endpoint, post_data)
+            
+            if "id" in result:
+                return {
+                    "success": True,
+                    "creative_id": result["id"],
+                    "message": "Criativo criado com sucesso"
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": result.get("error", "Erro ao criar criativo")
+                }
+                
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    def create_ad(self, ad_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Criar um novo anúncio"""
+        try:
+            endpoint = f"{self.account_prefix}/ads"
+            
+            # Preparar dados do anúncio
+            post_data = {
+                "name": ad_data.get("name"),
+                "adset_id": ad_data.get("adset_id"),
+                "creative": json.dumps({"creative_id": ad_data.get("creative_id")}),
+                "status": ad_data.get("status", "PAUSED")
+            }
+            
+            result = self._make_post_request(endpoint, post_data)
+            
+            if "id" in result:
+                return {
+                    "success": True,
+                    "ad_id": result["id"],
+                    "message": "Anúncio criado com sucesso"
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": result.get("error", "Erro ao criar anúncio")
+                }
+                
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    def upload_image(self, image_path: str, image_name: str = None) -> Dict[str, Any]:
+        """Fazer upload de uma imagem para a biblioteca de anúncios"""
+        try:
+            endpoint = f"{self.account_prefix}/adimages"
+            
+            # Preparar dados para upload
+            files = {
+                'filename': (image_name or 'uploaded_image.jpg', open(image_path, 'rb'), 'image/jpeg')
+            }
+            
+            data = {
+                'access_token': self.access_token
+            }
+            
+            url = f"{self.base_url}/{endpoint}"
+            response = requests.post(url, files=files, data=data)
+            
+            if response.status_code == 200:
+                result = response.json()
+                if 'images' in result:
+                    image_hash = list(result['images'].keys())[0]
+                    return {
+                        "success": True,
+                        "image_hash": image_hash,
+                        "message": "Imagem enviada com sucesso"
+                    }
+            
+            return {
+                "success": False,
+                "error": "Erro ao fazer upload da imagem"
+            }
+                
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    def get_targeting_options(self, targeting_type: str, query: str = None) -> Dict[str, Any]:
+        """Buscar opções de segmentação (interesses, comportamentos, etc.)"""
+        try:
+            endpoint = "search"
+            params = {
+                "type": targeting_type,  # interests, behaviors, demographics, etc.
+                "class": "adTargetingCategory"
+            }
+            
+            if query:
+                params["q"] = query
+            
+            result = self._make_request(endpoint, params)
+            
+            if "data" in result:
+                return {
+                    "success": True,
+                    "options": result["data"]
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": "Nenhuma opção encontrada"
+                }
+                
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    def get_location_targeting(self, query: str, location_types: List[str] = None) -> Dict[str, Any]:
+        """Buscar opções de segmentação geográfica"""
+        try:
+            endpoint = "search"
+            params = {
+                "type": "adgeolocation",
+                "q": query
+            }
+            
+            if location_types:
+                params["location_types"] = json.dumps(location_types)
+            
+            result = self._make_request(endpoint, params)
+            
+            if "data" in result:
+                return {
+                    "success": True,
+                    "locations": result["data"]
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": "Nenhuma localização encontrada"
+                }
+                
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+

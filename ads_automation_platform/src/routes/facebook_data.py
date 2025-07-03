@@ -400,3 +400,83 @@ def toggle_campaign_status(campaign_id):
         print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
+@facebook_data_bp.route('/facebook/campaigns/<campaign_id>/update', methods=['PUT'])
+def update_campaign(campaign_id):
+    """Atualizar configurações de uma campanha"""
+    print(f"🔍 DEBUG: Endpoint update_campaign chamado para campaign_id: {campaign_id}")
+    
+    if not facebook_data_service:
+        return jsonify({
+            'success': False, 
+            'error': 'Serviço do Facebook não configurado. Verifique as variáveis de ambiente.'
+        }), 500
+    
+    try:
+        # Obter dados do corpo da requisição
+        data = request.get_json()
+        print(f"🔍 DEBUG: Dados recebidos: {data}")
+        
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'Dados não fornecidos'
+            }), 400
+        
+        # Chamar serviço para atualizar campanha
+        result = facebook_data_service.update_campaign(campaign_id, data)
+        print(f"🔍 DEBUG: Resultado do service: {result}")
+        
+        if result.get("success"):
+            return jsonify({
+                'success': True,
+                'message': 'Campanha atualizada com sucesso',
+                'campaign': result.get("campaign", {})
+            })
+        else:
+            print(f"❌ DEBUG: Erro do service: {result.get('error')}")
+            return jsonify({
+                'success': False,
+                'error': result.get("error", "Erro ao atualizar campanha")
+            }), 500
+            
+    except Exception as e:
+        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
+        import traceback
+        print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@facebook_data_bp.route('/facebook/campaigns/<campaign_id>/details', methods=['GET'])
+def get_campaign_details(campaign_id):
+    """Buscar detalhes completos de uma campanha para edição"""
+    print(f"🔍 DEBUG: Endpoint get_campaign_details chamado para campaign_id: {campaign_id}")
+    
+    if not facebook_data_service:
+        return jsonify({
+            'success': False, 
+            'error': 'Serviço do Facebook não configurado. Verifique as variáveis de ambiente.'
+        }), 500
+    
+    try:
+        # Chamar serviço para buscar detalhes da campanha
+        result = facebook_data_service.get_campaign_details(campaign_id)
+        print(f"🔍 DEBUG: Resultado do service: {result}")
+        
+        if result.get("success"):
+            return jsonify({
+                'success': True,
+                'campaign': result.get("campaign", {})
+            })
+        else:
+            print(f"❌ DEBUG: Erro do service: {result.get('error')}")
+            return jsonify({
+                'success': False,
+                'error': result.get("error", "Erro ao buscar detalhes da campanha")
+            }), 500
+            
+    except Exception as e:
+        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
+        import traceback
+        print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+

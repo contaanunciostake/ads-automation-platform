@@ -353,7 +353,7 @@ class AdCopyGenerator:
         
         # Construir prompt base
         prompt_parts = [
-            f"Crie um texto de anúncio para {platform} para a empresa \'{company_name}\'."
+            f"Crie um texto de anúncio para {platform} para a empresa '{company_name}'."
         ]
         
         if product_description:
@@ -363,7 +363,7 @@ class AdCopyGenerator:
             prompt_parts.append(f"Público-alvo: {target_audience}")
         
         if results["image_analysis"]:
-            prompt_parts.append(f"Contexto visual: {results['image_analysis']}")
+            prompt_parts.append(f'Contexto visual: {results["image_analysis"]}')
         
         prompt_parts.append(f"Objetivo da campanha: {ad_objective}")
         
@@ -409,6 +409,50 @@ class AdCopyGenerator:
                 results["variations"].append({
                     "id": i + 1,
                     "error": result.get("error", "Erro na geração"),
-                    "generated_at": datetime.now().isofor
+                    "generated_at": datetime.now().isoformat()
+                })
+        
+        return results
+    
+    def get_provider_info(self) -> Dict[str, Any]:
+        """Obter informações sobre os provedores configurados"""
+        return {
+            "providers": list(self.providers.keys()),
+            "default_provider": self.default_provider,
+            "total_providers": len(self.providers)
+        }
+    
+    def set_default_provider(self, provider_name: str) -> bool:
+        """Definir provedor padrão"""
+        if provider_name in self.providers:
+            self.default_provider = provider_name
+            return True
+        return False
 
-
+# Exemplo de uso
+if __name__ == "__main__":
+    # Inicializar o gerador
+    generator = AdCopyGenerator()
+    
+    # Adicionar provedores (em produção, usar variáveis de ambiente para as chaves)
+    generator.add_provider("local", LocalLLMProvider(), is_default=True)
+    
+    # Exemplo de geração de anúncios
+    result = generator.generate_ad_variations(
+        company_name="TechSolutions",
+        product_description="Software de gestão empresarial",
+        target_audience="Pequenas e médias empresas",
+        platform="facebook",
+        ad_objective="conversions",
+        num_variations=3
+    )
+    
+    if result["success"]:
+        print(f"Gerado {len(result['variations'])} variações para {result['company_name']}")
+        for variation in result["variations"]:
+            print(f"\nVariação {variation['id']}:")
+            print(f"Headline: {variation['headline']}")
+            print(f"Texto completo: {variation['full_text']}")
+            print(f"Caracteres: {variation['character_count']}")
+    else:
+        print(f"Erro: {result['error']}")

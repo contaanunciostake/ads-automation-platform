@@ -759,3 +759,5 @@ const AdGeneration = () => {
     </div>
   );
 };
+export default AdGeneration;
+

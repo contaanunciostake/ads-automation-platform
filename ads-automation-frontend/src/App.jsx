@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts'
 import { TrendingUp, TrendingDown, DollarSign, Eye, MousePointer, Target, Settings, Plus, Play, Pause, BarChart3, Sparkles, RefreshCw, AlertCircle } from 'lucide-react'
 import AdGeneration from './components/AdGeneration.jsx'
+import CampaignSettings from './components/CampaignSettings.jsx'
 import './App.css'
 
 function App() {
@@ -18,6 +19,10 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [lastSync, setLastSync] = useState(null)
+  
+  // Estados para configurações de campanha
+  const [showCampaignSettings, setShowCampaignSettings] = useState(false)
+  const [selectedCampaign, setSelectedCampaign] = useState(null)
 
   const API_BASE_URL = 'https://ads-automation-backend-otpl.onrender.com/api'
 
@@ -201,6 +206,50 @@ function App() {
       console.error('Erro:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Funções para configurações de campanha
+  const openCampaignSettings = (campaign) => {
+    setSelectedCampaign(campaign)
+    setShowCampaignSettings(true)
+  }
+
+  const closeCampaignSettings = () => {
+    setShowCampaignSettings(false)
+    setSelectedCampaign(null)
+  }
+
+  const saveCampaignSettings = async (campaignId, formData) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/facebook/campaigns/${campaignId}/update`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Atualizar campanha localmente
+        setCampaigns(prevCampaigns => 
+          prevCampaigns.map(campaign => 
+            campaign.id === campaignId 
+              ? { ...campaign, ...data.campaign }
+              : campaign
+          )
+        )
+        
+        alert('Configurações salvas com sucesso!')
+        await fetchDashboardData() // Atualizar dados
+      } else {
+        alert(`Erro ao salvar: ${data.error}`)
+      }
+    } catch (err) {
+      alert('Erro de conexão ao salvar configurações')
+      console.error('Erro:', err)
     }
   }
 
@@ -466,7 +515,11 @@ function App() {
                             >
                               {campaign.status === 'active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => openCampaignSettings(campaign)}
+                            >
                               <Settings className="h-4 w-4" />
                             </Button>
                           </div>
@@ -542,10 +595,17 @@ function App() {
                 Powered by AI
               </Badge>
             </div>
-
             <AdGeneration />
           </TabsContent>
         </Tabs>
+
+        {/* Componente de Configurações de Campanha */}
+        <CampaignSettings
+          campaign={selectedCampaign}
+          isOpen={showCampaignSettings}
+          onClose={closeCampaignSettings}
+          onSave={saveCampaignSettings}
+        />
       </div>
     </div>
   )

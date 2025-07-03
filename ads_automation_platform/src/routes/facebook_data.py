@@ -276,3 +276,127 @@ def sync_facebook_data():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@facebook_data_bp.route('/facebook/campaigns/<campaign_id>/pause', methods=['POST'])
+def pause_campaign(campaign_id):
+    """Pausar uma campanha específica"""
+    if not facebook_data_service:
+        return jsonify({
+            'success': False, 
+            'error': 'Serviço do Facebook não configurado. Verifique as variáveis de ambiente.'
+        }), 500
+    
+    try:
+        result = facebook_data_service.pause_campaign(campaign_id)
+        
+        if result.get("success"):
+            return jsonify({
+                'success': True,
+                'message': 'Campanha pausada com sucesso',
+                'campaign_id': campaign_id,
+                'new_status': 'PAUSED'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get("error", "Erro ao pausar campanha")
+            }), 500
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@facebook_data_bp.route('/facebook/campaigns/<campaign_id>/activate', methods=['POST'])
+def activate_campaign(campaign_id):
+    """Ativar uma campanha específica"""
+    if not facebook_data_service:
+        return jsonify({
+            'success': False, 
+            'error': 'Serviço do Facebook não configurado. Verifique as variáveis de ambiente.'
+        }), 500
+    
+    try:
+        result = facebook_data_service.activate_campaign(campaign_id)
+        
+        if result.get("success"):
+            return jsonify({
+                'success': True,
+                'message': 'Campanha ativada com sucesso',
+                'campaign_id': campaign_id,
+                'new_status': 'ACTIVE'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get("error", "Erro ao ativar campanha")
+            }), 500
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@facebook_data_bp.route('/facebook/test-endpoint', methods=['POST'])
+def test_endpoint():
+    """Endpoint de teste para verificar se POST funciona"""
+    print("🔍 DEBUG: Endpoint de teste chamado!")
+    print(f"🔍 DEBUG: Método: {request.method}")
+    return jsonify({
+        'success': True,
+        'message': 'Endpoint de teste funcionando',
+        'method': request.method
+    })
+
+@facebook_data_bp.route('/facebook/campaigns/<campaign_id>/toggle', methods=['POST'])
+def toggle_campaign_status(campaign_id):
+    """Alternar status da campanha (pausar se ativa, ativar se pausada)"""
+    print(f"🔍 DEBUG: Endpoint toggle chamado para campaign_id: {campaign_id}")
+    print(f"🔍 DEBUG: Método da requisição: {request.method}")
+    print(f"🔍 DEBUG: Headers da requisição: {dict(request.headers)}")
+    
+    if not facebook_data_service:
+        print("❌ DEBUG: facebook_data_service não configurado")
+        return jsonify({
+            'success': False, 
+            'error': 'Serviço do Facebook não configurado. Verifique as variáveis de ambiente.'
+        }), 500
+    
+    try:
+        print("🔍 DEBUG: Tentando obter dados da requisição...")
+        # Obter dados da requisição
+        data = request.get_json() or {}
+        current_status = data.get('current_status', '')
+        
+        print(f"🔍 DEBUG: Dados recebidos: {data}")
+        print(f"🔍 DEBUG: Status atual: {current_status}")
+        
+        if not current_status:
+            print("❌ DEBUG: Status atual não fornecido")
+            return jsonify({
+                'success': False,
+                'error': 'Status atual da campanha é obrigatório'
+            }), 400
+        
+        print(f"🔍 DEBUG: Chamando toggle_campaign_status no service...")
+        result = facebook_data_service.toggle_campaign_status(campaign_id, current_status)
+        print(f"🔍 DEBUG: Resultado do service: {result}")
+        
+        if result.get("success"):
+            new_status = "PAUSED" if current_status.upper() == "ACTIVE" else "ACTIVE"
+            print(f"✅ DEBUG: Sucesso! Novo status: {new_status}")
+            return jsonify({
+                'success': True,
+                'message': result.get("message"),
+                'campaign_id': campaign_id,
+                'old_status': current_status.upper(),
+                'new_status': new_status
+            })
+        else:
+            print(f"❌ DEBUG: Erro do service: {result.get('error')}")
+            return jsonify({
+                'success': False,
+                'error': result.get("error", "Erro ao alterar status da campanha")
+            }), 500
+            
+    except Exception as e:
+        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
+        import traceback
+        print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+

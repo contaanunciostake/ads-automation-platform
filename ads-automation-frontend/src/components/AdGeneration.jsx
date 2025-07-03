@@ -73,35 +73,60 @@ const AdGeneration = () => {
     setDashboardError(null)
 
     try {
-      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/dashboard-summary', {
+      // Buscar dados dos gráficos que têm os valores reais
+      const chartResponse = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/chart-data?days=7', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
       })
 
-      const result = await response.json()
+      const chartResult = await chartResponse.json()
 
-      if (result.success) {
-        const summary = result.data
-        const performance_7d = summary.performance_7d || {}
-        const campaign_stats = summary.campaign_stats || {}
+      // Buscar dados de campanhas para contagem de ativas
+      const summaryResponse = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/dashboard-summary', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const summaryResult = await summaryResponse.json()
+
+      if (chartResult.success && summaryResult.success) {
+        // Calcular totais dos últimos 7 dias a partir dos dados do gráfico
+        const chartData = chartResult.data || []
+        
+        const totals = chartData.reduce((acc, day) => {
+          acc.impressions += day.impressions || 0
+          acc.clicks += day.clicks || 0
+          acc.spend += day.spend || 0
+          return acc
+        }, { impressions: 0, clicks: 0, spend: 0 })
+
+        // Calcular métricas derivadas
+        const ctr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0
+        const cpc = totals.clicks > 0 ? totals.spend / totals.clicks : 0
+        const cpm = totals.impressions > 0 ? (totals.spend / totals.impressions) * 1000 : 0
+
+        // Obter contagem de campanhas ativas
+        const campaign_stats = summaryResult.data?.campaign_stats || {}
         
         // Formatar dados no formato esperado pelo componente
         const formattedData = {
-          impressions: performance_7d.impressions || 0,
-          clicks: performance_7d.clicks || 0,
-          spent: performance_7d.spend || 0,  // 'spend' do backend para 'spent' do frontend
+          impressions: totals.impressions,
+          clicks: totals.clicks,
+          spent: totals.spend,
           active_campaigns: campaign_stats.active || 0,
-          ctr: performance_7d.ctr || 0,
-          cpc: performance_7d.cpc || 0,
-          cpm: performance_7d.cpm || 0
+          ctr: parseFloat(ctr.toFixed(2)),
+          cpc: parseFloat(cpc.toFixed(2)),
+          cpm: parseFloat(cpm.toFixed(2))
         }
         
         setDashboardData(formattedData)
         setLastUpdated(new Date().toLocaleString('pt-BR'))
       } else {
-        setDashboardError(result.error || 'Erro ao carregar dados do dashboard')
+        setDashboardError('Erro ao carregar dados do dashboard')
       }
     } catch (error) {
       setDashboardError(`Erro na conexão: ${error.message}`)

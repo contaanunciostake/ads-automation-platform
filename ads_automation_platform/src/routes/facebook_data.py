@@ -40,6 +40,48 @@ def get_dashboard_summary():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@facebook_data_bp.route('/facebook/dashboard', methods=['GET'])
+def get_dashboard():
+    """Buscar dados do dashboard no formato esperado pelo frontend"""
+    if not facebook_data_service:
+        return jsonify({
+            'success': False, 
+            'error': 'Serviço do Facebook não configurado. Verifique as variáveis de ambiente.'
+        }), 500
+    
+    try:
+        # Buscar dados do dashboard
+        dashboard_summary = facebook_data_service.get_dashboard_summary()
+        
+        if not dashboard_summary.get("success"):
+            return jsonify({
+                'success': False, 
+                'error': dashboard_summary.get("error", "Erro ao buscar dados do dashboard")
+            }), 500
+        
+        summary_data = dashboard_summary.get("data", {})
+        performance_7d = summary_data.get("performance_7d", {})
+        campaign_stats = summary_data.get("campaign_stats", {})
+        
+        # Formatar dados no formato esperado pelo frontend
+        dashboard_data = {
+            "impressions": performance_7d.get("impressions", 0),
+            "clicks": performance_7d.get("clicks", 0),
+            "spent": performance_7d.get("spend", 0),  # Converter 'spend' para 'spent'
+            "active_campaigns": campaign_stats.get("active", 0),
+            "ctr": performance_7d.get("ctr", 0),
+            "cpc": performance_7d.get("cpc", 0),
+            "cpm": performance_7d.get("cpm", 0)
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': dashboard_data
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @facebook_data_bp.route('/facebook/campaigns', methods=['GET'])
 def get_campaigns():
     """Buscar campanhas da conta de anúncios"""

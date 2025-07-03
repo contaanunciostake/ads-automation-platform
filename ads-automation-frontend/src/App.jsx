@@ -49,26 +49,49 @@ function App() {
     setError(null)
     
     try {
-      const response = await fetch(`${API_BASE_URL}/facebook/dashboard-summary`)
-      const data = await response.json()
+      // Buscar dados dos gráficos que têm os valores reais
+      const chartResponse = await fetch(`${API_BASE_URL}/facebook/chart-data?days=7`)
+      const chartData = await chartResponse.json()
       
-      if (data.success) {
-        const summary = data.data
+      // Buscar dados de campanhas para contagem de ativas
+      const summaryResponse = await fetch(`${API_BASE_URL}/facebook/dashboard-summary`)
+      const summaryData = await summaryResponse.json()
+      
+      if (chartData.success && summaryData.success) {
+        // Calcular totais dos últimos 7 dias a partir dos dados do gráfico
+        const dailyData = chartData.data || []
+        
+        const totals = dailyData.reduce((acc, day) => {
+          acc.impressions += day.impressions || 0
+          acc.clicks += day.clicks || 0
+          acc.spend += day.spend || 0
+          return acc
+        }, { impressions: 0, clicks: 0, spend: 0 })
+
+        // Calcular métricas derivadas
+        const ctr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0
+        const cpc = totals.clicks > 0 ? totals.spend / totals.clicks : 0
+        const reach = totals.impressions // Aproximação: reach ≈ impressions para dados agregados
+
+        // Obter dados de campanhas
+        const summary = summaryData.data
+        const campaign_stats = summary?.campaign_stats || {}
         
         // Atualizar dados de performance
         setPerformanceData({
-          impressions: summary.performance_7d.impressions,
-          clicks: summary.performance_7d.clicks,
-          spend: summary.performance_7d.spend,
-          ctr: summary.performance_7d.ctr,
-          cpc: summary.performance_7d.cpc,
-          reach: summary.performance_7d.reach,
-          campaigns_active: summary.campaign_stats.active,
-          campaigns_total: summary.campaign_stats.total
+          impressions: totals.impressions,
+          clicks: totals.clicks,
+          spend: totals.spend,
+          ctr: parseFloat(ctr.toFixed(2)),
+          cpc: parseFloat(cpc.toFixed(2)),
+          reach: reach,
+          campaigns_active: campaign_stats.active || 0,
+          campaigns_total: campaign_stats.total || 0
         })
         
         // Atualizar campanhas
-        setCampaigns(summary.campaigns.map(campaign => ({
+        const campaigns = summary?.campaigns || []
+        setCampaigns(campaigns.map(campaign => ({
           id: campaign.id,
           name: campaign.name,
           platform: "facebook_ads",
@@ -81,7 +104,7 @@ function App() {
         
         setLastSync(new Date().toLocaleString())
       } else {
-        setError(data.error || 'Erro ao buscar dados do dashboard')
+        setError('Erro ao buscar dados do dashboard')
       }
     } catch (err) {
       setError('Erro de conexão ao buscar dados do dashboard')

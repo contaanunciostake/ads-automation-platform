@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Upload, Wand2, Copy, RefreshCw, Sparkles, Image, FileText, Target, Eye, MousePointer, DollarSign, Activity, TrendingUp, AlertCircle, Video, Users, MapPin, Calendar, Clock, Zap, Settings, Play, Instagram, Facebook, Heart, Smartphone, ShoppingCart } from 'lucide-react';
+import { Upload, Wand2, Copy, RefreshCw, Sparkles, Image, FileText, Target, Eye, MousePointer, DollarSign, Activity, TrendingUp, AlertCircle, Video, Users, MapPin, Calendar, Clock, Zap, Settings, Play, Instagram, Facebook, Heart, Smartphone, ShoppingCart, Crop, Download, RotateCw } from 'lucide-react';
 
 const AdGeneration = () => {
   // Estados para geração de anúncios
@@ -34,10 +34,11 @@ const AdGeneration = () => {
   })
   
   const [selectedFiles, setSelectedFiles] = useState([])
-  const [filePreviews, setFilePreviews] = useState([])
+  const [processedImages, setProcessedImages] = useState([]) // Imagens processadas para cada posicionamento
   const [generatedAds, setGeneratedAds] = useState([])
   const [isGenerating, setIsGenerating] = useState(false)
   const [isGeneratingAudience, setIsGeneratingAudience] = useState(false)
+  const [isProcessingImages, setIsProcessingImages] = useState(false)
   const [pages, setPages] = useState([])
   const [isLoadingPages, setIsLoadingPages] = useState(false)
   const fileInputRef = useRef(null)
@@ -66,27 +67,110 @@ const AdGeneration = () => {
     { value: 'sales', label: 'Vendas', description: 'Otimizar para vendas e conversões', icon: ShoppingCart }
   ]
 
-  // Posicionamentos completos baseados na pesquisa
+  // Posicionamentos completos com especificações de formato
   const placements = [
     // Facebook
-    { value: 'feed', label: 'Feed do Facebook', platform: 'facebook', description: 'Anúncios no feed principal', category: 'Feeds' },
-    { value: 'stories', label: 'Stories do Facebook', platform: 'facebook', description: 'Anúncios em stories (9:16)', category: 'Stories & Reels' },
-    { value: 'reels', label: 'Reels do Facebook', platform: 'facebook', description: 'Anúncios em reels (9:16)', category: 'Stories & Reels' },
-    { value: 'right_column', label: 'Coluna Direita', platform: 'facebook', description: 'Anúncios na lateral direita', category: 'Feeds' },
-    { value: 'marketplace', label: 'Marketplace', platform: 'facebook', description: 'Anúncios no Marketplace', category: 'Feeds' },
-    { value: 'video_feeds', label: 'Feeds de Vídeo', platform: 'facebook', description: 'Anúncios em vídeos', category: 'In-Stream' },
-    { value: 'search_results', label: 'Resultados de Busca', platform: 'facebook', description: 'Anúncios nos resultados de busca', category: 'Search' },
+    { 
+      value: 'feed', 
+      label: 'Feed do Facebook', 
+      platform: 'facebook', 
+      description: 'Anúncios no feed principal', 
+      category: 'Feeds',
+      aspectRatio: '1:1',
+      width: 1080,
+      height: 1080,
+      recommended: '1080x1080 (1:1)'
+    },
+    { 
+      value: 'stories', 
+      label: 'Stories do Facebook', 
+      platform: 'facebook', 
+      description: 'Anúncios em stories (9:16)', 
+      category: 'Stories & Reels',
+      aspectRatio: '9:16',
+      width: 1080,
+      height: 1920,
+      recommended: '1080x1920 (9:16)'
+    },
+    { 
+      value: 'reels', 
+      label: 'Reels do Facebook', 
+      platform: 'facebook', 
+      description: 'Anúncios em reels (9:16)', 
+      category: 'Stories & Reels',
+      aspectRatio: '9:16',
+      width: 1080,
+      height: 1920,
+      recommended: '1080x1920 (9:16)'
+    },
+    { 
+      value: 'right_column', 
+      label: 'Coluna Direita', 
+      platform: 'facebook', 
+      description: 'Anúncios na lateral direita', 
+      category: 'Feeds',
+      aspectRatio: '1.91:1',
+      width: 1200,
+      height: 628,
+      recommended: '1200x628 (1.91:1)'
+    },
+    { 
+      value: 'marketplace', 
+      label: 'Marketplace', 
+      platform: 'facebook', 
+      description: 'Anúncios no Marketplace', 
+      category: 'Feeds',
+      aspectRatio: '1:1',
+      width: 1080,
+      height: 1080,
+      recommended: '1080x1080 (1:1)'
+    },
     
     // Instagram
-    { value: 'instagram_feed', label: 'Feed do Instagram', platform: 'instagram', description: 'Anúncios no feed do Instagram', category: 'Feeds' },
-    { value: 'instagram_stories', label: 'Stories do Instagram', platform: 'instagram', description: 'Anúncios em stories do Instagram (9:16)', category: 'Stories & Reels' },
-    { value: 'instagram_reels', label: 'Reels do Instagram', platform: 'instagram', description: 'Anúncios em reels do Instagram (9:16)', category: 'Stories & Reels' },
-    { value: 'instagram_explore', label: 'Explorar do Instagram', platform: 'instagram', description: 'Anúncios na aba Explorar', category: 'Feeds' },
-    { value: 'instagram_search', label: 'Busca do Instagram', platform: 'instagram', description: 'Anúncios nos resultados de busca', category: 'Search' },
-    
-    // Messenger
-    { value: 'messenger_inbox', label: 'Caixa de Entrada do Messenger', platform: 'messenger', description: 'Anúncios no Messenger', category: 'Messages' },
-    { value: 'messenger_stories', label: 'Stories do Messenger', platform: 'messenger', description: 'Anúncios em stories do Messenger (9:16)', category: 'Stories & Reels' }
+    { 
+      value: 'instagram_feed', 
+      label: 'Feed do Instagram', 
+      platform: 'instagram', 
+      description: 'Anúncios no feed do Instagram', 
+      category: 'Feeds',
+      aspectRatio: '1:1',
+      width: 1080,
+      height: 1080,
+      recommended: '1080x1080 (1:1)'
+    },
+    { 
+      value: 'instagram_stories', 
+      label: 'Stories do Instagram', 
+      platform: 'instagram', 
+      description: 'Anúncios em stories do Instagram (9:16)', 
+      category: 'Stories & Reels',
+      aspectRatio: '9:16',
+      width: 1080,
+      height: 1920,
+      recommended: '1080x1920 (9:16)'
+    },
+    { 
+      value: 'instagram_reels', 
+      label: 'Reels do Instagram', 
+      platform: 'instagram', 
+      description: 'Anúncios em reels do Instagram (9:16)', 
+      category: 'Stories & Reels',
+      aspectRatio: '9:16',
+      width: 1080,
+      height: 1920,
+      recommended: '1080x1920 (9:16)'
+    },
+    { 
+      value: 'instagram_explore', 
+      label: 'Explorar do Instagram', 
+      platform: 'instagram', 
+      description: 'Anúncios na aba Explorar', 
+      category: 'Feeds',
+      aspectRatio: '1:1',
+      width: 1080,
+      height: 1080,
+      recommended: '1080x1080 (1:1)'
+    }
   ]
 
   // Tipos de criativo com especificações detalhadas
@@ -99,8 +183,8 @@ const AdGeneration = () => {
       specs: {
         formats: ['JPG', 'PNG'],
         maxSize: '30MB',
-        ratios: ['1:1 (Quadrado)', '4:5 (Vertical)', '1.91:1 (Paisagem)'],
-        recommended: '1440x1440 pixels (1:1)'
+        ratios: ['1:1 (Quadrado)', '4:5 (Vertical)', '1.91:1 (Paisagem)', '9:16 (Stories/Reels)'],
+        recommended: 'Automático baseado nos posicionamentos'
       }
     },
     { 
@@ -112,7 +196,7 @@ const AdGeneration = () => {
         formats: ['MP4', 'MOV', 'GIF'],
         maxSize: '4GB',
         ratios: ['1:1 (Quadrado)', '4:5 (Vertical)', '9:16 (Stories/Reels)'],
-        recommended: '1440x1440 pixels (1:1)',
+        recommended: 'Automático baseado nos posicionamentos',
         duration: '1 segundo a 241 minutos'
       }
     },
@@ -125,21 +209,8 @@ const AdGeneration = () => {
         formats: ['JPG', 'PNG', 'MP4', 'MOV'],
         maxSize: '30MB por imagem, 4GB por vídeo',
         ratios: ['1:1 (Quadrado)', '4:5 (Vertical)'],
-        recommended: '1440x1440 pixels (1:1)',
+        recommended: 'Automático baseado nos posicionamentos',
         cards: '2 a 10 cards'
-      }
-    },
-    { 
-      value: 'collection', 
-      label: 'Coleção', 
-      icon: Target, 
-      description: 'Vitrine de produtos com imagem principal + produtos',
-      specs: {
-        formats: ['JPG', 'PNG', 'MP4', 'MOV'],
-        maxSize: '30MB por imagem, 4GB por vídeo',
-        ratios: ['1:1 (Quadrado)', '4:5 (Vertical)'],
-        recommended: '1440x1440 pixels (1:1)',
-        note: 'Ideal para e-commerce'
       }
     }
   ]
@@ -154,6 +225,116 @@ const AdGeneration = () => {
     { value: 'male', label: 'Masculino' },
     { value: 'female', label: 'Feminino' }
   ]
+
+  // Função para redimensionar imagem usando Canvas
+  const resizeImage = (file, targetWidth, targetHeight, quality = 0.9) => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      const img = new Image()
+      
+      img.onload = () => {
+        // Calcular dimensões mantendo proporção e centralizando
+        const sourceAspectRatio = img.width / img.height
+        const targetAspectRatio = targetWidth / targetHeight
+        
+        let sourceX = 0, sourceY = 0, sourceWidth = img.width, sourceHeight = img.height
+        
+        if (sourceAspectRatio > targetAspectRatio) {
+          // Imagem mais larga - cortar laterais
+          sourceWidth = img.height * targetAspectRatio
+          sourceX = (img.width - sourceWidth) / 2
+        } else {
+          // Imagem mais alta - cortar topo/fundo
+          sourceHeight = img.width / targetAspectRatio
+          sourceY = (img.height - sourceHeight) / 2
+        }
+        
+        canvas.width = targetWidth
+        canvas.height = targetHeight
+        
+        // Desenhar imagem redimensionada e cortada
+        ctx.drawImage(
+          img,
+          sourceX, sourceY, sourceWidth, sourceHeight,
+          0, 0, targetWidth, targetHeight
+        )
+        
+        canvas.toBlob(resolve, 'image/jpeg', quality)
+      }
+      
+      img.src = URL.createObjectURL(file)
+    })
+  }
+
+  // Função para processar imagens automaticamente
+  const processImagesForPlacements = async (files) => {
+    if (formData.placements.length === 0) {
+      alert('Selecione pelo menos um posicionamento antes de fazer upload das imagens')
+      return
+    }
+
+    setIsProcessingImages(true)
+    const processed = []
+
+    try {
+      for (const file of files) {
+        const fileProcessed = {
+          originalFile: file,
+          originalPreview: URL.createObjectURL(file),
+          versions: []
+        }
+
+        // Obter posicionamentos únicos por formato
+        const uniqueFormats = {}
+        formData.placements.forEach(placementValue => {
+          const placement = placements.find(p => p.value === placementValue)
+          if (placement && !uniqueFormats[placement.aspectRatio]) {
+            uniqueFormats[placement.aspectRatio] = placement
+          }
+        })
+
+        // Gerar versão para cada formato único
+        for (const [aspectRatio, placement] of Object.entries(uniqueFormats)) {
+          const resizedBlob = await resizeImage(file, placement.width, placement.height)
+          const resizedFile = new File([resizedBlob], `${file.name.split('.')[0]}_${aspectRatio.replace(':', 'x')}.jpg`, {
+            type: 'image/jpeg'
+          })
+
+          fileProcessed.versions.push({
+            aspectRatio,
+            placement,
+            file: resizedFile,
+            preview: URL.createObjectURL(resizedBlob),
+            width: placement.width,
+            height: placement.height,
+            placements: formData.placements.filter(p => {
+              const pl = placements.find(pl => pl.value === p)
+              return pl && pl.aspectRatio === aspectRatio
+            })
+          })
+        }
+
+        processed.push(fileProcessed)
+      }
+
+      setProcessedImages(processed)
+    } catch (error) {
+      console.error('Erro ao processar imagens:', error)
+      alert('Erro ao processar imagens. Tente novamente.')
+    } finally {
+      setIsProcessingImages(false)
+    }
+  }
+
+  // Função para reprocessar quando posicionamentos mudam
+  useEffect(() => {
+    if (selectedFiles.length > 0 && formData.placements.length > 0) {
+      processImagesForPlacements(selectedFiles)
+    } else {
+      setProcessedImages([])
+    }
+  }, [formData.placements])
 
   // Função para buscar dados do dashboard
   const fetchDashboardData = async () => {
@@ -326,22 +507,38 @@ const AdGeneration = () => {
     const files = Array.from(event.target.files)
     setSelectedFiles(files)
     
-    // Gerar previews
-    const previews = []
-    files.forEach(file => {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        previews.push({
-          file,
-          preview: e.target.result,
-          type: file.type.startsWith('video/') ? 'video' : 'image'
-        })
-        if (previews.length === files.length) {
-          setFilePreviews(previews)
-        }
+    if (formData.placements.length > 0) {
+      processImagesForPlacements(files)
+    } else {
+      alert('Selecione os posicionamentos primeiro para gerar as versões corretas das imagens')
+    }
+  }
+
+  // Função para redimensionar manualmente uma versão específica
+  const manualResize = async (imageIndex, versionIndex, newWidth, newHeight) => {
+    const image = processedImages[imageIndex]
+    const version = image.versions[versionIndex]
+    
+    try {
+      const resizedBlob = await resizeImage(image.originalFile, newWidth, newHeight)
+      const resizedFile = new File([resizedBlob], version.file.name, {
+        type: 'image/jpeg'
+      })
+
+      const updatedImages = [...processedImages]
+      updatedImages[imageIndex].versions[versionIndex] = {
+        ...version,
+        file: resizedFile,
+        preview: URL.createObjectURL(resizedBlob),
+        width: newWidth,
+        height: newHeight
       }
-      reader.readAsDataURL(file)
-    })
+      
+      setProcessedImages(updatedImages)
+    } catch (error) {
+      console.error('Erro ao redimensionar:', error)
+      alert('Erro ao redimensionar imagem')
+    }
   }
 
   const generateAds = async () => {
@@ -360,6 +557,11 @@ const AdGeneration = () => {
       return
     }
 
+    if (processedImages.length === 0) {
+      alert('Faça upload de pelo menos uma imagem')
+      return
+    }
+
     setIsGenerating(true)
     setGeneratedAds([])
 
@@ -374,8 +576,13 @@ const AdGeneration = () => {
         }
       })
       
-      selectedFiles.forEach((file, index) => {
-        formDataToSend.append(`creative_files`, file)
+      // Adicionar todas as versões processadas das imagens
+      processedImages.forEach((image, imageIndex) => {
+        image.versions.forEach((version, versionIndex) => {
+          formDataToSend.append(`creative_files`, version.file)
+          formDataToSend.append(`image_${imageIndex}_version_${versionIndex}_placements`, JSON.stringify(version.placements))
+          formDataToSend.append(`image_${imageIndex}_version_${versionIndex}_aspectRatio`, version.aspectRatio)
+        })
       })
 
       const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/ad-generation/generate-advanced', {
@@ -420,8 +627,7 @@ const AdGeneration = () => {
   // Filtrar posicionamentos baseado nas plataformas selecionadas
   const getAvailablePlacements = () => {
     return placements.filter(placement => 
-      formData.platforms.includes(placement.platform) || 
-      (placement.platform === 'messenger' && (formData.platforms.includes('facebook') || formData.platforms.includes('instagram')))
+      formData.platforms.includes(placement.platform)
     )
   }
 
@@ -438,6 +644,14 @@ const AdGeneration = () => {
     })
     
     return grouped
+  }
+
+  // Função para baixar imagem processada
+  const downloadImage = (version, imageName) => {
+    const link = document.createElement('a')
+    link.href = version.preview
+    link.download = `${imageName}_${version.aspectRatio.replace(':', 'x')}.jpg`
+    link.click()
   }
 
   return (
@@ -618,7 +832,7 @@ const AdGeneration = () => {
           )}
         </TabsContent>
 
-        {/* Generate Tab - Formulário Avançado */}
+        {/* Generate Tab - Formulário Avançado com Redimensionamento */}
         <TabsContent value="generate" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Formulário de Configuração */}
@@ -887,22 +1101,22 @@ const AdGeneration = () => {
               </Card>
             </div>
 
-            {/* Criativo e Posicionamentos */}
+            {/* Posicionamentos e Criativo - REORDENADOS */}
             <div className="space-y-6">
               {/* Tipo de Criativo */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Image className="h-5 w-5" />
-                    Criativo
+                    Tipo de Criativo
                   </CardTitle>
                   <CardDescription>
-                    Configure o tipo e conteúdo visual dos seus anúncios
+                    Escolha o formato do seu anúncio
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label>Tipo de Criativo</Label>
+                    <Label>Formato</Label>
                     <div className="grid grid-cols-1 gap-3 mt-2">
                       {creativeTypes.map(type => {
                         const Icon = type.icon
@@ -926,11 +1140,9 @@ const AdGeneration = () => {
                                 <div className="text-xs text-gray-500 space-y-1">
                                   <div><strong>Formatos:</strong> {type.specs.formats.join(', ')}</div>
                                   <div><strong>Tamanho máx:</strong> {type.specs.maxSize}</div>
-                                  <div><strong>Proporções:</strong> {type.specs.ratios.join(', ')}</div>
-                                  <div><strong>Recomendado:</strong> {type.specs.recommended}</div>
+                                  <div><strong>Proporções:</strong> {type.specs.recommended}</div>
                                   {type.specs.duration && <div><strong>Duração:</strong> {type.specs.duration}</div>}
                                   {type.specs.cards && <div><strong>Cards:</strong> {type.specs.cards}</div>}
-                                  {type.specs.note && <div><strong>Nota:</strong> {type.specs.note}</div>}
                                 </div>
                               </div>
                             </div>
@@ -939,66 +1151,18 @@ const AdGeneration = () => {
                       })}
                     </div>
                   </div>
-
-                  <div>
-                    <Label>Upload de Arquivos</Label>
-                    <div 
-                      className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-gray-400 transition-colors"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      {filePreviews.length > 0 ? (
-                        <div className="space-y-2">
-                          <div className="grid grid-cols-2 gap-2">
-                            {filePreviews.slice(0, 4).map((preview, index) => (
-                              <div key={index} className="relative">
-                                {preview.type === 'video' ? (
-                                  <video src={preview.preview} className="w-full h-20 object-cover rounded" />
-                                ) : (
-                                  <img src={preview.preview} alt={`Preview ${index}`} className="w-full h-20 object-cover rounded" />
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                          <p className="text-sm text-gray-600">
-                            {filePreviews.length} arquivo(s) selecionado(s). Clique para alterar.
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <Upload className="h-8 w-8 mx-auto text-gray-400" />
-                          <p className="text-sm text-gray-600">Clique para fazer upload</p>
-                          <p className="text-xs text-gray-500">
-                            {formData.creative_type === 'video' 
-                              ? 'MP4, MOV até 4GB' 
-                              : formData.creative_type === 'carousel'
-                              ? 'JPG, PNG, MP4, MOV (2-10 arquivos)'
-                              : 'JPG, PNG até 30MB'
-                            }
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept={formData.creative_type === 'video' ? 'video/*' : formData.creative_type === 'carousel' ? 'image/*,video/*' : 'image/*'}
-                      multiple={formData.creative_type === 'carousel'}
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                  </div>
                 </CardContent>
               </Card>
 
-              {/* Posicionamentos */}
+              {/* Posicionamentos - MOVIDO PARA ANTES DO UPLOAD */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Target className="h-5 w-5" />
-                    Posicionamentos
+                    Posicionamentos *
                   </CardTitle>
                   <CardDescription>
-                    Escolha onde seus anúncios aparecerão (Stories e Reels são 9:16)
+                    Escolha onde seus anúncios aparecerão (selecione ANTES de fazer upload)
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1018,9 +1182,12 @@ const AdGeneration = () => {
                                 <div className="flex flex-col">
                                   <div className="flex items-center gap-2">
                                     <span className="font-medium text-sm">{placement.label}</span>
-                                    {placement.value.includes('stories') || placement.value.includes('reels') ? (
-                                      <Badge variant="secondary" className="text-xs">9:16</Badge>
-                                    ) : null}
+                                    <Badge variant="secondary" className="text-xs">
+                                      {placement.aspectRatio}
+                                    </Badge>
+                                    <Badge variant="outline" className="text-xs">
+                                      {placement.recommended}
+                                    </Badge>
                                   </div>
                                   <span className="text-xs text-gray-500">{placement.description}</span>
                                 </div>
@@ -1030,6 +1197,77 @@ const AdGeneration = () => {
                         </div>
                       </div>
                     ))}
+                  </div>
+                  
+                  {formData.placements.length === 0 && (
+                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-sm text-yellow-800">
+                        ⚠️ Selecione pelo menos um posicionamento para gerar as versões corretas das imagens
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Upload de Arquivos - MOVIDO PARA DEPOIS DOS POSICIONAMENTOS */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Upload className="h-5 w-5" />
+                    Upload de Arquivos
+                  </CardTitle>
+                  <CardDescription>
+                    Faça upload das imagens (serão redimensionadas automaticamente)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <div 
+                      className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-gray-400 transition-colors"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {selectedFiles.length > 0 ? (
+                        <div className="space-y-2">
+                          <Upload className="h-8 w-8 mx-auto text-green-500" />
+                          <p className="text-sm text-gray-600">
+                            {selectedFiles.length} arquivo(s) selecionado(s). Clique para alterar.
+                          </p>
+                          {isProcessingImages && (
+                            <div className="flex items-center justify-center gap-2 mt-2">
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                              <span className="text-sm text-blue-600">Processando imagens...</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Upload className="h-8 w-8 mx-auto text-gray-400" />
+                          <p className="text-sm text-gray-600">Clique para fazer upload</p>
+                          <p className="text-xs text-gray-500">
+                            {formData.creative_type === 'video' 
+                              ? 'MP4, MOV até 4GB' 
+                              : formData.creative_type === 'carousel'
+                              ? 'JPG, PNG, MP4, MOV (2-10 arquivos)'
+                              : 'JPG, PNG até 30MB'
+                            }
+                          </p>
+                          {formData.placements.length === 0 && (
+                            <p className="text-xs text-red-500 font-medium">
+                              Selecione os posicionamentos primeiro!
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept={formData.creative_type === 'video' ? 'video/*' : formData.creative_type === 'carousel' ? 'image/*,video/*' : 'image/*'}
+                      multiple={formData.creative_type === 'carousel'}
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      disabled={formData.placements.length === 0}
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -1064,7 +1302,7 @@ const AdGeneration = () => {
 
                   <Button 
                     onClick={generateAds} 
-                    disabled={isGenerating || !formData.page_id || !formData.product_description}
+                    disabled={isGenerating || !formData.page_id || !formData.product_description || formData.placements.length === 0 || processedImages.length === 0}
                     className="w-full"
                     size="lg"
                   >
@@ -1084,6 +1322,107 @@ const AdGeneration = () => {
               </Card>
             </div>
           </div>
+
+          {/* Imagens Processadas */}
+          {processedImages.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Crop className="h-5 w-5" />
+                  Imagens Processadas Automaticamente
+                </CardTitle>
+                <CardDescription>
+                  Versões das suas imagens otimizadas para cada posicionamento selecionado
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {processedImages.map((image, imageIndex) => (
+                    <div key={imageIndex} className="border rounded-lg p-4">
+                      <h4 className="font-medium mb-4">Imagem {imageIndex + 1}</h4>
+                      
+                      {/* Imagem Original */}
+                      <div className="mb-4">
+                        <h5 className="text-sm font-medium text-gray-600 mb-2">Original</h5>
+                        <div className="flex items-center gap-4">
+                          <img 
+                            src={image.originalPreview} 
+                            alt="Original" 
+                            className="w-20 h-20 object-cover rounded border"
+                          />
+                          <div className="text-sm text-gray-600">
+                            <p>Arquivo original</p>
+                            <p className="text-xs">{image.originalFile.name}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Versões Processadas */}
+                      <div>
+                        <h5 className="text-sm font-medium text-gray-600 mb-3">Versões Otimizadas</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {image.versions.map((version, versionIndex) => (
+                            <div key={versionIndex} className="border rounded-lg p-3 bg-gray-50">
+                              <div className="flex items-center justify-between mb-2">
+                                <Badge variant="outline" className="text-xs">
+                                  {version.aspectRatio}
+                                </Badge>
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => downloadImage(version, `imagem_${imageIndex + 1}`)}
+                                    className="h-6 px-2"
+                                  >
+                                    <Download className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const newWidth = prompt('Nova largura:', version.width)
+                                      const newHeight = prompt('Nova altura:', version.height)
+                                      if (newWidth && newHeight) {
+                                        manualResize(imageIndex, versionIndex, parseInt(newWidth), parseInt(newHeight))
+                                      }
+                                    }}
+                                    className="h-6 px-2"
+                                  >
+                                    <Crop className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                              
+                              <img 
+                                src={version.preview} 
+                                alt={`Versão ${version.aspectRatio}`}
+                                className="w-full h-24 object-cover rounded border mb-2"
+                              />
+                              
+                              <div className="text-xs text-gray-600 space-y-1">
+                                <p><strong>Dimensões:</strong> {version.width}x{version.height}</p>
+                                <p><strong>Para:</strong></p>
+                                <div className="flex flex-wrap gap-1">
+                                  {version.placements.map(placementValue => {
+                                    const placement = placements.find(p => p.value === placementValue)
+                                    return placement ? (
+                                      <Badge key={placementValue} variant="secondary" className="text-xs">
+                                        {placement.label}
+                                      </Badge>
+                                    ) : null
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Resultados */}
           {generatedAds.length > 0 && (
@@ -1177,27 +1516,27 @@ const AdGeneration = () => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <h4 className="font-medium">📝 Descrição Clara</h4>
+              <h4 className="font-medium">🎯 Posicionamentos Primeiro</h4>
               <p className="text-sm text-gray-600">
-                Seja específico sobre seu produto ou serviço. Inclua benefícios principais e diferenciais.
+                Selecione os posicionamentos ANTES de fazer upload para gerar as versões corretas automaticamente.
               </p>
             </div>
             <div className="space-y-2">
-              <h4 className="font-medium">🎯 Público Automático</h4>
+              <h4 className="font-medium">✂️ Redimensionamento Automático</h4>
               <p className="text-sm text-gray-600">
-                Use a IA para gerar automaticamente o público-alvo ideal baseado no seu produto.
+                Suas imagens são cortadas automaticamente para cada formato: 1:1, 9:16, 1.91:1, etc.
               </p>
             </div>
             <div className="space-y-2">
-              <h4 className="font-medium">🖼️ Criativo Relevante</h4>
+              <h4 className="font-medium">🔧 Controle Manual</h4>
               <p className="text-sm text-gray-600">
-                Escolha o tipo certo: imagem para simplicidade, vídeo para engajamento, carrossel para variedade.
+                Use os botões de corte para ajustar manualmente qualquer versão da imagem.
               </p>
             </div>
             <div className="space-y-2">
-              <h4 className="font-medium">📱 Posicionamentos</h4>
+              <h4 className="font-medium">💾 Download Individual</h4>
               <p className="text-sm text-gray-600">
-                Stories e Reels usam formato 9:16 (vertical). Feed usa 1:1 (quadrado) ou 4:5 (vertical).
+                Baixe cada versão otimizada individualmente para usar em outras ferramentas.
               </p>
             </div>
           </div>

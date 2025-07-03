@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Upload, Wand2, Copy, RefreshCw, Sparkles, Image, FileText, Target, Eye, MousePointer, DollarSign, Activity, TrendingUp, AlertCircle, Video, Users, MapPin, Calendar, Clock, Zap, Settings, Play, Instagram, Facebook, Heart, Smartphone, ShoppingCart, Crop, Download, RotateCw } from 'lucide-react';
+import { Upload, Wand2, Copy, RefreshCw, Sparkles, Image, FileText, Target, Eye, MousePointer, DollarSign, Activity, TrendingUp, AlertCircle, Video, Users, MapPin, Calendar, Clock, Zap, Settings, Play, Instagram, Facebook, Heart, Smartphone, ShoppingCart, Crop, Download, RotateCw, Search, X, Info, RotateCcw } from 'lucide-react';
 
 const AdGeneration = () => {
   // Estados para geração de anúncios
@@ -37,8 +37,17 @@ const AdGeneration = () => {
   const [processedImages, setProcessedImages] = useState([]) // Imagens processadas para cada posicionamento
   const [generatedAds, setGeneratedAds] = useState([])
   const [isGenerating, setIsGenerating] = useState(false)
-  const [isGeneratingAudience, setIsGeneratingAudience] = useState(false)
   const [isProcessingImages, setIsProcessingImages] = useState(false)
+  
+  // Estados para sistema de localização avançado
+  const [citySearchQuery, setCitySearchQuery] = useState('')
+  const [citySearchResults, setCitySearchResults] = useState([])
+  const [isSearchingCities, setIsSearchingCities] = useState(false)
+  const [selectedCities, setSelectedCities] = useState([])
+  const [mapCenter, setMapCenter] = useState({ lat: -14.2350, lng: -51.9253 }) // Centro do Brasil
+  const [mapRadius, setMapRadius] = useState(50) // Raio em km
+  const [showCityDropdown, setShowCityDropdown] = useState(false)
+  
   const [pages, setPages] = useState([])
   const [isLoadingPages, setIsLoadingPages] = useState(false)
   const fileInputRef = useRef(null)
@@ -721,6 +730,127 @@ const AdGeneration = () => {
     alert('Texto copiado para a área de transferência!')
   }
 
+  // ===== FUNÇÕES DO SISTEMA DE LOCALIZAÇÃO AVANÇADO =====
+
+  // Buscar cidades com debounce
+  const searchCities = async (query) => {
+    if (!query || query.length < 2) {
+      setCitySearchResults([])
+      setShowCityDropdown(false)
+      return
+    }
+
+    setIsSearchingCities(true)
+    
+    try {
+      const response = await fetch(`https://ads-automation-backend-otpl.onrender.com/api/facebook/cities/search?q=${encodeURIComponent(query)}`)
+      const result = await response.json()
+
+      if (result.success) {
+        setCitySearchResults(result.cities || [])
+        setShowCityDropdown(true)
+      } else {
+        console.error('Erro ao buscar cidades:', result.error)
+        setCitySearchResults([])
+        setShowCityDropdown(false)
+      }
+    } catch (error) {
+      console.error('Erro na busca de cidades:', error)
+      setCitySearchResults([])
+      setShowCityDropdown(false)
+    } finally {
+      setIsSearchingCities(false)
+    }
+  }
+
+  // Debounce para busca de cidades
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      searchCities(citySearchQuery)
+    }, 300)
+
+    return () => clearTimeout(timeoutId)
+  }, [citySearchQuery])
+
+  // Adicionar cidade selecionada
+  const addSelectedCity = (city) => {
+    // Verificar se cidade já foi selecionada
+    const isAlreadySelected = selectedCities.some(selected => selected.id === city.id)
+    
+    if (!isAlreadySelected) {
+      const newSelectedCities = [...selectedCities, city]
+      setSelectedCities(newSelectedCities)
+      
+      // Atualizar formData.locations
+      const locationNames = newSelectedCities.map(c => c.full_name)
+      setFormData(prev => ({
+        ...prev,
+        locations: locationNames
+      }))
+
+      // Atualizar centro do mapa para a nova cidade
+      setMapCenter({ lat: city.lat, lng: city.lng })
+    }
+
+    // Limpar busca
+    setCitySearchQuery('')
+    setCitySearchResults([])
+    setShowCityDropdown(false)
+  }
+
+  // Remover cidade selecionada
+  const removeSelectedCity = (cityId) => {
+    const newSelectedCities = selectedCities.filter(city => city.id !== cityId)
+    setSelectedCities(newSelectedCities)
+    
+    // Atualizar formData.locations
+    const locationNames = newSelectedCities.map(c => c.full_name)
+    setFormData(prev => ({
+      ...prev,
+      locations: locationNames
+    }))
+
+    // Se não há mais cidades, voltar ao centro do Brasil
+    if (newSelectedCities.length === 0) {
+      setMapCenter({ lat: -14.2350, lng: -51.9253 })
+    }
+  }
+
+  // Atualizar raio do mapa
+  const updateMapRadius = (newRadius) => {
+    setMapRadius(newRadius)
+    // Aqui você pode implementar lógica para buscar cidades no raio
+  }
+
+  // Buscar cidades no raio do mapa
+  const getCitiesInRadius = async () => {
+    try {
+      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/location/radius-cities', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          lat: mapCenter.lat,
+          lng: mapCenter.lng,
+          radius: mapRadius
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        console.log('Cidades no raio:', result.cities)
+        // Aqui você pode implementar lógica para mostrar as cidades no mapa
+        return result.cities
+      }
+    } catch (error) {
+      console.error('Erro ao buscar cidades no raio:', error)
+    }
+    
+    return []
+  }
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -1136,13 +1266,180 @@ const AdGeneration = () => {
                     </Select>
                   </div>
 
-                  <div>
-                    <Label>Localização</Label>
-                    <Input
-                      value={formData.locations.join(', ')}
-                      onChange={(e) => handleInputChange('locations', e.target.value.split(', '))}
-                      placeholder="Brasil, São Paulo, Rio de Janeiro..."
-                    />
+                  {/* Sistema de Localização Avançado */}
+                  <div className="space-y-4">
+                    <Label className="text-base font-semibold flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Localização Avançada
+                    </Label>
+                    
+                    {/* Busca de Cidades */}
+                    <div className="relative">
+                      <Label className="text-sm">Buscar Cidades</Label>
+                      <div className="relative">
+                        <Input
+                          value={citySearchQuery}
+                          onChange={(e) => setCitySearchQuery(e.target.value)}
+                          placeholder="Digite o nome da cidade..."
+                          className="pr-10"
+                        />
+                        {isSearchingCities && (
+                          <RefreshCw className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+                        )}
+                        <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      </div>
+                      
+                      {/* Dropdown de Resultados */}
+                      {showCityDropdown && citySearchResults.length > 0 && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          {citySearchResults.map((city) => (
+                            <div
+                              key={city.id}
+                              onClick={() => addSelectedCity(city)}
+                              className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-medium text-gray-900">{city.name}</p>
+                                  <p className="text-sm text-gray-500">{city.state} • {city.population.toLocaleString()} hab.</p>
+                                </div>
+                                <Badge variant="outline" className="text-xs">
+                                  {city.state}
+                                </Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Cidades Selecionadas */}
+                    {selectedCities.length > 0 && (
+                      <div>
+                        <Label className="text-sm">Cidades Selecionadas ({selectedCities.length})</Label>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {selectedCities.map((city) => (
+                            <div
+                              key={city.id}
+                              className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm border border-blue-200"
+                            >
+                              <MapPin className="h-3 w-3" />
+                              <span>{city.name}, {city.state}</span>
+                              <button
+                                onClick={() => removeSelectedCity(city.id)}
+                                className="ml-1 hover:bg-blue-200 rounded-full p-0.5 transition-colors"
+                                title="Remover cidade"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Mapa Interativo */}
+                    <div className="border rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-center justify-between mb-3">
+                        <Label className="text-sm font-medium">Mapa de Localização</Label>
+                        <Badge variant="secondary" className="text-xs">
+                          Raio: {mapRadius}km
+                        </Badge>
+                      </div>
+                      
+                      {/* Simulação de Mapa */}
+                      <div className="relative bg-gradient-to-br from-green-100 to-blue-100 rounded-lg h-48 flex items-center justify-center border-2 border-dashed border-gray-300">
+                        <div className="text-center">
+                          <MapPin className="h-8 w-8 mx-auto text-blue-500 mb-2" />
+                          <p className="text-sm font-medium text-gray-700">Mapa Interativo</p>
+                          <p className="text-xs text-gray-500">
+                            Centro: {mapCenter.lat.toFixed(4)}, {mapCenter.lng.toFixed(4)}
+                          </p>
+                          {selectedCities.length > 0 && (
+                            <p className="text-xs text-blue-600 mt-1">
+                              {selectedCities.length} cidade(s) marcada(s)
+                            </p>
+                          )}
+                        </div>
+                        
+                        {/* Círculo de Raio */}
+                        <div 
+                          className="absolute border-2 border-blue-400 border-dashed rounded-full opacity-50"
+                          style={{
+                            width: `${Math.min(mapRadius * 2, 120)}px`,
+                            height: `${Math.min(mapRadius * 2, 120)}px`,
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)'
+                          }}
+                        />
+                      </div>
+
+                      {/* Controles do Mapa */}
+                      <div className="mt-3 space-y-3">
+                        <div>
+                          <Label className="text-xs">Raio de Alcance (km)</Label>
+                          <div className="flex items-center gap-3 mt-1">
+                            <input
+                              type="range"
+                              min="1"
+                              max="100"
+                              value={mapRadius}
+                              onChange={(e) => updateMapRadius(parseInt(e.target.value))}
+                              className="flex-1"
+                            />
+                            <Input
+                              type="number"
+                              min="1"
+                              max="100"
+                              value={mapRadius}
+                              onChange={(e) => updateMapRadius(parseInt(e.target.value) || 1)}
+                              className="w-20 h-8 text-xs"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={getCitiesInRadius}
+                            className="text-xs"
+                          >
+                            <Target className="h-3 w-3 mr-1" />
+                            Buscar no Raio
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setMapCenter({ lat: -14.2350, lng: -51.9253 })
+                              setMapRadius(50)
+                            }}
+                            className="text-xs"
+                          >
+                            <RotateCcw className="h-3 w-3 mr-1" />
+                            Resetar
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Informações de Localização */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="flex items-start gap-2">
+                        <Info className="h-4 w-4 text-blue-500 mt-0.5" />
+                        <div className="text-sm text-blue-700">
+                          <p className="font-medium">Como funciona:</p>
+                          <ul className="text-xs mt-1 space-y-1">
+                            <li>• Busque e selecione cidades específicas</li>
+                            <li>• Ajuste o raio para incluir cidades próximas</li>
+                            <li>• Use o mapa para visualizar a área de alcance</li>
+                            <li>• Remova cidades clicando no X</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -1450,41 +1747,69 @@ const AdGeneration = () => {
               <CardContent>
                 <div className="space-y-6">
                   {processedImages.map((image, imageIndex) => (
-                    <div key={imageIndex} className="border rounded-lg p-4">
-                      <h4 className="font-medium mb-4">Imagem {imageIndex + 1}</h4>
+                    <div key={imageIndex} className="border rounded-lg p-4 bg-gradient-to-r from-blue-50 to-purple-50">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                          {imageIndex + 1}
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-lg">Imagem {imageIndex + 1}</h4>
+                          <p className="text-sm text-gray-600">{image.originalFile.name}</p>
+                        </div>
+                      </div>
                       
                       {/* Imagem Original */}
-                      <div className="mb-4">
-                        <h5 className="text-sm font-medium text-gray-600 mb-2">Original</h5>
+                      <div className="mb-6 p-3 bg-white rounded-lg border">
+                        <h5 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                          <Image className="h-4 w-4" />
+                          Imagem Original
+                        </h5>
                         <div className="flex items-center gap-4">
-                          <img 
-                            src={image.originalPreview} 
-                            alt="Original" 
-                            className="w-20 h-20 object-cover rounded border"
-                          />
+                          <div className="relative">
+                            <img 
+                              src={image.originalPreview} 
+                              alt="Original" 
+                              className="w-24 h-24 object-cover rounded-lg border-2 border-gray-200 shadow-sm"
+                            />
+                            <Badge className="absolute -top-2 -right-2 bg-gray-600 text-white text-xs">
+                              Original
+                            </Badge>
+                          </div>
                           <div className="text-sm text-gray-600">
-                            <p>Arquivo original</p>
-                            <p className="text-xs">{image.originalFile.name}</p>
+                            <p className="font-medium">Arquivo base para redimensionamento</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Tamanho: {(image.originalFile.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
                           </div>
                         </div>
                       </div>
 
                       {/* Versões Processadas */}
                       <div>
-                        <h5 className="text-sm font-medium text-gray-600 mb-3">Versões Otimizadas</h5>
+                        <h5 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                          <Crop className="h-4 w-4" />
+                          Versões Otimizadas ({image.versions.length})
+                        </h5>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {image.versions.map((version, versionIndex) => (
-                            <div key={versionIndex} className="border rounded-lg p-3 bg-gray-50">
-                              <div className="flex items-center justify-between mb-2">
-                                <Badge variant="outline" className="text-xs">
-                                  {version.aspectRatio}
-                                </Badge>
+                            <div key={versionIndex} className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
+                              {/* Header da versão */}
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="secondary" className="text-xs font-semibold">
+                                    {version.aspectRatio}
+                                  </Badge>
+                                  <span className="text-xs text-gray-500">
+                                    {version.width}×{version.height}
+                                  </span>
+                                </div>
                                 <div className="flex gap-1">
                                   <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={() => downloadImage(version, `imagem_${imageIndex + 1}`)}
-                                    className="h-6 px-2"
+                                    className="h-7 px-2"
+                                    title="Download desta versão"
                                   >
                                     <Download className="h-3 w-3" />
                                   </Button>
@@ -1498,31 +1823,61 @@ const AdGeneration = () => {
                                         manualResize(imageIndex, versionIndex, parseInt(newWidth), parseInt(newHeight))
                                       }
                                     }}
-                                    className="h-6 px-2"
+                                    className="h-7 px-2"
+                                    title="Redimensionar manualmente"
                                   >
                                     <Crop className="h-3 w-3" />
                                   </Button>
                                 </div>
                               </div>
-                              
-                              <img 
-                                src={version.preview} 
-                                alt={`Versão ${version.aspectRatio}`}
-                                className="w-full h-24 object-cover rounded border mb-2"
-                              />
-                              
-                              <div className="text-xs text-gray-600 space-y-1">
-                                <p><strong>Dimensões:</strong> {version.width}x{version.height}</p>
-                                <p><strong>Para:</strong></p>
-                                <div className="flex flex-wrap gap-1">
-                                  {version.placements.map(placementValue => {
+
+                              {/* Preview da imagem */}
+                              <div className="mb-3">
+                                <img 
+                                  src={version.preview} 
+                                  alt={`Versão ${version.aspectRatio}`}
+                                  className="w-full h-32 object-cover rounded border"
+                                />
+                              </div>
+
+                              {/* Posicionamentos que usam esta versão */}
+                              <div>
+                                <p className="text-xs font-medium text-gray-700 mb-2">
+                                  Posicionamentos compatíveis:
+                                </p>
+                                <div className="space-y-1">
+                                  {version.placements.map((placementValue, idx) => {
                                     const placement = placements.find(p => p.value === placementValue)
                                     return placement ? (
-                                      <Badge key={placementValue} variant="secondary" className="text-xs">
-                                        {placement.label}
-                                      </Badge>
+                                      <div key={idx} className="flex items-center gap-2 text-xs">
+                                        <div className={`w-2 h-2 rounded-full ${
+                                          placement.platform === 'facebook' ? 'bg-blue-500' : 'bg-pink-500'
+                                        }`}></div>
+                                        <span className="text-gray-600">{placement.label}</span>
+                                        <Badge variant="outline" className="text-xs px-1 py-0">
+                                          {placement.platform === 'facebook' ? 'FB' : 'IG'}
+                                        </Badge>
+                                      </div>
                                     ) : null
                                   })}
+                                </div>
+                              </div>
+
+                              {/* Informações técnicas */}
+                              <div className="mt-3 pt-3 border-t border-gray-100">
+                                <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+                                  <div>
+                                    <span className="font-medium">Formato:</span> JPEG
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Qualidade:</span> 90%
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Ratio:</span> {version.aspectRatio}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Tamanho:</span> Otimizado
+                                  </div>
                                 </div>
                               </div>
                             </div>

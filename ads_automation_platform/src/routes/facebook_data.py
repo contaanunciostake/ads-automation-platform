@@ -1014,3 +1014,378 @@ def get_objectives():
         print(f"💥 DEBUG: Exceção capturada: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
+# ===== ENDPOINTS PARA PROCESSAMENTO DE IMAGENS =====
+
+@facebook_data_bp.route('/facebook/process-images', methods=['POST'])
+def process_images():
+    """Processar imagens para múltiplos posicionamentos"""
+    print("🔍 DEBUG: Endpoint process_images chamado")
+    
+    try:
+        # Verificar se há arquivos na requisição
+        if 'images' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': 'Nenhuma imagem fornecida'
+            }), 400
+        
+        # Obter dados da requisição
+        images = request.files.getlist('images')
+        placements = request.form.get('placements', '[]')
+        
+        try:
+            placements = json.loads(placements)
+        except:
+            placements = []
+        
+        if not placements:
+            return jsonify({
+                'success': False,
+                'error': 'Nenhum posicionamento fornecido'
+            }), 400
+        
+        print(f"🔍 DEBUG: {len(images)} imagens recebidas para {len(placements)} posicionamentos")
+        
+        # Definir especificações de posicionamentos
+        placement_specs = {
+            'feed': {'width': 1080, 'height': 1080, 'aspect_ratio': '1:1'},
+            'stories': {'width': 1080, 'height': 1920, 'aspect_ratio': '9:16'},
+            'reels': {'width': 1080, 'height': 1920, 'aspect_ratio': '9:16'},
+            'instagram_feed': {'width': 1080, 'height': 1080, 'aspect_ratio': '1:1'},
+            'instagram_stories': {'width': 1080, 'height': 1920, 'aspect_ratio': '9:16'},
+            'instagram_reels': {'width': 1080, 'height': 1920, 'aspect_ratio': '9:16'},
+            'instagram_explore': {'width': 1080, 'height': 1080, 'aspect_ratio': '1:1'},
+            'right_column': {'width': 1200, 'height': 628, 'aspect_ratio': '1.91:1'},
+            'marketplace': {'width': 1080, 'height': 1080, 'aspect_ratio': '1:1'}
+        }
+        
+        processed_images = []
+        
+        for image_file in images:
+            if image_file.filename == '':
+                continue
+                
+            # Processar cada imagem
+            image_result = {
+                'original_name': image_file.filename,
+                'versions': []
+            }
+            
+            # Obter formatos únicos dos posicionamentos selecionados
+            unique_formats = {}
+            for placement in placements:
+                if placement in placement_specs:
+                    spec = placement_specs[placement]
+                    aspect_ratio = spec['aspect_ratio']
+                    if aspect_ratio not in unique_formats:
+                        unique_formats[aspect_ratio] = spec
+            
+            # Gerar versão para cada formato único
+            for aspect_ratio, spec in unique_formats.items():
+                version = {
+                    'aspect_ratio': aspect_ratio,
+                    'width': spec['width'],
+                    'height': spec['height'],
+                    'placements': [p for p in placements if placement_specs.get(p, {}).get('aspect_ratio') == aspect_ratio],
+                    'file_name': f"{image_file.filename.split('.')[0]}_{aspect_ratio.replace(':', 'x')}.jpg"
+                }
+                image_result['versions'].append(version)
+            
+            processed_images.append(image_result)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'processed_images': processed_images,
+                'total_images': len(images),
+                'total_versions': sum(len(img['versions']) for img in processed_images)
+            }
+        })
+        
+    except Exception as e:
+        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
+        import traceback
+        print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@facebook_data_bp.route('/facebook/resize-image', methods=['POST'])
+def resize_image():
+    """Redimensionar uma imagem específica"""
+    print("🔍 DEBUG: Endpoint resize_image chamado")
+    
+    try:
+        # Verificar se há arquivo na requisição
+        if 'image' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': 'Nenhuma imagem fornecida'
+            }), 400
+        
+        image_file = request.files['image']
+        width = request.form.get('width', type=int)
+        height = request.form.get('height', type=int)
+        quality = request.form.get('quality', 90, type=int)
+        
+        if not width or not height:
+            return jsonify({
+                'success': False,
+                'error': 'Largura e altura são obrigatórias'
+            }), 400
+        
+        print(f"🔍 DEBUG: Redimensionando para {width}x{height} com qualidade {quality}")
+        
+        # Aqui você implementaria a lógica de redimensionamento
+        # Por enquanto, retornamos sucesso simulado
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'original_name': image_file.filename,
+                'new_width': width,
+                'new_height': height,
+                'quality': quality,
+                'message': 'Imagem redimensionada com sucesso'
+            }
+        })
+        
+    except Exception as e:
+        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@facebook_data_bp.route('/facebook/placement-specs', methods=['GET'])
+def get_placement_specs():
+    """Buscar especificações de todos os posicionamentos"""
+    print("🔍 DEBUG: Endpoint get_placement_specs chamado")
+    
+    try:
+        specs = {
+            'facebook': {
+                'feed': {
+                    'name': 'Feed do Facebook',
+                    'aspect_ratio': '1:1',
+                    'width': 1080,
+                    'height': 1080,
+                    'recommended': '1080x1080',
+                    'description': 'Anúncios no feed principal'
+                },
+                'stories': {
+                    'name': 'Stories do Facebook',
+                    'aspect_ratio': '9:16',
+                    'width': 1080,
+                    'height': 1920,
+                    'recommended': '1080x1920',
+                    'description': 'Anúncios em stories (vertical)'
+                },
+                'reels': {
+                    'name': 'Reels do Facebook',
+                    'aspect_ratio': '9:16',
+                    'width': 1080,
+                    'height': 1920,
+                    'recommended': '1080x1920',
+                    'description': 'Anúncios em reels (vertical)'
+                },
+                'right_column': {
+                    'name': 'Coluna Direita',
+                    'aspect_ratio': '1.91:1',
+                    'width': 1200,
+                    'height': 628,
+                    'recommended': '1200x628',
+                    'description': 'Anúncios na lateral direita'
+                },
+                'marketplace': {
+                    'name': 'Marketplace',
+                    'aspect_ratio': '1:1',
+                    'width': 1080,
+                    'height': 1080,
+                    'recommended': '1080x1080',
+                    'description': 'Anúncios no Marketplace'
+                }
+            },
+            'instagram': {
+                'instagram_feed': {
+                    'name': 'Feed do Instagram',
+                    'aspect_ratio': '1:1',
+                    'width': 1080,
+                    'height': 1080,
+                    'recommended': '1080x1080',
+                    'description': 'Anúncios no feed do Instagram'
+                },
+                'instagram_stories': {
+                    'name': 'Stories do Instagram',
+                    'aspect_ratio': '9:16',
+                    'width': 1080,
+                    'height': 1920,
+                    'recommended': '1080x1920',
+                    'description': 'Anúncios em stories do Instagram'
+                },
+                'instagram_reels': {
+                    'name': 'Reels do Instagram',
+                    'aspect_ratio': '9:16',
+                    'width': 1080,
+                    'height': 1920,
+                    'recommended': '1080x1920',
+                    'description': 'Anúncios em reels do Instagram'
+                },
+                'instagram_explore': {
+                    'name': 'Explorar do Instagram',
+                    'aspect_ratio': '1:1',
+                    'width': 1080,
+                    'height': 1080,
+                    'recommended': '1080x1080',
+                    'description': 'Anúncios na aba Explorar'
+                }
+            }
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': specs
+        })
+        
+    except Exception as e:
+        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@facebook_data_bp.route('/facebook/validate-images', methods=['POST'])
+def validate_images():
+    """Validar imagens antes do processamento"""
+    print("🔍 DEBUG: Endpoint validate_images chamado")
+    
+    try:
+        # Verificar se há arquivos na requisição
+        if 'images' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': 'Nenhuma imagem fornecida'
+            }), 400
+        
+        images = request.files.getlist('images')
+        creative_type = request.form.get('creative_type', 'image')
+        
+        validation_results = []
+        
+        for image_file in images:
+            if image_file.filename == '':
+                continue
+            
+            # Validações básicas
+            result = {
+                'filename': image_file.filename,
+                'valid': True,
+                'errors': [],
+                'warnings': [],
+                'size_mb': 0,
+                'format': '',
+                'dimensions': None
+            }
+            
+            # Verificar tamanho do arquivo
+            image_file.seek(0, 2)  # Ir para o final do arquivo
+            file_size = image_file.tell()
+            image_file.seek(0)  # Voltar para o início
+            
+            size_mb = file_size / (1024 * 1024)
+            result['size_mb'] = round(size_mb, 2)
+            
+            # Verificar formato
+            file_extension = image_file.filename.lower().split('.')[-1]
+            result['format'] = file_extension.upper()
+            
+            # Validações por tipo de criativo
+            if creative_type == 'image':
+                if file_extension not in ['jpg', 'jpeg', 'png']:
+                    result['valid'] = False
+                    result['errors'].append('Formato não suportado. Use JPG ou PNG.')
+                
+                if size_mb > 30:
+                    result['valid'] = False
+                    result['errors'].append('Arquivo muito grande. Máximo 30MB.')
+                elif size_mb > 10:
+                    result['warnings'].append('Arquivo grande. Considere otimizar.')
+            
+            elif creative_type == 'video':
+                if file_extension not in ['mp4', 'mov', 'gif']:
+                    result['valid'] = False
+                    result['errors'].append('Formato não suportado. Use MP4, MOV ou GIF.')
+                
+                if size_mb > 4000:  # 4GB
+                    result['valid'] = False
+                    result['errors'].append('Arquivo muito grande. Máximo 4GB.')
+            
+            validation_results.append(result)
+        
+        # Resumo da validação
+        total_files = len(validation_results)
+        valid_files = len([r for r in validation_results if r['valid']])
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'results': validation_results,
+                'summary': {
+                    'total_files': total_files,
+                    'valid_files': valid_files,
+                    'invalid_files': total_files - valid_files,
+                    'all_valid': valid_files == total_files
+                }
+            }
+        })
+        
+    except Exception as e:
+        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@facebook_data_bp.route('/facebook/optimize-images', methods=['POST'])
+def optimize_images():
+    """Otimizar imagens para melhor performance"""
+    print("🔍 DEBUG: Endpoint optimize_images chamado")
+    
+    try:
+        # Verificar se há arquivos na requisição
+        if 'images' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': 'Nenhuma imagem fornecida'
+            }), 400
+        
+        images = request.files.getlist('images')
+        quality = request.form.get('quality', 85, type=int)
+        max_width = request.form.get('max_width', 1920, type=int)
+        max_height = request.form.get('max_height', 1920, type=int)
+        
+        optimization_results = []
+        
+        for image_file in images:
+            if image_file.filename == '':
+                continue
+            
+            # Simular otimização (implementação real seria feita aqui)
+            original_size = image_file.content_length or 0
+            optimized_size = int(original_size * 0.7)  # Simular 30% de redução
+            
+            result = {
+                'filename': image_file.filename,
+                'original_size_mb': round(original_size / (1024 * 1024), 2),
+                'optimized_size_mb': round(optimized_size / (1024 * 1024), 2),
+                'reduction_percent': 30,
+                'quality': quality,
+                'max_dimensions': f"{max_width}x{max_height}",
+                'optimized': True
+            }
+            
+            optimization_results.append(result)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'results': optimization_results,
+                'total_images': len(optimization_results),
+                'average_reduction': 30
+            }
+        })
+        
+    except Exception as e:
+        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+

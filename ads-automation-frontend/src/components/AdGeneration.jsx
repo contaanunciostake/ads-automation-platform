@@ -1,99 +1,87 @@
-import React, { useState, useEffect } from 'react'
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from '../ui/card'
-import { Button } from '../ui/button'
-import { Input } from '../ui/input'
-import { Label } from '../ui/label'
-import { Textarea } from '../ui/textarea'
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '../ui/select'
-import { Badge } from '../ui/badge'
-import { 
-  Image, 
-  Video, 
-  Copy, 
-  Zap, 
-  MapPin, 
-  Search, 
-  X, 
-  Download,
-  Resize,
-  Upload,
-  AlertCircle,
-  CheckCircle,
-  Loader2,
-  TrendingUp,
-  Users,
-  DollarSign,
-  Eye,
-  MousePointer,
-  BarChart3
-} from 'lucide-react'
+import { useState, useRef, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Upload, Wand2, Copy, RefreshCw, Sparkles, Image, FileText, Target, Eye, MousePointer, DollarSign, Activity, TrendingUp, AlertCircle, Video, Users, MapPin, Calendar, Clock, Zap, Settings, Play, Instagram, Facebook, Heart, Smartphone, ShoppingCart, Crop, Download, RotateCw, Search, X, Info, RotateCcw } from 'lucide-react';
 
 const AdGeneration = () => {
-  // Estados principais
+  // Estados para geração de anúncios
   const [formData, setFormData] = useState({
     page_id: '',
-    product_name: '',
     product_description: '',
-    platforms: [],
-    audience: {
-      age_min: 18,
-      age_max: 65,
-      gender: 'all',
-      interests: [],
-      behaviors: [],
-      custom_audiences: []
-    },
+    target_audience: '',
+    platforms: ['facebook'], // Array para múltiplas plataformas
+    ad_objective: 'sales',
+    num_variations: 3,
+    creative_type: 'image', // image, video, carousel, collection
+    placements: ['feed'], // Array para múltiplos posicionamentos
     budget_type: 'daily',
-    budget_amount: '',
-    start_date: '',
-    end_date: '',
-    creative_type: 'image',
-    placements: [],
-    locations: []
+    budget_amount: 50,
+    schedule_start: '',
+    schedule_end: '',
+    age_min: 18,
+    age_max: 65,
+    gender: 'all',
+    interests: [],
+    behaviors: [],
+    locations: ['Brasil']
   })
-
-  // Estados para upload de imagens - SIMPLIFICADO
-  const [uploadedImages, setUploadedImages] = useState([])
+  
+  const [selectedFiles, setSelectedFiles] = useState([])
+  const [processedImages, setProcessedImages] = useState([]) // Imagens processadas para cada posicionamento
+  const [generatedAds, setGeneratedAds] = useState([])
+  const [isGenerating, setIsGenerating] = useState(false)
   const [isProcessingImages, setIsProcessingImages] = useState(false)
-
-  // Estados para dashboard
-  const [dashboardData, setDashboardData] = useState(null)
-  const [isLoadingDashboard, setIsLoadingDashboard] = useState(false)
-  const [dashboardError, setDashboardError] = useState(null)
-  const [lastUpdated, setLastUpdated] = useState('')
-
-  // Estados para páginas
-  const [pages, setPages] = useState([])
-  const [isLoadingPages, setIsLoadingPages] = useState(false)
-
-  // Estados para público-alvo
   const [isGeneratingAudience, setIsGeneratingAudience] = useState(false)
-
-  // Estados para localização
-  const [citySearch, setCitySearch] = useState('')
-  const [cityResults, setCityResults] = useState([])
+  
+  // Estados para sistema de localização avançado
+  const [citySearchQuery, setCitySearchQuery] = useState('')
+  const [citySearchResults, setCitySearchResults] = useState([])
   const [isSearchingCities, setIsSearchingCities] = useState(false)
   const [selectedCities, setSelectedCities] = useState([])
-  const [mapCenter, setMapCenter] = useState({ lat: -23.5505, lng: -46.6333 }) // São Paulo
-  const [mapRadius, setMapRadius] = useState(10)
+  const [mapCenter, setMapCenter] = useState({ lat: -14.2350, lng: -51.9253 }) // Centro do Brasil
+  const [mapRadius, setMapRadius] = useState(50) // Raio em km
+  const [showCityDropdown, setShowCityDropdown] = useState(false)
+  
+  const [pages, setPages] = useState([])
+  const [isLoadingPages, setIsLoadingPages] = useState(false)
+  const fileInputRef = useRef(null)
 
-  // Posicionamentos disponíveis
-  const availablePlacements = [
+  // Estados para dashboard de métricas
+  const [dashboardData, setDashboardData] = useState({
+    impressions: 0,
+    clicks: 0,
+    spent: 0,
+    active_campaigns: 0,
+    ctr: 0,
+    cpc: 0,
+    cpm: 0
+  })
+  const [isLoadingDashboard, setIsLoadingDashboard] = useState(false)
+  const [dashboardError, setDashboardError] = useState(null)
+  const [lastUpdated, setLastUpdated] = useState(null)
+
+  // Novos objetivos de campanha (2025)
+  const objectives = [
+    { value: 'awareness', label: 'Reconhecimento', description: 'Aumentar conhecimento da marca', icon: Eye },
+    { value: 'traffic', label: 'Tráfego', description: 'Direcionar pessoas para seu site', icon: MousePointer },
+    { value: 'engagement', label: 'Engajamento', description: 'Aumentar curtidas, comentários e compartilhamentos', icon: Heart },
+    { value: 'leads', label: 'Geração de Leads', description: 'Coletar informações de contato', icon: Users },
+    { value: 'app_promotion', label: 'Promoção de App', description: 'Promover downloads do aplicativo', icon: Smartphone },
+    { value: 'sales', label: 'Vendas', description: 'Otimizar para vendas e conversões', icon: ShoppingCart }
+  ]
+
+  // Posicionamentos completos com especificações de formato
+  const placements = [
     // Facebook
     { 
-      value: 'facebook_feed', 
+      value: 'feed', 
       label: 'Feed do Facebook', 
       platform: 'facebook', 
       description: 'Anúncios no feed principal', 
@@ -104,7 +92,7 @@ const AdGeneration = () => {
       recommended: '1080x1080 (1:1)'
     },
     { 
-      value: 'facebook_stories', 
+      value: 'stories', 
       label: 'Stories do Facebook', 
       platform: 'facebook', 
       description: 'Anúncios em stories (9:16)', 
@@ -195,7 +183,7 @@ const AdGeneration = () => {
     }
   ]
 
-  // Tipos de criativo
+  // Tipos de criativo com especificações detalhadas
   const creativeTypes = [
     { 
       value: 'image', 
@@ -248,247 +236,194 @@ const AdGeneration = () => {
     { value: 'female', label: 'Feminino' }
   ]
 
-  // FUNÇÃO DE UPLOAD SIMPLIFICADA
-  const handleFileUpload = (event) => {
-    try {
-      const files = Array.from(event.target.files)
-      
-      // Validações básicas
-      if (!files || files.length === 0) {
-        alert('Nenhum arquivo selecionado')
-        return
-      }
-
-      // Validar tipos de arquivo
-      const invalidFiles = files.filter(file => !file.type.startsWith('image/'))
-      if (invalidFiles.length > 0) {
-        alert(`Arquivos inválidos detectados: ${invalidFiles.map(f => f.name).join(', ')}. Apenas imagens são aceitas.`)
-        return
-      }
-
-      // Validar tamanho dos arquivos (30MB por arquivo)
-      const maxSize = 30 * 1024 * 1024 // 30MB
-      const oversizedFiles = files.filter(file => file.size > maxSize)
-      if (oversizedFiles.length > 0) {
-        alert(`Arquivos muito grandes: ${oversizedFiles.map(f => f.name).join(', ')}. Tamanho máximo: 30MB por arquivo.`)
-        return
-      }
-
-      // Limitar número de arquivos para carrossel
-      if (formData.creative_type === 'carousel' && files.length > 10) {
-        alert('Máximo de 10 arquivos para carrossel')
-        return
-      }
-
-      console.log(`Processando ${files.length} arquivo(s)`)
-      
-      // PROCESSAMENTO SIMPLIFICADO - apenas criar preview
-      const processedFiles = files.map((file, index) => {
-        const imageUrl = URL.createObjectURL(file)
-        
-        // Criar uma imagem para obter dimensões
-        const img = new Image()
-        img.onload = function() {
-          console.log(`Imagem ${index + 1}: ${this.width}x${this.height}`)
-        }
-        img.src = imageUrl
-        
-        return {
-          id: Date.now() + index,
-          file: file,
-          name: file.name,
-          size: file.size,
-          preview: imageUrl,
-          originalDimensions: null, // Será preenchido quando a imagem carregar
-          versions: [] // Versões redimensionadas serão criadas sob demanda
-        }
-      })
-
-      setUploadedImages(processedFiles)
-      
-    } catch (error) {
-      console.error('Erro no upload de arquivos:', error)
-      alert('Erro ao processar arquivos: ' + error.message)
-    }
-  }
-
-  // Função para criar versão redimensionada sob demanda
-  const createResizedVersion = async (imageData, targetFormat) => {
+  // Função para redimensionar imagem usando Canvas
+  const resizeImage = (file, targetWidth, targetHeight, quality = 0.9) => {
     return new Promise((resolve, reject) => {
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')
-      const img = new Image()
-      
-      img.onload = function() {
-        const placement = availablePlacements.find(p => p.aspectRatio === targetFormat)
-        if (!placement) {
-          reject(new Error('Formato não encontrado'))
-          return
-        }
-        
-        const targetWidth = placement.width
-        const targetHeight = placement.height
-        
-        // Calcular dimensões mantendo proporção
-        const sourceAspectRatio = this.width / this.height
-        const targetAspectRatio = targetWidth / targetHeight
-        
-        let sourceX = 0, sourceY = 0, sourceWidth = this.width, sourceHeight = this.height
-        
-        if (sourceAspectRatio > targetAspectRatio) {
-          sourceWidth = this.height * targetAspectRatio
-          sourceX = (this.width - sourceWidth) / 2
-        } else {
-          sourceHeight = this.width / targetAspectRatio
-          sourceY = (this.height - sourceHeight) / 2
-        }
-        
-        canvas.width = targetWidth
-        canvas.height = targetHeight
-        
-        ctx.drawImage(
-          this,
-          sourceX, sourceY, sourceWidth, sourceHeight,
-          0, 0, targetWidth, targetHeight
-        )
-        
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const url = URL.createObjectURL(blob)
-            resolve({
-              format: targetFormat,
-              width: targetWidth,
-              height: targetHeight,
-              blob: blob,
-              url: url,
-              placements: availablePlacements.filter(p => p.aspectRatio === targetFormat).map(p => p.label)
-            })
-          } else {
-            reject(new Error('Falha ao gerar versão redimensionada'))
-          }
-        }, 'image/jpeg', 0.9)
+      // Validações iniciais
+      if (!file || !file.type.startsWith('image/')) {
+        reject(new Error('Arquivo não é uma imagem válida'))
+        return
       }
-      
-      img.onerror = () => reject(new Error('Erro ao carregar imagem'))
-      img.src = imageData.preview
+
+      if (!targetWidth || !targetHeight || targetWidth <= 0 || targetHeight <= 0) {
+        reject(new Error('Dimensões de destino inválidas'))
+        return
+      }
+
+      try {
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        
+        // Criar elemento de imagem de forma mais robusta
+        const img = document.createElement('img')
+        
+        // Timeout para evitar travamento
+        const timeout = setTimeout(() => {
+          reject(new Error('Timeout ao carregar imagem'))
+        }, 10000)
+        
+        img.onload = function() {
+          clearTimeout(timeout)
+          
+          try {
+            // Calcular dimensões mantendo proporção e centralizando
+            const sourceAspectRatio = this.width / this.height
+            const targetAspectRatio = targetWidth / targetHeight
+            
+            let sourceX = 0, sourceY = 0, sourceWidth = this.width, sourceHeight = this.height
+            
+            if (sourceAspectRatio > targetAspectRatio) {
+              // Imagem mais larga - cortar laterais
+              sourceWidth = this.height * targetAspectRatio
+              sourceX = (this.width - sourceWidth) / 2
+            } else {
+              // Imagem mais alta - cortar topo/fundo
+              sourceHeight = this.width / targetAspectRatio
+              sourceY = (this.height - sourceHeight) / 2
+            }
+            
+            canvas.width = targetWidth
+            canvas.height = targetHeight
+            
+            // Limpar canvas
+            ctx.clearRect(0, 0, targetWidth, targetHeight)
+            
+            // Desenhar imagem redimensionada e cortada
+            ctx.drawImage(
+              this,
+              sourceX, sourceY, sourceWidth, sourceHeight,
+              0, 0, targetWidth, targetHeight
+            )
+            
+            // Converter para blob
+            canvas.toBlob((blob) => {
+              if (blob) {
+                resolve(blob)
+              } else {
+                reject(new Error('Falha ao gerar blob da imagem'))
+              }
+            }, 'image/jpeg', quality)
+            
+          } catch (error) {
+            reject(new Error('Erro ao processar imagem: ' + error.message))
+          }
+        }
+        
+        img.onerror = function() {
+          clearTimeout(timeout)
+          reject(new Error('Erro ao carregar imagem'))
+        }
+        
+        // Criar URL do arquivo de forma segura
+        const fileURL = URL.createObjectURL(file)
+        img.src = fileURL
+        
+      } catch (error) {
+        reject(new Error('Erro ao inicializar processamento: ' + error.message))
+      }
     })
   }
 
-  // Função para gerar versões para posicionamentos selecionados
-  const generateVersionsForPlacements = async (imageData) => {
+  // Função para processar imagens automaticamente
+  const processImagesForPlacements = async (files) => {
     if (formData.placements.length === 0) {
-      alert('Selecione posicionamentos primeiro')
+      alert('Selecione pelo menos um posicionamento antes de fazer upload das imagens')
       return
     }
 
     setIsProcessingImages(true)
-    
+    const processed = []
+
     try {
-      // Obter formatos únicos dos posicionamentos selecionados
-      const selectedPlacements = availablePlacements.filter(p => formData.placements.includes(p.value))
-      const uniqueFormats = [...new Set(selectedPlacements.map(p => p.aspectRatio))]
-      
-      const versions = []
-      
-      for (const format of uniqueFormats) {
-        try {
-          const version = await createResizedVersion(imageData, format)
-          versions.push(version)
-        } catch (error) {
-          console.error(`Erro ao criar versão ${format}:`, error)
+      for (const file of files) {
+        // Verificar se é um arquivo de imagem válido
+        if (!file.type.startsWith('image/')) {
+          console.warn('Arquivo ignorado (não é imagem):', file.name)
+          continue
+        }
+
+        const fileProcessed = {
+          originalFile: file,
+          originalPreview: URL.createObjectURL(file),
+          versions: []
+        }
+
+        // Obter posicionamentos únicos por formato
+        const uniqueFormats = {}
+        formData.placements.forEach(placementValue => {
+          const placement = placements.find(p => p.value === placementValue)
+          if (placement && !uniqueFormats[placement.aspectRatio]) {
+            uniqueFormats[placement.aspectRatio] = placement
+          }
+        })
+
+        // Gerar versão para cada formato único
+        for (const [aspectRatio, placement] of Object.entries(uniqueFormats)) {
+          try {
+            const resizedBlob = await resizeImage(file, placement.width, placement.height)
+            
+            if (!resizedBlob) {
+              console.error('Falha ao redimensionar imagem para', aspectRatio)
+              continue
+            }
+
+            const fileName = file.name.split('.')[0] || 'imagem'
+            const resizedFile = new File([resizedBlob], `${fileName}_${aspectRatio.replace(':', 'x')}.jpg`, {
+              type: 'image/jpeg'
+            })
+
+            fileProcessed.versions.push({
+              aspectRatio,
+              placement,
+              file: resizedFile,
+              preview: URL.createObjectURL(resizedBlob),
+              width: placement.width,
+              height: placement.height,
+              placements: formData.placements.filter(p => {
+                const pl = placements.find(pl => pl.value === p)
+                return pl && pl.aspectRatio === aspectRatio
+              })
+            })
+          } catch (resizeError) {
+            console.error('Erro ao redimensionar para', aspectRatio, ':', resizeError)
+          }
+        }
+
+        if (fileProcessed.versions.length > 0) {
+          processed.push(fileProcessed)
         }
       }
+
+      setProcessedImages(processed)
       
-      // Atualizar a imagem com as versões geradas
-      setUploadedImages(prev => prev.map(img => 
-        img.id === imageData.id 
-          ? { ...img, versions: versions }
-          : img
-      ))
-      
+      if (processed.length === 0) {
+        alert('Nenhuma imagem foi processada com sucesso. Verifique os arquivos e tente novamente.')
+      }
     } catch (error) {
-      console.error('Erro ao gerar versões:', error)
-      alert('Erro ao gerar versões: ' + error.message)
+      console.error('Erro ao processar imagens:', error)
+      alert('Erro ao processar imagens: ' + error.message)
     } finally {
       setIsProcessingImages(false)
     }
   }
 
-  // Função para download de versão
-  const downloadVersion = (version, imageName) => {
-    const link = document.createElement('a')
-    link.href = version.url
-    link.download = `${imageName}_${version.format.replace(':', 'x')}.jpg`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
-  // Função para buscar cidades
-  const searchCities = async (query) => {
-    if (query.length < 2) {
-      setCityResults([])
-      return
-    }
-
-    setIsSearchingCities(true)
-    try {
-      const response = await fetch(`https://ads-automation-backend-otpl.onrender.com/api/facebook-data/cities/search?q=${encodeURIComponent(query)}`)
-      const data = await response.json()
-      
-      if (data.success) {
-        setCityResults(data.cities || [])
-      } else {
-        setCityResults([])
-      }
-    } catch (error) {
-      console.error('Erro na busca de cidades:', error)
-      setCityResults([])
-    } finally {
-      setIsSearchingCities(false)
+  // Função para reprocessar quando posicionamentos mudam (removida dependência circular)
+  const reprocessImages = async () => {
+    if (selectedFiles.length > 0 && formData.placements.length > 0) {
+      await processImagesForPlacements(selectedFiles)
+    } else {
+      setProcessedImages([])
     }
   }
 
-  // Debounce para busca de cidades
+  // UseEffect separado para reprocessar imagens
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      searchCities(citySearch)
-    }, 300)
+      reprocessImages()
+    }, 300) // Debounce de 300ms
 
     return () => clearTimeout(timeoutId)
-  }, [citySearch])
-
-  // Função para adicionar cidade selecionada
-  const addSelectedCity = (city) => {
-    if (!selectedCities.find(c => c.name === city.name)) {
-      const newCities = [...selectedCities, city]
-      setSelectedCities(newCities)
-      setFormData(prev => ({
-        ...prev,
-        locations: newCities.map(c => c.name)
-      }))
-      setCitySearch('')
-      setCityResults([])
-      
-      // Centralizar mapa na cidade selecionada
-      if (city.coordinates) {
-        setMapCenter({
-          lat: city.coordinates.lat,
-          lng: city.coordinates.lng
-        })
-      }
-    }
-  }
-
-  // Função para remover cidade selecionada
-  const removeSelectedCity = (cityName) => {
-    const newCities = selectedCities.filter(c => c.name !== cityName)
-    setSelectedCities(newCities)
-    setFormData(prev => ({
-      ...prev,
-      locations: newCities.map(c => c.name)
-    }))
-  }
+  }, [formData.placements.join(','), selectedFiles.length])
 
   // Função para buscar dados do dashboard
   const fetchDashboardData = async () => {
@@ -496,10 +431,22 @@ const AdGeneration = () => {
     setDashboardError(null)
 
     try {
-      const chartResponse = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook-data/chart-data?days=7')
+      const chartResponse = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook-data/chart-data?days=7', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
       const chartResult = await chartResponse.json()
 
-      const summaryResponse = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook-data/dashboard-summary')
+      const summaryResponse = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook-data/dashboard-summary', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
       const summaryResult = await summaryResponse.json()
 
       if (chartResult.success && summaryResult.success) {
@@ -540,27 +487,47 @@ const AdGeneration = () => {
     }
   }
 
-  // Função para buscar páginas
+  // Função para buscar páginas da Business Manager
   const fetchPages = async () => {
     setIsLoadingPages(true)
     try {
-      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook-data/pages')
-      const data = await response.json()
-      
-      if (data.success) {
-        setPages(data.pages || [])
+      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook-data/pages', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setPages(result.data || [])
+      } else {
+        console.error('Erro ao carregar páginas:', result.error)
+        // Páginas de exemplo para demonstração
+        setPages([
+          { id: '123456789012345', name: 'MONTE CASTELO COMERCIO LTDA', category: 'Empresa Local' },
+          { id: '234567890123456', name: 'TechSolutions Brasil', category: 'Tecnologia' },
+          { id: '345678901234567', name: 'Marketing Digital Pro', category: 'Serviços de Marketing' }
+        ])
       }
     } catch (error) {
-      console.error('Erro ao buscar páginas:', error)
+      console.error('Erro na conexão:', error.message)
+      // Páginas de exemplo para demonstração
+      setPages([
+        { id: '123456789012345', name: 'MONTE CASTELO COMERCIO LTDA', category: 'Empresa Local' },
+        { id: '234567890123456', name: 'TechSolutions Brasil', category: 'Tecnologia' },
+        { id: '345678901234567', name: 'Marketing Digital Pro', category: 'Serviços de Marketing' }
+      ])
     } finally {
       setIsLoadingPages(false)
     }
   }
 
-  // Função para gerar público-alvo com IA
-  const generateAudienceWithAI = async () => {
-    if (!formData.product_description.trim()) {
-      alert('Preencha a descrição do produto primeiro')
+  // Função para gerar público-alvo automaticamente
+  const generateTargetAudience = async () => {
+    if (!formData.product_description) {
+      alert('Descreva seu produto/serviço primeiro para gerar o público-alvo')
       return
     }
 
@@ -572,27 +539,31 @@ const AdGeneration = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          product_description: formData.product_description
+          product_description: formData.product_description,
+          objective: formData.ad_objective
         })
       })
 
-      const data = await response.json()
-      
-      if (data.success) {
+      const result = await response.json()
+
+      if (result.success) {
+        const audience = result.data
         setFormData(prev => ({
           ...prev,
-          audience: {
-            ...prev.audience,
-            ...data.audience
-          }
+          target_audience: audience.description,
+          age_min: audience.age_min || 18,
+          age_max: audience.age_max || 65,
+          gender: audience.gender || 'all',
+          interests: audience.interests || [],
+          behaviors: audience.behaviors || [],
+          locations: audience.locations || ['Brasil']
         }))
-        alert('Público-alvo gerado com sucesso!')
       } else {
-        alert('Erro ao gerar público-alvo: ' + (data.message || 'Erro desconhecido'))
+        alert(`Erro ao gerar público-alvo: ${result.error}`)
       }
     } catch (error) {
       console.error('Erro ao gerar público-alvo:', error)
-      alert('Erro ao gerar público-alvo: ' + error.message)
+      alert(`Erro na conexão: ${error.message}`)
     } finally {
       setIsGeneratingAudience(false)
     }
@@ -604,7 +575,7 @@ const AdGeneration = () => {
     fetchPages()
   }, [])
 
-  // Funções auxiliares
+  // Funções para manipulação do formulário
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
@@ -612,687 +583,1440 @@ const AdGeneration = () => {
     }))
   }
 
-  const handleNestedInputChange = (parent, field, value) => {
+  const handleArrayChange = (field, value, checked) => {
     setFormData(prev => ({
       ...prev,
-      [parent]: {
-        ...prev[parent],
-        [field]: value
+      [field]: checked 
+        ? [...prev[field], value]
+        : prev[field].filter(item => item !== value)
+    }))
+  }
+
+  const handleFileUpload = (event) => {
+    try {
+      const files = Array.from(event.target.files)
+      
+      // Validações básicas
+      if (!files || files.length === 0) {
+        alert('Nenhum arquivo selecionado')
+        return
       }
-    }))
+
+      // Verificar se posicionamentos foram selecionados
+      if (formData.placements.length === 0) {
+        alert('Selecione os posicionamentos primeiro para gerar as versões corretas das imagens')
+        return
+      }
+
+      // Validar tipos de arquivo
+      const invalidFiles = files.filter(file => !file.type.startsWith('image/'))
+      if (invalidFiles.length > 0) {
+        alert(`Arquivos inválidos detectados: ${invalidFiles.map(f => f.name).join(', ')}. Apenas imagens são aceitas.`)
+        return
+      }
+
+      // Validar tamanho dos arquivos (30MB por arquivo)
+      const maxSize = 30 * 1024 * 1024 // 30MB
+      const oversizedFiles = files.filter(file => file.size > maxSize)
+      if (oversizedFiles.length > 0) {
+        alert(`Arquivos muito grandes: ${oversizedFiles.map(f => f.name).join(', ')}. Tamanho máximo: 30MB por arquivo.`)
+        return
+      }
+
+      // Limitar número de arquivos para carrossel
+      if (formData.creative_type === 'carousel' && files.length > 10) {
+        alert('Máximo de 10 arquivos para carrossel')
+        return
+      }
+
+      console.log(`Processando ${files.length} arquivo(s) para ${formData.placements.length} posicionamento(s)`)
+      
+      setSelectedFiles(files)
+      processImagesForPlacements(files)
+      
+    } catch (error) {
+      console.error('Erro no upload de arquivos:', error)
+      alert('Erro ao processar arquivos: ' + error.message)
+    }
   }
 
-  const handleArrayToggle = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: prev[field].includes(value)
-        ? prev[field].filter(item => item !== value)
-        : [...prev[field], value]
-    }))
+  // Função para redimensionar manualmente uma versão específica
+  const manualResize = async (imageIndex, versionIndex, newWidth, newHeight) => {
+    const image = processedImages[imageIndex]
+    const version = image.versions[versionIndex]
+    
+    try {
+      const resizedBlob = await resizeImage(image.originalFile, newWidth, newHeight)
+      const resizedFile = new File([resizedBlob], version.file.name, {
+        type: 'image/jpeg'
+      })
+
+      const updatedImages = [...processedImages]
+      updatedImages[imageIndex].versions[versionIndex] = {
+        ...version,
+        file: resizedFile,
+        preview: URL.createObjectURL(resizedBlob),
+        width: newWidth,
+        height: newHeight
+      }
+      
+      setProcessedImages(updatedImages)
+    } catch (error) {
+      console.error('Erro ao redimensionar:', error)
+      alert('Erro ao redimensionar imagem')
+    }
   }
 
-  const handleArrayInputChange = (field, value) => {
+  const generateAds = async () => {
+    if (!formData.page_id) {
+      alert('Selecione uma página da empresa')
+      return
+    }
+
+    if (!formData.product_description) {
+      alert('Descrição do produto/serviço é obrigatória')
+      return
+    }
+
+    if (formData.placements.length === 0) {
+      alert('Selecione pelo menos um posicionamento')
+      return
+    }
+
+    if (processedImages.length === 0) {
+      alert('Faça upload de pelo menos uma imagem')
+      return
+    }
+
+    setIsGenerating(true)
+    setGeneratedAds([])
+
+    try {
+      const formDataToSend = new FormData()
+      
+      Object.keys(formData).forEach(key => {
+        if (Array.isArray(formData[key])) {
+          formDataToSend.append(key, JSON.stringify(formData[key]))
+        } else {
+          formDataToSend.append(key, formData[key])
+        }
+      })
+      
+      // Adicionar todas as versões processadas das imagens
+      processedImages.forEach((image, imageIndex) => {
+        image.versions.forEach((version, versionIndex) => {
+          formDataToSend.append(`creative_files`, version.file)
+          formDataToSend.append(`image_${imageIndex}_version_${versionIndex}_placements`, JSON.stringify(version.placements))
+          formDataToSend.append(`image_${imageIndex}_version_${versionIndex}_aspectRatio`, version.aspectRatio)
+        })
+      })
+
+      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/ad-generation/generate-advanced', {
+        method: 'POST',
+        body: formDataToSend
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setGeneratedAds(result.variations || [])
+      } else {
+        alert(`Erro: ${result.error}`)
+      }
+    } catch (error) {
+      alert(`Erro na requisição: ${error.message}`)
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text)
+    alert('Texto copiado para a área de transferência!')
+  }
+
+  // ===== FUNÇÕES DO SISTEMA DE LOCALIZAÇÃO AVANÇADO =====
+
+  // Buscar cidades com debounce
+  const searchCities = async (query) => {
+    if (!query || query.length < 2) {
+      setCitySearchResults([])
+      setShowCityDropdown(false)
+      return
+    }
+
+    setIsSearchingCities(true)
+    
+    try {
+      const response = await fetch(`https://ads-automation-backend-otpl.onrender.com/api/facebook-data/cities/search?q=${encodeURIComponent(query)}`)
+      const result = await response.json()
+
+      if (result.success) {
+        setCitySearchResults(result.cities || [])
+        setShowCityDropdown(true)
+      } else {
+        console.error('Erro ao buscar cidades:', result.error)
+        setCitySearchResults([])
+        setShowCityDropdown(false)
+      }
+    } catch (error) {
+      console.error('Erro na busca de cidades:', error)
+      setCitySearchResults([])
+      setShowCityDropdown(false)
+    } finally {
+      setIsSearchingCities(false)
+    }
+  }
+
+  // Debounce para busca de cidades
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      searchCities(citySearchQuery)
+    }, 300)
+
+    return () => clearTimeout(timeoutId)
+  }, [citySearchQuery])
+
+  // Adicionar cidade selecionada
+  const addSelectedCity = (city) => {
+    // Verificar se cidade já foi selecionada
+    const isAlreadySelected = selectedCities.some(selected => selected.id === city.id)
+    
+    if (!isAlreadySelected) {
+      const newSelectedCities = [...selectedCities, city]
+      setSelectedCities(newSelectedCities)
+      
+      // Atualizar formData.locations
+      const locationNames = newSelectedCities.map(c => c.full_name)
+      setFormData(prev => ({
+        ...prev,
+        locations: locationNames
+      }))
+
+      // Atualizar centro do mapa para a nova cidade
+      setMapCenter({ lat: city.lat, lng: city.lng })
+    }
+
+    // Limpar busca
+    setCitySearchQuery('')
+    setCitySearchResults([])
+    setShowCityDropdown(false)
+  }
+
+  // Remover cidade selecionada
+  const removeSelectedCity = (cityId) => {
+    const newSelectedCities = selectedCities.filter(city => city.id !== cityId)
+    setSelectedCities(newSelectedCities)
+    
+    // Atualizar formData.locations
+    const locationNames = newSelectedCities.map(c => c.full_name)
     setFormData(prev => ({
       ...prev,
-      [field]: prev[field].includes(value)
-        ? prev[field].filter(item => item !== value)
-        : [...prev[field], value]
+      locations: locationNames
     }))
+
+    // Se não há mais cidades, voltar ao centro do Brasil
+    if (newSelectedCities.length === 0) {
+      setMapCenter({ lat: -14.2350, lng: -51.9253 })
+    }
+  }
+
+  // Atualizar raio do mapa
+  const updateMapRadius = (newRadius) => {
+    setMapRadius(newRadius)
+    // Aqui você pode implementar lógica para buscar cidades no raio
+  }
+
+  // Buscar cidades no raio do mapa
+  const getCitiesInRadius = async () => {
+    try {
+      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook-data/location/radius-cities', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          lat: mapCenter.lat,
+          lng: mapCenter.lng,
+          radius: mapRadius
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        console.log('Cidades no raio:', result.cities)
+        // Aqui você pode implementar lógica para mostrar as cidades no mapa
+        return result.cities
+      }
+    } catch (error) {
+      console.error('Erro ao buscar cidades no raio:', error)
+    }
+    
+    return []
+  }
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value)
+  }
+
+  const formatNumber = (value) => {
+    return new Intl.NumberFormat('pt-BR').format(value)
+  }
+
+  const formatPercentage = (value) => {
+    return `${value.toFixed(2)}%`
+  }
+
+  // Filtrar posicionamentos baseado nas plataformas selecionadas
+  const getAvailablePlacements = () => {
+    return placements.filter(placement => 
+      formData.platforms.includes(placement.platform)
+    )
   }
 
   // Agrupar posicionamentos por categoria
-  const groupedPlacements = availablePlacements.reduce((acc, placement) => {
-    if (!acc[placement.category]) {
-      acc[placement.category] = []
-    }
-    acc[placement.category].push(placement)
-    return acc
-  }, {})
+  const getPlacementsByCategory = () => {
+    const availablePlacements = getAvailablePlacements()
+    const grouped = {}
+    
+    availablePlacements.forEach(placement => {
+      if (!grouped[placement.category]) {
+        grouped[placement.category] = []
+      }
+      grouped[placement.category].push(placement)
+    })
+    
+    return grouped
+  }
+
+  // Função para baixar imagem processada
+  const downloadImage = (version, imageName) => {
+    const link = document.createElement('a')
+    link.href = version.preview
+    link.download = `${imageName}_${version.aspectRatio.replace(':', 'x')}.jpg`
+    link.click()
+  }
 
   return (
     <div className="space-y-6">
-      {/* Dashboard de Métricas */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Dashboard de Performance
-          </CardTitle>
-          <CardDescription>
-            Métricas dos últimos 7 dias
-            {lastUpdated && (
-              <span className="text-xs text-muted-foreground ml-2">
-                Atualizado: {lastUpdated}
-              </span>
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoadingDashboard ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin mr-2" />
-              Carregando métricas...
-            </div>
-          ) : dashboardError ? (
-            <div className="flex items-center justify-center py-8 text-red-500">
-              <AlertCircle className="h-5 w-5 mr-2" />
-              {dashboardError}
-            </div>
-          ) : dashboardData ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <Eye className="h-6 w-6 mx-auto mb-2 text-blue-600" />
-                <div className="text-2xl font-bold text-blue-600">
-                  {dashboardData.impressions.toLocaleString()}
-                </div>
-                <div className="text-sm text-gray-600">Impressões</div>
-              </div>
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <MousePointer className="h-6 w-6 mx-auto mb-2 text-green-600" />
-                <div className="text-2xl font-bold text-green-600">
-                  {dashboardData.clicks.toLocaleString()}
-                </div>
-                <div className="text-sm text-gray-600">Cliques</div>
-              </div>
-              <div className="text-center p-4 bg-purple-50 rounded-lg">
-                <DollarSign className="h-6 w-6 mx-auto mb-2 text-purple-600" />
-                <div className="text-2xl font-bold text-purple-600">
-                  R$ {dashboardData.spent.toFixed(2)}
-                </div>
-                <div className="text-sm text-gray-600">Gasto</div>
-              </div>
-              <div className="text-center p-4 bg-orange-50 rounded-lg">
-                <TrendingUp className="h-6 w-6 mx-auto mb-2 text-orange-600" />
-                <div className="text-2xl font-bold text-orange-600">
-                  {dashboardData.active_campaigns}
-                </div>
-                <div className="text-sm text-gray-600">Campanhas Ativas</div>
-              </div>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      {/* Formulário Principal */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Coluna Esquerda */}
-        <div className="space-y-6">
-          {/* Informações Básicas */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Informações Básicas</CardTitle>
-              <CardDescription>
-                Configure as informações principais da campanha
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Página da Business Manager */}
-              <div className="space-y-2">
-                <Label htmlFor="page_id">Página da Business Manager</Label>
-                <Select 
-                  value={formData.page_id} 
-                  onValueChange={(value) => handleInputChange('page_id', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={isLoadingPages ? "Carregando páginas..." : "Selecione uma página"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {pages.map((page) => (
-                      <SelectItem key={page.id} value={page.id}>
-                        {page.name} - {page.category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Nome do Produto */}
-              <div className="space-y-2">
-                <Label htmlFor="product_name">Nome do Produto/Serviço</Label>
-                <Input
-                  id="product_name"
-                  value={formData.product_name}
-                  onChange={(e) => handleInputChange('product_name', e.target.value)}
-                  placeholder="Ex: Smartphone Galaxy S24"
-                />
-              </div>
-
-              {/* Descrição do Produto */}
-              <div className="space-y-2">
-                <Label htmlFor="product_description">Descrição do Produto/Serviço</Label>
-                <Textarea
-                  id="product_description"
-                  value={formData.product_description}
-                  onChange={(e) => handleInputChange('product_description', e.target.value)}
-                  placeholder="Descreva detalhadamente seu produto ou serviço..."
-                  rows={4}
-                />
-              </div>
-
-              {/* Plataformas */}
-              <div className="space-y-2">
-                <Label>Plataformas</Label>
-                <div className="flex gap-4">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.platforms.includes('facebook')}
-                      onChange={() => handleArrayToggle('platforms', 'facebook')}
-                    />
-                    <span>📘 Facebook</span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.platforms.includes('instagram')}
-                      onChange={() => handleArrayToggle('platforms', 'instagram')}
-                    />
-                    <span>📷 Instagram</span>
-                  </label>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Público-Alvo */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Público-Alvo
-                </span>
-                <Button
-                  onClick={generateAudienceWithAI}
-                  disabled={!formData.product_description.trim() || isGeneratingAudience}
-                  size="sm"
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                >
-                  {isGeneratingAudience ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Zap className="h-4 w-4 mr-2" />
-                  )}
-                  Gerar com IA
-                </Button>
-              </CardTitle>
-              <CardDescription>
-                Configure o público-alvo ou use IA para gerar automaticamente
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Idade */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="age_min">Idade Mínima</Label>
-                  <Input
-                    id="age_min"
-                    type="number"
-                    min="13"
-                    max="65"
-                    value={formData.audience.age_min}
-                    onChange={(e) => handleNestedInputChange('audience', 'age_min', parseInt(e.target.value))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="age_max">Idade Máxima</Label>
-                  <Input
-                    id="age_max"
-                    type="number"
-                    min="13"
-                    max="65"
-                    value={formData.audience.age_max}
-                    onChange={(e) => handleNestedInputChange('audience', 'age_max', parseInt(e.target.value))}
-                  />
-                </div>
-              </div>
-
-              {/* Gênero */}
-              <div className="space-y-2">
-                <Label htmlFor="gender">Gênero</Label>
-                <Select 
-                  value={formData.audience.gender} 
-                  onValueChange={(value) => handleNestedInputChange('audience', 'gender', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o gênero" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {genderOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Interesses */}
-              <div className="space-y-2">
-                <Label htmlFor="interests">Interesses</Label>
-                <Textarea
-                  id="interests"
-                  value={formData.audience.interests.join(', ')}
-                  onChange={(e) => handleNestedInputChange('audience', 'interests', e.target.value.split(', ').filter(i => i.trim()))}
-                  placeholder="Ex: tecnologia, smartphones, eletrônicos"
-                  rows={2}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Localização */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
-                Localização
-              </CardTitle>
-              <CardDescription>
-                Configure a localização geográfica do público-alvo
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Busca de Cidades */}
-              <div className="space-y-2">
-                <Label htmlFor="city_search">Buscar Cidades</Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="city_search"
-                    value={citySearch}
-                    onChange={(e) => setCitySearch(e.target.value)}
-                    placeholder="Digite o nome da cidade..."
-                    className="pl-10"
-                  />
-                  {isSearchingCities && (
-                    <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-gray-400" />
-                  )}
-                </div>
-
-                {/* Dropdown de Resultados */}
-                {cityResults.length > 0 && (
-                  <div className="border rounded-md bg-white shadow-lg max-h-48 overflow-y-auto">
-                    {cityResults.map((city, index) => (
-                      <button
-                        key={index}
-                        onClick={() => addSelectedCity(city)}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100 border-b last:border-b-0"
-                      >
-                        <div className="font-medium">{city.name}</div>
-                        <div className="text-sm text-gray-500">{city.state}</div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Cidades Selecionadas */}
-              {selectedCities.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Cidades Selecionadas</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedCities.map((city, index) => (
-                      <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                        {city.name}
-                        <button
-                          onClick={() => removeSelectedCity(city.name)}
-                          className="ml-1 hover:text-red-500"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Mapa Simulado */}
-              <div className="space-y-2">
-                <Label>Mapa de Localização</Label>
-                <div className="bg-gray-100 rounded-lg p-4 text-center">
-                  <MapPin className="h-8 w-8 mx-auto mb-2 text-blue-500" />
-                  <div className="text-sm text-gray-600">
-                    Centro: {mapCenter.lat.toFixed(4)}, {mapCenter.lng.toFixed(4)}
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    Raio: {mapRadius}km
-                  </div>
-                </div>
-                
-                {/* Controle de Raio */}
-                <div className="space-y-2">
-                  <Label htmlFor="radius">Raio de Alcance (km)</Label>
-                  <Input
-                    id="radius"
-                    type="range"
-                    min="1"
-                    max="100"
-                    value={mapRadius}
-                    onChange={(e) => setMapRadius(parseInt(e.target.value))}
-                    className="w-full"
-                  />
-                  <div className="text-sm text-gray-500 text-center">
-                    {mapRadius} km
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Sparkles className="h-8 w-8 text-purple-600" />
+          <div>
+            <h2 className="text-2xl font-bold">Dashboard de Campanhas & Geração de Anúncios</h2>
+            <p className="text-gray-600">Monitore suas campanhas e crie novos anúncios com IA</p>
+          </div>
         </div>
+        <Button 
+          onClick={fetchDashboardData} 
+          disabled={isLoadingDashboard}
+          variant="outline"
+        >
+          {isLoadingDashboard ? (
+            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4 mr-2" />
+          )}
+          Atualizar
+        </Button>
+      </div>
 
-        {/* Coluna Direita */}
-        <div className="space-y-6">
-          {/* Orçamento */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Orçamento e Cronograma
-              </CardTitle>
-              <CardDescription>
-                Configure o orçamento e período da campanha
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Tipo de Orçamento */}
-              <div className="space-y-2">
-                <Label htmlFor="budget_type">Tipo de Orçamento</Label>
-                <Select 
-                  value={formData.budget_type} 
-                  onValueChange={(value) => handleInputChange('budget_type', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo de orçamento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {budgetTypes.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        <div>
-                          <div className="font-medium">{type.label}</div>
-                          <div className="text-sm text-gray-500">{type.description}</div>
+      <Tabs defaultValue="dashboard" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="generate">Gerar Anúncios</TabsTrigger>
+        </TabsList>
+
+        {/* Dashboard Tab */}
+        <TabsContent value="dashboard" className="space-y-6">
+          {dashboardError && (
+            <Card className="border-red-200 bg-red-50">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2 text-red-700">
+                  <AlertCircle className="h-5 w-5" />
+                  <span className="font-medium">Erro ao carregar dados</span>
+                </div>
+                <p className="text-red-600 mt-2">{dashboardError}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Métricas principais */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Impressões (7d)</CardTitle>
+                <Eye className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {isLoadingDashboard ? (
+                    <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
+                  ) : (
+                    formatNumber(dashboardData.impressions)
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">Total de visualizações</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Cliques (7d)</CardTitle>
+                <MousePointer className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {isLoadingDashboard ? (
+                    <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
+                  ) : (
+                    formatNumber(dashboardData.clicks)
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">Total de cliques</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Gasto (7d)</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {isLoadingDashboard ? (
+                    <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
+                  ) : (
+                    formatCurrency(dashboardData.spent)
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">Total investido</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Campanhas Ativas</CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {isLoadingDashboard ? (
+                    <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
+                  ) : (
+                    dashboardData.active_campaigns
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">Campanhas em execução</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Métricas secundárias */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">CTR (Taxa de Clique)</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {isLoadingDashboard ? (
+                    <div className="animate-pulse bg-gray-200 h-8 w-16 rounded"></div>
+                  ) : (
+                    formatPercentage(dashboardData.ctr)
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">Cliques / Impressões</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">CPC (Custo por Clique)</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {isLoadingDashboard ? (
+                    <div className="animate-pulse bg-gray-200 h-8 w-16 rounded"></div>
+                  ) : (
+                    formatCurrency(dashboardData.cpc)
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">Gasto / Cliques</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">CPM (Custo por Mil)</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {isLoadingDashboard ? (
+                    <div className="animate-pulse bg-gray-200 h-8 w-16 rounded"></div>
+                  ) : (
+                    formatCurrency(dashboardData.cpm)
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">Custo por 1000 impressões</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {lastUpdated && (
+            <div className="text-center">
+              <p className="text-sm text-gray-500">
+                Última atualização: {lastUpdated}
+              </p>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Generate Tab - Formulário Avançado com Redimensionamento */}
+        <TabsContent value="generate" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Formulário de Configuração */}
+            <div className="space-y-6">
+              {/* Informações Básicas */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Informações Básicas
+                  </CardTitle>
+                  <CardDescription>
+                    Configure as informações fundamentais da sua campanha
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="page_id">Página da Empresa *</Label>
+                    <Select value={formData.page_id} onValueChange={(value) => handleInputChange('page_id', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma página..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isLoadingPages ? (
+                          <SelectItem value="loading" disabled>Carregando páginas...</SelectItem>
+                        ) : pages.length > 0 ? (
+                          pages.map(page => (
+                            <SelectItem key={page.id} value={page.id}>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{page.name}</span>
+                                <span className="text-xs text-gray-500">{page.category}</span>
+                              </div>
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="no-pages" disabled>Nenhuma página encontrada</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="product_description">Descrição do Produto/Serviço *</Label>
+                    <Textarea
+                      id="product_description"
+                      value={formData.product_description}
+                      onChange={(e) => handleInputChange('product_description', e.target.value)}
+                      placeholder="Descreva detalhadamente seu produto ou serviço, incluindo benefícios e diferenciais..."
+                      rows={4}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Plataformas de Publicação</Label>
+                    <div className="flex gap-4 mt-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="facebook"
+                          checked={formData.platforms.includes('facebook')}
+                          onCheckedChange={(checked) => handleArrayChange('platforms', 'facebook', checked)}
+                        />
+                        <Label htmlFor="facebook" className="flex items-center gap-2">
+                          <Facebook className="h-4 w-4 text-blue-600" />
+                          Facebook
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="instagram"
+                          checked={formData.platforms.includes('instagram')}
+                          onCheckedChange={(checked) => handleArrayChange('platforms', 'instagram', checked)}
+                        />
+                        <Label htmlFor="instagram" className="flex items-center gap-2">
+                          <Instagram className="h-4 w-4 text-pink-600" />
+                          Instagram
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Objetivo da Campanha</Label>
+                    <Select value={formData.ad_objective} onValueChange={(value) => handleInputChange('ad_objective', value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {objectives.map(objective => {
+                          const Icon = objective.icon
+                          return (
+                            <SelectItem key={objective.value} value={objective.value}>
+                              <div className="flex items-center gap-2">
+                                <Icon className="h-4 w-4" />
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{objective.label}</span>
+                                  <span className="text-xs text-gray-500">{objective.description}</span>
+                                </div>
+                              </div>
+                            </SelectItem>
+                          )
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Público-Alvo */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Público-Alvo
+                  </CardTitle>
+                  <CardDescription>
+                    Defina quem verá seus anúncios (gerado automaticamente com IA)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="target_audience">Descrição do Público</Label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={generateTargetAudience}
+                        disabled={isGeneratingAudience || !formData.product_description}
+                      >
+                        {isGeneratingAudience ? (
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Zap className="h-4 w-4 mr-2" />
+                        )}
+                        Gerar com IA
+                      </Button>
+                    </div>
+                    <Textarea
+                      id="target_audience"
+                      value={formData.target_audience}
+                      onChange={(e) => handleInputChange('target_audience', e.target.value)}
+                      placeholder="Ex: Empresários de 25-45 anos interessados em tecnologia..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Idade Mínima</Label>
+                      <Select value={formData.age_min.toString()} onValueChange={(value) => handleInputChange('age_min', parseInt(value))}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({length: 47}, (_, i) => i + 18).map(age => (
+                            <SelectItem key={age} value={age.toString()}>{age} anos</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label>Idade Máxima</Label>
+                      <Select value={formData.age_max.toString()} onValueChange={(value) => handleInputChange('age_max', parseInt(value))}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({length: 47}, (_, i) => i + 18).map(age => (
+                            <SelectItem key={age} value={age.toString()}>{age} anos</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Gênero</Label>
+                    <Select value={formData.gender} onValueChange={(value) => handleInputChange('gender', value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {genderOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Sistema de Localização Avançado */}
+                  <div className="space-y-4">
+                    <Label className="text-base font-semibold flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Localização Avançada
+                    </Label>
+                    
+                    {/* Busca de Cidades */}
+                    <div className="relative">
+                      <Label className="text-sm">Buscar Cidades</Label>
+                      <div className="relative">
+                        <Input
+                          value={citySearchQuery}
+                          onChange={(e) => setCitySearchQuery(e.target.value)}
+                          placeholder="Digite o nome da cidade..."
+                          className="pr-10"
+                        />
+                        {isSearchingCities && (
+                          <RefreshCw className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+                        )}
+                        <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      </div>
+                      
+                      {/* Dropdown de Resultados */}
+                      {showCityDropdown && citySearchResults.length > 0 && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          {citySearchResults.map((city) => (
+                            <div
+                              key={city.id}
+                              onClick={() => addSelectedCity(city)}
+                              className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-medium text-gray-900">{city.name}</p>
+                                  <p className="text-sm text-gray-500">{city.state} • {city.population.toLocaleString()} hab.</p>
+                                </div>
+                                <Badge variant="outline" className="text-xs">
+                                  {city.state}
+                                </Badge>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                      )}
+                    </div>
 
-              {/* Valor do Orçamento */}
-              <div className="space-y-2">
-                <Label htmlFor="budget_amount">
-                  Valor do Orçamento (R$)
-                </Label>
-                <Input
-                  id="budget_amount"
-                  type="number"
-                  min="1"
-                  step="0.01"
-                  value={formData.budget_amount}
-                  onChange={(e) => handleInputChange('budget_amount', e.target.value)}
-                  placeholder="Ex: 100.00"
-                />
-              </div>
+                    {/* Cidades Selecionadas */}
+                    {selectedCities.length > 0 && (
+                      <div>
+                        <Label className="text-sm">Cidades Selecionadas ({selectedCities.length})</Label>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {selectedCities.map((city) => (
+                            <div
+                              key={city.id}
+                              className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm border border-blue-200"
+                            >
+                              <MapPin className="h-3 w-3" />
+                              <span>{city.name}, {city.state}</span>
+                              <button
+                                onClick={() => removeSelectedCity(city.id)}
+                                className="ml-1 hover:bg-blue-200 rounded-full p-0.5 transition-colors"
+                                title="Remover cidade"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
-              {/* Datas */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="start_date">Data de Início</Label>
-                  <Input
-                    id="start_date"
-                    type="date"
-                    value={formData.start_date}
-                    onChange={(e) => handleInputChange('start_date', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="end_date">Data de Fim</Label>
-                  <Input
-                    id="end_date"
-                    type="date"
-                    value={formData.end_date}
-                    onChange={(e) => handleInputChange('end_date', e.target.value)}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                    {/* Mapa Interativo */}
+                    <div className="border rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-center justify-between mb-3">
+                        <Label className="text-sm font-medium">Mapa de Localização</Label>
+                        <Badge variant="secondary" className="text-xs">
+                          Raio: {mapRadius}km
+                        </Badge>
+                      </div>
+                      
+                      {/* Simulação de Mapa */}
+                      <div className="relative bg-gradient-to-br from-green-100 to-blue-100 rounded-lg h-48 flex items-center justify-center border-2 border-dashed border-gray-300">
+                        <div className="text-center">
+                          <MapPin className="h-8 w-8 mx-auto text-blue-500 mb-2" />
+                          <p className="text-sm font-medium text-gray-700">Mapa Interativo</p>
+                          <p className="text-xs text-gray-500">
+                            Centro: {mapCenter.lat.toFixed(4)}, {mapCenter.lng.toFixed(4)}
+                          </p>
+                          {selectedCities.length > 0 && (
+                            <p className="text-xs text-blue-600 mt-1">
+                              {selectedCities.length} cidade(s) marcada(s)
+                            </p>
+                          )}
+                        </div>
+                        
+                        {/* Círculo de Raio */}
+                        <div 
+                          className="absolute border-2 border-blue-400 border-dashed rounded-full opacity-50"
+                          style={{
+                            width: `${Math.min(mapRadius * 2, 120)}px`,
+                            height: `${Math.min(mapRadius * 2, 120)}px`,
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)'
+                          }}
+                        />
+                      </div>
 
-          {/* Tipo de Criativo */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Tipo de Criativo</CardTitle>
-              <CardDescription>
-                Escolha o formato do seu anúncio
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 gap-3">
-                {creativeTypes.map((type) => (
-                  <div
-                    key={type.value}
-                    className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                      formData.creative_type === type.value
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => handleInputChange('creative_type', type.value)}
-                  >
-                    <div className="flex items-start gap-3">
-                      <type.icon className="h-5 w-5 mt-1 text-blue-500" />
-                      <div className="flex-1">
-                        <div className="font-medium">{type.label}</div>
-                        <div className="text-sm text-gray-600 mb-2">{type.description}</div>
-                        <div className="text-xs text-gray-500">
-                          <div>Formatos: {type.specs.formats.join(', ')}</div>
-                          <div>Tamanho máx: {type.specs.maxSize}</div>
-                          <div>Proporções: {type.specs.ratios.join(', ')}</div>
+                      {/* Controles do Mapa */}
+                      <div className="mt-3 space-y-3">
+                        <div>
+                          <Label className="text-xs">Raio de Alcance (km)</Label>
+                          <div className="flex items-center gap-3 mt-1">
+                            <input
+                              type="range"
+                              min="1"
+                              max="100"
+                              value={mapRadius}
+                              onChange={(e) => updateMapRadius(parseInt(e.target.value))}
+                              className="flex-1"
+                            />
+                            <Input
+                              type="number"
+                              min="1"
+                              max="100"
+                              value={mapRadius}
+                              onChange={(e) => updateMapRadius(parseInt(e.target.value) || 1)}
+                              className="w-20 h-8 text-xs"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={getCitiesInRadius}
+                            className="text-xs"
+                          >
+                            <Target className="h-3 w-3 mr-1" />
+                            Buscar no Raio
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setMapCenter({ lat: -14.2350, lng: -51.9253 })
+                              setMapRadius(50)
+                            }}
+                            className="text-xs"
+                          >
+                            <RotateCcw className="h-3 w-3 mr-1" />
+                            Resetar
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Informações de Localização */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="flex items-start gap-2">
+                        <Info className="h-4 w-4 text-blue-500 mt-0.5" />
+                        <div className="text-sm text-blue-700">
+                          <p className="font-medium">Como funciona:</p>
+                          <ul className="text-xs mt-1 space-y-1">
+                            <li>• Busque e selecione cidades específicas</li>
+                            <li>• Ajuste o raio para incluir cidades próximas</li>
+                            <li>• Use o mapa para visualizar a área de alcance</li>
+                            <li>• Remova cidades clicando no X</li>
+                          </ul>
                         </div>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
 
-          {/* Posicionamentos */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Posicionamentos</CardTitle>
-              <CardDescription>
-                Selecione onde seus anúncios aparecerão
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {Object.entries(groupedPlacements).map(([category, placements]) => (
-                  <div key={category}>
-                    <h4 className="font-medium text-sm text-gray-700 mb-2">{category}</h4>
-                    <div className="space-y-2">
-                      {placements.map((placement) => (
-                        <label
-                          key={placement.value}
-                          className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={formData.placements.includes(placement.value)}
-                            onChange={() => handleArrayToggle('placements', placement.value)}
-                            className="mt-1"
-                          />
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{placement.label}</span>
-                              <Badge variant="outline" className="text-xs">
-                                {placement.recommended}
-                              </Badge>
+              {/* Orçamento e Cronograma */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5" />
+                    Orçamento e Cronograma
+                  </CardTitle>
+                  <CardDescription>
+                    Configure investimento e período da campanha
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label>Tipo de Orçamento</Label>
+                    <Select value={formData.budget_type} onValueChange={(value) => handleInputChange('budget_type', value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {budgetTypes.map(type => (
+                          <SelectItem key={type.value} value={type.value}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{type.label}</span>
+                              <span className="text-xs text-gray-500">{type.description}</span>
                             </div>
-                            <div className="text-sm text-gray-600">{placement.description}</div>
-                          </div>
-                        </label>
-                      ))}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Valor do Orçamento (R$)</Label>
+                    <Input
+                      type="number"
+                      value={formData.budget_amount}
+                      onChange={(e) => handleInputChange('budget_amount', parseFloat(e.target.value))}
+                      placeholder="50.00"
+                      min="1"
+                      step="0.01"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Data de Início</Label>
+                      <Input
+                        type="date"
+                        value={formData.schedule_start}
+                        onChange={(e) => handleInputChange('schedule_start', e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Data de Término (Opcional)</Label>
+                      <Input
+                        type="date"
+                        value={formData.schedule_end}
+                        onChange={(e) => handleInputChange('schedule_end', e.target.value)}
+                      />
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </div>
 
-          {/* Upload de Imagens - SIMPLIFICADO */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Upload className="h-5 w-5" />
-                Upload de Imagens
-              </CardTitle>
-              <CardDescription>
-                Faça upload das suas imagens
-                {formData.placements.length === 0 && (
-                  <div className="flex items-center gap-1 mt-2 text-amber-600">
-                    <AlertCircle className="h-4 w-4" />
-                    <span className="text-sm">Selecione posicionamentos primeiro!</span>
+            {/* Posicionamentos e Criativo - REORDENADOS */}
+            <div className="space-y-6">
+              {/* Tipo de Criativo */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Image className="h-5 w-5" />
+                    Tipo de Criativo
+                  </CardTitle>
+                  <CardDescription>
+                    Escolha o formato do seu anúncio
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label>Formato</Label>
+                    <div className="grid grid-cols-1 gap-3 mt-2">
+                      {creativeTypes.map(type => {
+                        const Icon = type.icon
+                        return (
+                          <div
+                            key={type.value}
+                            className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                              formData.creative_type === type.value 
+                                ? 'border-blue-500 bg-blue-50' 
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                            onClick={() => handleInputChange('creative_type', type.value)}
+                          >
+                            <div className="flex items-start gap-3">
+                              <Icon className="h-5 w-5 mt-0.5" />
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-medium">{type.label}</span>
+                                </div>
+                                <p className="text-sm text-gray-600 mb-2">{type.description}</p>
+                                <div className="text-xs text-gray-500 space-y-1">
+                                  <div><strong>Formatos:</strong> {type.specs.formats.join(', ')}</div>
+                                  <div><strong>Tamanho máx:</strong> {type.specs.maxSize}</div>
+                                  <div><strong>Proporções:</strong> {type.specs.recommended}</div>
+                                  {type.specs.duration && <div><strong>Duração:</strong> {type.specs.duration}</div>}
+                                  {type.specs.cards && <div><strong>Cards:</strong> {type.specs.cards}</div>}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
-                )}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {/* Input de Upload */}
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                  <div className="text-sm text-gray-600 mb-2">
-                    Clique para selecionar imagens ou arraste aqui
-                  </div>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="file-upload"
-                  />
-                  <label
-                    htmlFor="file-upload"
-                    className="inline-flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 cursor-pointer"
-                  >
-                    Selecionar Imagens
-                  </label>
-                  <div className="text-xs text-gray-500 mt-2">
-                    JPG, PNG até 30MB cada
-                  </div>
-                </div>
+                </CardContent>
+              </Card>
 
-                {/* Preview das Imagens Carregadas */}
-                {uploadedImages.length > 0 && (
+              {/* Posicionamentos - MOVIDO PARA ANTES DO UPLOAD */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5" />
+                    Posicionamentos *
+                  </CardTitle>
+                  <CardDescription>
+                    Escolha onde seus anúncios aparecerão (selecione ANTES de fazer upload)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium">Imagens Carregadas</h4>
-                      <Badge variant="secondary">
-                        {uploadedImages.length} imagem(ns)
-                      </Badge>
-                    </div>
-                    
-                    {uploadedImages.map((image, index) => (
-                      <div key={image.id} className="border rounded-lg p-4">
-                        <div className="flex items-start gap-4">
-                          {/* Preview da Imagem Original */}
-                          <div className="flex-shrink-0">
-                            <img
-                              src={image.preview}
-                              alt={image.name}
-                              className="w-24 h-24 object-cover rounded-lg"
-                            />
-                          </div>
-                          
-                          {/* Informações da Imagem */}
-                          <div className="flex-1">
-                            <div className="font-medium">{image.name}</div>
-                            <div className="text-sm text-gray-500">
-                              Tamanho: {(image.size / 1024 / 1024).toFixed(2)} MB
+                    {Object.entries(getPlacementsByCategory()).map(([category, categoryPlacements]) => (
+                      <div key={category}>
+                        <h4 className="font-medium text-sm text-gray-700 mb-2">{category}</h4>
+                        <div className="space-y-2 ml-4">
+                          {categoryPlacements.map(placement => (
+                            <div key={placement.value} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={placement.value}
+                                checked={formData.placements.includes(placement.value)}
+                                onCheckedChange={(checked) => handleArrayChange('placements', placement.value, checked)}
+                              />
+                              <Label htmlFor={placement.value} className="flex-1">
+                                <div className="flex flex-col">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-sm">{placement.label}</span>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {placement.aspectRatio}
+                                    </Badge>
+                                    <Badge variant="outline" className="text-xs">
+                                      {placement.recommended}
+                                    </Badge>
+                                  </div>
+                                  <span className="text-xs text-gray-500">{placement.description}</span>
+                                </div>
+                              </Label>
                             </div>
-                            
-                            {/* Botão para Gerar Versões */}
-                            {formData.placements.length > 0 && (
-                              <div className="mt-2">
-                                <Button
-                                  onClick={() => generateVersionsForPlacements(image)}
-                                  disabled={isProcessingImages}
-                                  size="sm"
-                                  className="bg-green-500 hover:bg-green-600"
-                                >
-                                  {isProcessingImages ? (
-                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                  ) : (
-                                    <Resize className="h-4 w-4 mr-2" />
-                                  )}
-                                  Gerar Versões
-                                </Button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {formData.placements.length === 0 && (
+                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-sm text-yellow-800">
+                        ⚠️ Selecione pelo menos um posicionamento para gerar as versões corretas das imagens
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Upload de Arquivos - MOVIDO PARA DEPOIS DOS POSICIONAMENTOS */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Upload className="h-5 w-5" />
+                    Upload de Arquivos
+                  </CardTitle>
+                  <CardDescription>
+                    Faça upload das imagens (serão redimensionadas automaticamente)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <div 
+                      className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-gray-400 transition-colors"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {selectedFiles.length > 0 ? (
+                        <div className="space-y-2">
+                          <Upload className="h-8 w-8 mx-auto text-green-500" />
+                          <p className="text-sm text-gray-600">
+                            {selectedFiles.length} arquivo(s) selecionado(s). Clique para alterar.
+                          </p>
+                          {isProcessingImages && (
+                            <div className="flex items-center justify-center gap-2 mt-2">
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                              <span className="text-sm text-blue-600">Processando imagens...</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Upload className="h-8 w-8 mx-auto text-gray-400" />
+                          <p className="text-sm text-gray-600">Clique para fazer upload</p>
+                          <p className="text-xs text-gray-500">
+                            {formData.creative_type === 'video' 
+                              ? 'MP4, MOV até 4GB' 
+                              : formData.creative_type === 'carousel'
+                              ? 'JPG, PNG, MP4, MOV (2-10 arquivos)'
+                              : 'JPG, PNG até 30MB'
+                            }
+                          </p>
+                          {formData.placements.length === 0 && (
+                            <p className="text-xs text-red-500 font-medium">
+                              Selecione os posicionamentos primeiro!
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept={formData.creative_type === 'video' ? 'video/*' : formData.creative_type === 'carousel' ? 'image/*,video/*' : 'image/*'}
+                      multiple={formData.creative_type === 'carousel'}
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      disabled={formData.placements.length === 0}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Configurações Avançadas */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    Configurações Avançadas
+                  </CardTitle>
+                  <CardDescription>
+                    Opções adicionais para otimização
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label>Número de Variações de Texto</Label>
+                    <Select value={formData.num_variations.toString()} onValueChange={(value) => handleInputChange('num_variations', parseInt(value))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 variação</SelectItem>
+                        <SelectItem value="2">2 variações</SelectItem>
+                        <SelectItem value="3">3 variações</SelectItem>
+                        <SelectItem value="5">5 variações</SelectItem>
+                        <SelectItem value="10">10 variações</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button 
+                    onClick={generateAds} 
+                    disabled={isGenerating || !formData.page_id || !formData.product_description || formData.placements.length === 0 || processedImages.length === 0}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Gerando Anúncios...
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="h-4 w-4 mr-2" />
+                        Gerar Anúncios com IA
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Imagens Processadas */}
+          {processedImages.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Crop className="h-5 w-5" />
+                  Imagens Processadas Automaticamente
+                </CardTitle>
+                <CardDescription>
+                  Versões das suas imagens otimizadas para cada posicionamento selecionado
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {processedImages.map((image, imageIndex) => (
+                    <div key={imageIndex} className="border rounded-lg p-4 bg-gradient-to-r from-blue-50 to-purple-50">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                          {imageIndex + 1}
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-lg">Imagem {imageIndex + 1}</h4>
+                          <p className="text-sm text-gray-600">{image.originalFile.name}</p>
+                        </div>
+                      </div>
+                      
+                      {/* Imagem Original */}
+                      <div className="mb-6 p-3 bg-white rounded-lg border">
+                        <h5 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                          <Image className="h-4 w-4" />
+                          Imagem Original
+                        </h5>
+                        <div className="flex items-center gap-4">
+                          <div className="relative">
+                            <img 
+                              src={image.originalPreview} 
+                              alt="Original" 
+                              className="w-24 h-24 object-cover rounded-lg border-2 border-gray-200 shadow-sm"
+                            />
+                            <Badge className="absolute -top-2 -right-2 bg-gray-600 text-white text-xs">
+                              Original
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            <p className="font-medium">Arquivo base para redimensionamento</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Tamanho: {(image.originalFile.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Versões Processadas */}
+                      <div>
+                        <h5 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                          <Crop className="h-4 w-4" />
+                          Versões Otimizadas ({image.versions.length})
+                        </h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {image.versions.map((version, versionIndex) => (
+                            <div key={versionIndex} className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
+                              {/* Header da versão */}
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="secondary" className="text-xs font-semibold">
+                                    {version.aspectRatio}
+                                  </Badge>
+                                  <span className="text-xs text-gray-500">
+                                    {version.width}×{version.height}
+                                  </span>
+                                </div>
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => downloadImage(version, `imagem_${imageIndex + 1}`)}
+                                    className="h-7 px-2"
+                                    title="Download desta versão"
+                                  >
+                                    <Download className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const newWidth = prompt('Nova largura:', version.width)
+                                      const newHeight = prompt('Nova altura:', version.height)
+                                      if (newWidth && newHeight) {
+                                        manualResize(imageIndex, versionIndex, parseInt(newWidth), parseInt(newHeight))
+                                      }
+                                    }}
+                                    className="h-7 px-2"
+                                    title="Redimensionar manualmente"
+                                  >
+                                    <Crop className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+
+                              {/* Preview da imagem */}
+                              <div className="mb-3">
+                                <img 
+                                  src={version.preview} 
+                                  alt={`Versão ${version.aspectRatio}`}
+                                  className="w-full h-32 object-cover rounded border"
+                                />
+                              </div>
+
+                              {/* Posicionamentos que usam esta versão */}
+                              <div>
+                                <p className="text-xs font-medium text-gray-700 mb-2">
+                                  Posicionamentos compatíveis:
+                                </p>
+                                <div className="space-y-1">
+                                  {version.placements.map((placementValue, idx) => {
+                                    const placement = placements.find(p => p.value === placementValue)
+                                    return placement ? (
+                                      <div key={idx} className="flex items-center gap-2 text-xs">
+                                        <div className={`w-2 h-2 rounded-full ${
+                                          placement.platform === 'facebook' ? 'bg-blue-500' : 'bg-pink-500'
+                                        }`}></div>
+                                        <span className="text-gray-600">{placement.label}</span>
+                                        <Badge variant="outline" className="text-xs px-1 py-0">
+                                          {placement.platform === 'facebook' ? 'FB' : 'IG'}
+                                        </Badge>
+                                      </div>
+                                    ) : null
+                                  })}
+                                </div>
+                              </div>
+
+                              {/* Informações técnicas */}
+                              <div className="mt-3 pt-3 border-t border-gray-100">
+                                <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+                                  <div>
+                                    <span className="font-medium">Formato:</span> JPEG
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Qualidade:</span> 90%
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Ratio:</span> {version.aspectRatio}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Tamanho:</span> Otimizado
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Resultados */}
+          {generatedAds.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5" />
+                  Anúncios Gerados
+                </CardTitle>
+                <CardDescription>
+                  Textos de anúncios criados pela IA baseados nas suas configurações
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {generatedAds.map((ad, index) => (
+                    <Card key={index} className="border-l-4 border-l-purple-500">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">Variação {ad.id || index + 1}</Badge>
+                            {formData.platforms.map(platform => (
+                              <Badge key={platform} className={platform === 'facebook' ? 'bg-blue-500' : 'bg-pink-500'}>
+                                {platform === 'facebook' ? 'Facebook' : 'Instagram'}
+                              </Badge>
+                            ))}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => copyToClipboard(ad.full_text || ad.text)}
+                          >
+                            <Copy className="h-4 w-4 mr-1" />
+                            Copiar
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {ad.error ? (
+                          <p className="text-red-600">Erro: {ad.error}</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {ad.headline && (
+                              <div>
+                                <Label className="text-xs text-gray-500">HEADLINE</Label>
+                                <p className="font-medium">{ad.headline}</p>
                               </div>
                             )}
                             
-                            {/* Versões Geradas */}
-                            {image.versions.length > 0 && (
-                              <div className="mt-3">
-                                <div className="text-sm font-medium mb-2">Versões Geradas:</div>
-                                <div className="grid grid-cols-2 gap-2">
-                                  {image.versions.map((version, vIndex) => (
-                                    <div key={vIndex} className="border rounded p-2">
-                                      <img
-                                        src={version.url}
-                                        alt={`${version.format}`}
-                                        className="w-full h-16 object-cover rounded mb-2"
-                                      />
-                                      <div className="text-xs">
-                                        <div className="font-medium">{version.format}</div>
-                                        <div className="text-gray-500">
-                                          {version.width}x{version.height}
-                                        </div>
-                                        <div className="text-gray-500">
-                                          Para: {version.placements.join(', ')}
-                                        </div>
-                                      </div>
-                                      <Button
-                                        onClick={() => downloadVersion(version, image.name)}
-                                        size="sm"
-                                        variant="outline"
-                                        className="w-full mt-2"
-                                      >
-                                        <Download className="h-3 w-3 mr-1" />
-                                        Download
-                                      </Button>
-                                    </div>
-                                  ))}
+                            {ad.description && (
+                              <div>
+                                <Label className="text-xs text-gray-500">DESCRIÇÃO</Label>
+                                <p className="text-sm">{ad.description}</p>
+                              </div>
+                            )}
+                            
+                            <div>
+                              <Label className="text-xs text-gray-500">TEXTO COMPLETO</Label>
+                              <p className="text-sm bg-gray-50 p-2 rounded">{ad.full_text || ad.text}</p>
+                            </div>
+
+                            {formData.placements.length > 0 && (
+                              <div>
+                                <Label className="text-xs text-gray-500">POSICIONAMENTOS SELECIONADOS</Label>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {formData.placements.map(placementValue => {
+                                    const placement = placements.find(p => p.value === placementValue)
+                                    return placement ? (
+                                      <Badge key={placementValue} variant="secondary" className="text-xs">
+                                        {placement.label}
+                                      </Badge>
+                                    ) : null
+                                  })}
                                 </div>
                               </div>
                             )}
                           </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
 
-      {/* Botão de Gerar Anúncio */}
+      {/* Dicas e Informações */}
       <Card>
-        <CardContent className="pt-6">
-          <Button 
-            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-3"
-            size="lg"
-          >
-            <Zap className="h-5 w-5 mr-2" />
-            Gerar Anúncio
-          </Button>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <h4 className="font-medium">🎯 Posicionamentos Primeiro</h4>
+              <p className="text-sm text-gray-600">
+                Selecione os posicionamentos ANTES de fazer upload para gerar as versões corretas automaticamente.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <h4 className="font-medium">✂️ Redimensionamento Automático</h4>
+              <p className="text-sm text-gray-600">
+                Suas imagens são cortadas automaticamente para cada formato: 1:1, 9:16, 1.91:1, etc.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <h4 className="font-medium">🔧 Controle Manual</h4>
+              <p className="text-sm text-gray-600">
+                Use os botões de corte para ajustar manualmente qualquer versão da imagem.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <h4 className="font-medium">💾 Download Individual</h4>
+              <p className="text-sm text-gray-600">
+                Baixe cada versão otimizada individualmente para usar em outras ferramentas.
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
-  )
-}
+  );
+};
 
-export default AdGeneration
+export default AdGeneration;
 

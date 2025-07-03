@@ -38,6 +38,7 @@ const AdGeneration = () => {
   const [generatedAds, setGeneratedAds] = useState([])
   const [isGenerating, setIsGenerating] = useState(false)
   const [isProcessingImages, setIsProcessingImages] = useState(false)
+  const [isGeneratingAudience, setIsGeneratingAudience] = useState(false)
   
   // Estados para sistema de localização avançado
   const [citySearchQuery, setCitySearchQuery] = useState('')

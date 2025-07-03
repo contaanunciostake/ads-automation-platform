@@ -1393,7 +1393,7 @@ def optimize_images():
 
 # ===== ENDPOINTS PARA SISTEMA DE LOCALIZAÇÃO =====
 
-@facebook_bp.route('/cities/search', methods=['GET'])
+@facebook_data_bp.route('/cities/search', methods=['GET'])
 def search_cities():
     """Buscar cidades brasileiras por nome"""
     try:
@@ -1566,7 +1566,7 @@ def search_cities():
             'error': f'Erro ao buscar cidades: {str(e)}'
         }), 500
 
-@facebook_bp.route('/cities/coordinates', methods=['POST'])
+@facebook_data_bp.route('/cities/coordinates', methods=['POST'])
 def get_city_coordinates():
     """Obter coordenadas de uma cidade específica"""
     try:
@@ -1616,7 +1616,7 @@ def get_city_coordinates():
             'error': f'Erro ao obter coordenadas: {str(e)}'
         }), 500
 
-@facebook_bp.route('/location/radius-cities', methods=['POST'])
+@facebook_data_bp.route('/location/radius-cities', methods=['POST'])
 def get_cities_in_radius():
     """Obter cidades dentro de um raio específico"""
     try:

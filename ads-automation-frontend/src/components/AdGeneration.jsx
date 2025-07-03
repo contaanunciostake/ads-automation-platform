@@ -1,4 +1,44 @@
 import React, { useState, useEffect } from 'react'
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from '../ui/card'
+import { Button } from '../ui/button'
+import { Input } from '../ui/input'
+import { Label } from '../ui/label'
+import { Textarea } from '../ui/textarea'
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '../ui/select'
+import { Badge } from '../ui/badge'
+import { 
+  Image, 
+  Video, 
+  Copy, 
+  Zap, 
+  MapPin, 
+  Search, 
+  X, 
+  Download,
+  Resize,
+  Upload,
+  AlertCircle,
+  CheckCircle,
+  Loader2,
+  TrendingUp,
+  Users,
+  DollarSign,
+  Eye,
+  MousePointer,
+  BarChart3
+} from 'lucide-react'
 
 const AdGeneration = () => {
   // Estados principais
@@ -160,6 +200,7 @@ const AdGeneration = () => {
     { 
       value: 'image', 
       label: 'Imagem', 
+      icon: Image, 
       description: 'Anúncios com imagens estáticas',
       specs: {
         formats: ['JPG', 'PNG'],
@@ -171,6 +212,7 @@ const AdGeneration = () => {
     { 
       value: 'video', 
       label: 'Vídeo', 
+      icon: Video, 
       description: 'Anúncios com vídeos',
       specs: {
         formats: ['MP4', 'MOV', 'GIF'],
@@ -183,6 +225,7 @@ const AdGeneration = () => {
     { 
       value: 'carousel', 
       label: 'Carrossel', 
+      icon: Copy, 
       description: 'Múltiplas imagens ou vídeos (2-10 cards)',
       specs: {
         formats: ['JPG', 'PNG', 'MP4', 'MOV'],
@@ -588,6 +631,15 @@ const AdGeneration = () => {
     }))
   }
 
+  const handleArrayInputChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: prev[field].includes(value)
+        ? prev[field].filter(item => item !== value)
+        : [...prev[field], value]
+    }))
+  }
+
   // Agrupar posicionamentos por categoria
   const groupedPlacements = availablePlacements.reduce((acc, placement) => {
     if (!acc[placement.category]) {
@@ -597,820 +649,647 @@ const AdGeneration = () => {
     return acc
   }, {})
 
-  // Estilos CSS inline
-  const styles = {
-    container: {
-      padding: '24px',
-      maxWidth: '1200px',
-      margin: '0 auto',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
-    },
-    card: {
-      backgroundColor: 'white',
-      border: '1px solid #e5e7eb',
-      borderRadius: '8px',
-      padding: '24px',
-      marginBottom: '24px',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-    },
-    cardHeader: {
-      marginBottom: '16px',
-      borderBottom: '1px solid #f3f4f6',
-      paddingBottom: '16px'
-    },
-    cardTitle: {
-      fontSize: '18px',
-      fontWeight: '600',
-      margin: '0 0 8px 0',
-      color: '#111827'
-    },
-    cardDescription: {
-      fontSize: '14px',
-      color: '#6b7280',
-      margin: 0
-    },
-    grid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-      gap: '24px'
-    },
-    gridCols2: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(2, 1fr)',
-      gap: '16px'
-    },
-    gridCols4: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-      gap: '16px'
-    },
-    formGroup: {
-      marginBottom: '16px'
-    },
-    label: {
-      display: 'block',
-      fontSize: '14px',
-      fontWeight: '500',
-      marginBottom: '8px',
-      color: '#374151'
-    },
-    input: {
-      width: '100%',
-      padding: '8px 12px',
-      border: '1px solid #d1d5db',
-      borderRadius: '6px',
-      fontSize: '14px',
-      boxSizing: 'border-box'
-    },
-    textarea: {
-      width: '100%',
-      padding: '8px 12px',
-      border: '1px solid #d1d5db',
-      borderRadius: '6px',
-      fontSize: '14px',
-      minHeight: '80px',
-      resize: 'vertical',
-      boxSizing: 'border-box'
-    },
-    select: {
-      width: '100%',
-      padding: '8px 12px',
-      border: '1px solid #d1d5db',
-      borderRadius: '6px',
-      fontSize: '14px',
-      backgroundColor: 'white',
-      boxSizing: 'border-box'
-    },
-    button: {
-      padding: '8px 16px',
-      backgroundColor: '#3b82f6',
-      color: 'white',
-      border: 'none',
-      borderRadius: '6px',
-      fontSize: '14px',
-      fontWeight: '500',
-      cursor: 'pointer',
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '8px'
-    },
-    buttonSecondary: {
-      padding: '8px 16px',
-      backgroundColor: '#f3f4f6',
-      color: '#374151',
-      border: '1px solid #d1d5db',
-      borderRadius: '6px',
-      fontSize: '14px',
-      fontWeight: '500',
-      cursor: 'pointer',
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '8px'
-    },
-    buttonSuccess: {
-      padding: '8px 16px',
-      backgroundColor: '#10b981',
-      color: 'white',
-      border: 'none',
-      borderRadius: '6px',
-      fontSize: '14px',
-      fontWeight: '500',
-      cursor: 'pointer',
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '8px'
-    },
-    buttonLarge: {
-      width: '100%',
-      padding: '12px 24px',
-      backgroundColor: 'linear-gradient(to right, #3b82f6, #8b5cf6)',
-      color: 'white',
-      border: 'none',
-      borderRadius: '8px',
-      fontSize: '16px',
-      fontWeight: '600',
-      cursor: 'pointer',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '8px'
-    },
-    metricCard: {
-      textAlign: 'center',
-      padding: '16px',
-      borderRadius: '8px',
-      backgroundColor: '#f8fafc'
-    },
-    metricValue: {
-      fontSize: '24px',
-      fontWeight: 'bold',
-      margin: '8px 0'
-    },
-    metricLabel: {
-      fontSize: '12px',
-      color: '#6b7280'
-    },
-    checkbox: {
-      marginRight: '8px'
-    },
-    checkboxLabel: {
-      display: 'flex',
-      alignItems: 'center',
-      padding: '12px',
-      border: '1px solid #e5e7eb',
-      borderRadius: '6px',
-      marginBottom: '8px',
-      cursor: 'pointer'
-    },
-    badge: {
-      display: 'inline-block',
-      padding: '4px 8px',
-      backgroundColor: '#e5e7eb',
-      color: '#374151',
-      borderRadius: '4px',
-      fontSize: '12px',
-      fontWeight: '500',
-      marginRight: '8px'
-    },
-    uploadArea: {
-      border: '2px dashed #d1d5db',
-      borderRadius: '8px',
-      padding: '32px',
-      textAlign: 'center',
-      backgroundColor: '#f9fafb'
-    },
-    imagePreview: {
-      width: '96px',
-      height: '96px',
-      objectFit: 'cover',
-      borderRadius: '8px'
-    },
-    imageGrid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-      gap: '12px'
-    },
-    versionCard: {
-      border: '1px solid #e5e7eb',
-      borderRadius: '6px',
-      padding: '12px',
-      textAlign: 'center'
-    },
-    versionImage: {
-      width: '100%',
-      height: '64px',
-      objectFit: 'cover',
-      borderRadius: '4px',
-      marginBottom: '8px'
-    },
-    loading: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '32px',
-      color: '#6b7280'
-    },
-    error: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '32px',
-      color: '#dc2626'
-    },
-    cityTag: {
-      display: 'inline-flex',
-      alignItems: 'center',
-      padding: '4px 8px',
-      backgroundColor: '#e5e7eb',
-      borderRadius: '4px',
-      fontSize: '12px',
-      margin: '4px'
-    },
-    cityTagClose: {
-      marginLeft: '4px',
-      cursor: 'pointer',
-      color: '#6b7280'
-    },
-    dropdown: {
-      position: 'absolute',
-      top: '100%',
-      left: 0,
-      right: 0,
-      backgroundColor: 'white',
-      border: '1px solid #d1d5db',
-      borderRadius: '6px',
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-      maxHeight: '200px',
-      overflowY: 'auto',
-      zIndex: 10
-    },
-    dropdownItem: {
-      padding: '12px',
-      cursor: 'pointer',
-      borderBottom: '1px solid #f3f4f6'
-    }
-  }
-
   return (
-    <div style={styles.container}>
+    <div className="space-y-6">
       {/* Dashboard de Métricas */}
-      <div style={styles.card}>
-        <div style={styles.cardHeader}>
-          <h2 style={styles.cardTitle}>📊 Dashboard de Performance</h2>
-          <p style={styles.cardDescription}>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Dashboard de Performance
+          </CardTitle>
+          <CardDescription>
             Métricas dos últimos 7 dias
             {lastUpdated && (
-              <span style={{marginLeft: '8px', fontSize: '12px'}}>
+              <span className="text-xs text-muted-foreground ml-2">
                 Atualizado: {lastUpdated}
               </span>
             )}
-          </p>
-        </div>
-        
-        {isLoadingDashboard ? (
-          <div style={styles.loading}>
-            ⏳ Carregando métricas...
-          </div>
-        ) : dashboardError ? (
-          <div style={styles.error}>
-            ⚠️ {dashboardError}
-          </div>
-        ) : dashboardData ? (
-          <div style={styles.gridCols4}>
-            <div style={{...styles.metricCard, backgroundColor: '#dbeafe'}}>
-              <div>👁️</div>
-              <div style={{...styles.metricValue, color: '#2563eb'}}>
-                {dashboardData.impressions.toLocaleString()}
-              </div>
-              <div style={styles.metricLabel}>Impressões</div>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingDashboard ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              Carregando métricas...
             </div>
-            <div style={{...styles.metricCard, backgroundColor: '#dcfce7'}}>
-              <div>👆</div>
-              <div style={{...styles.metricValue, color: '#16a34a'}}>
-                {dashboardData.clicks.toLocaleString()}
-              </div>
-              <div style={styles.metricLabel}>Cliques</div>
+          ) : dashboardError ? (
+            <div className="flex items-center justify-center py-8 text-red-500">
+              <AlertCircle className="h-5 w-5 mr-2" />
+              {dashboardError}
             </div>
-            <div style={{...styles.metricCard, backgroundColor: '#f3e8ff'}}>
-              <div>💰</div>
-              <div style={{...styles.metricValue, color: '#9333ea'}}>
-                R$ {dashboardData.spent.toFixed(2)}
+          ) : dashboardData ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <Eye className="h-6 w-6 mx-auto mb-2 text-blue-600" />
+                <div className="text-2xl font-bold text-blue-600">
+                  {dashboardData.impressions.toLocaleString()}
+                </div>
+                <div className="text-sm text-gray-600">Impressões</div>
               </div>
-              <div style={styles.metricLabel}>Gasto</div>
-            </div>
-            <div style={{...styles.metricCard, backgroundColor: '#fed7aa'}}>
-              <div>📈</div>
-              <div style={{...styles.metricValue, color: '#ea580c'}}>
-                {dashboardData.active_campaigns}
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <MousePointer className="h-6 w-6 mx-auto mb-2 text-green-600" />
+                <div className="text-2xl font-bold text-green-600">
+                  {dashboardData.clicks.toLocaleString()}
+                </div>
+                <div className="text-sm text-gray-600">Cliques</div>
               </div>
-              <div style={styles.metricLabel}>Campanhas Ativas</div>
+              <div className="text-center p-4 bg-purple-50 rounded-lg">
+                <DollarSign className="h-6 w-6 mx-auto mb-2 text-purple-600" />
+                <div className="text-2xl font-bold text-purple-600">
+                  R$ {dashboardData.spent.toFixed(2)}
+                </div>
+                <div className="text-sm text-gray-600">Gasto</div>
+              </div>
+              <div className="text-center p-4 bg-orange-50 rounded-lg">
+                <TrendingUp className="h-6 w-6 mx-auto mb-2 text-orange-600" />
+                <div className="text-2xl font-bold text-orange-600">
+                  {dashboardData.active_campaigns}
+                </div>
+                <div className="text-sm text-gray-600">Campanhas Ativas</div>
+              </div>
             </div>
-          </div>
-        ) : null}
-      </div>
+          ) : null}
+        </CardContent>
+      </Card>
 
       {/* Formulário Principal */}
-      <div style={styles.grid}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Coluna Esquerda */}
-        <div>
+        <div className="space-y-6">
           {/* Informações Básicas */}
-          <div style={styles.card}>
-            <div style={styles.cardHeader}>
-              <h3 style={styles.cardTitle}>ℹ️ Informações Básicas</h3>
-              <p style={styles.cardDescription}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Informações Básicas</CardTitle>
+              <CardDescription>
                 Configure as informações principais da campanha
-              </p>
-            </div>
-            
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Página da Business Manager</label>
-              <select 
-                style={styles.select}
-                value={formData.page_id} 
-                onChange={(e) => handleInputChange('page_id', e.target.value)}
-              >
-                <option value="">{isLoadingPages ? "Carregando páginas..." : "Selecione uma página"}</option>
-                {pages.map((page) => (
-                  <option key={page.id} value={page.id}>
-                    {page.name} - {page.category}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Nome do Produto/Serviço</label>
-              <input
-                style={styles.input}
-                type="text"
-                value={formData.product_name}
-                onChange={(e) => handleInputChange('product_name', e.target.value)}
-                placeholder="Ex: Smartphone Galaxy S24"
-              />
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Descrição do Produto/Serviço</label>
-              <textarea
-                style={styles.textarea}
-                value={formData.product_description}
-                onChange={(e) => handleInputChange('product_description', e.target.value)}
-                placeholder="Descreva detalhadamente seu produto ou serviço..."
-                rows={4}
-              />
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Plataformas</label>
-              <div style={{display: 'flex', gap: '16px'}}>
-                <label style={{display: 'flex', alignItems: 'center'}}>
-                  <input
-                    type="checkbox"
-                    style={styles.checkbox}
-                    checked={formData.platforms.includes('facebook')}
-                    onChange={() => handleArrayToggle('platforms', 'facebook')}
-                  />
-                  📘 Facebook
-                </label>
-                <label style={{display: 'flex', alignItems: 'center'}}>
-                  <input
-                    type="checkbox"
-                    style={styles.checkbox}
-                    checked={formData.platforms.includes('instagram')}
-                    onChange={() => handleArrayToggle('platforms', 'instagram')}
-                  />
-                  📷 Instagram
-                </label>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Página da Business Manager */}
+              <div className="space-y-2">
+                <Label htmlFor="page_id">Página da Business Manager</Label>
+                <Select 
+                  value={formData.page_id} 
+                  onValueChange={(value) => handleInputChange('page_id', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={isLoadingPages ? "Carregando páginas..." : "Selecione uma página"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pages.map((page) => (
+                      <SelectItem key={page.id} value={page.id}>
+                        {page.name} - {page.category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
-          </div>
+
+              {/* Nome do Produto */}
+              <div className="space-y-2">
+                <Label htmlFor="product_name">Nome do Produto/Serviço</Label>
+                <Input
+                  id="product_name"
+                  value={formData.product_name}
+                  onChange={(e) => handleInputChange('product_name', e.target.value)}
+                  placeholder="Ex: Smartphone Galaxy S24"
+                />
+              </div>
+
+              {/* Descrição do Produto */}
+              <div className="space-y-2">
+                <Label htmlFor="product_description">Descrição do Produto/Serviço</Label>
+                <Textarea
+                  id="product_description"
+                  value={formData.product_description}
+                  onChange={(e) => handleInputChange('product_description', e.target.value)}
+                  placeholder="Descreva detalhadamente seu produto ou serviço..."
+                  rows={4}
+                />
+              </div>
+
+              {/* Plataformas */}
+              <div className="space-y-2">
+                <Label>Plataformas</Label>
+                <div className="flex gap-4">
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.platforms.includes('facebook')}
+                      onChange={() => handleArrayToggle('platforms', 'facebook')}
+                    />
+                    <span>📘 Facebook</span>
+                  </label>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.platforms.includes('instagram')}
+                      onChange={() => handleArrayToggle('platforms', 'instagram')}
+                    />
+                    <span>📷 Instagram</span>
+                  </label>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Público-Alvo */}
-          <div style={styles.card}>
-            <div style={styles.cardHeader}>
-              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                <div>
-                  <h3 style={styles.cardTitle}>👥 Público-Alvo</h3>
-                  <p style={styles.cardDescription}>
-                    Configure o público-alvo ou use IA para gerar automaticamente
-                  </p>
-                </div>
-                <button
-                  style={{...styles.button, background: 'linear-gradient(to right, #8b5cf6, #ec4899)'}}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Público-Alvo
+                </span>
+                <Button
                   onClick={generateAudienceWithAI}
                   disabled={!formData.product_description.trim() || isGeneratingAudience}
+                  size="sm"
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
                 >
-                  {isGeneratingAudience ? '⏳' : '⚡'} Gerar com IA
-                </button>
+                  {isGeneratingAudience ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Zap className="h-4 w-4 mr-2" />
+                  )}
+                  Gerar com IA
+                </Button>
+              </CardTitle>
+              <CardDescription>
+                Configure o público-alvo ou use IA para gerar automaticamente
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Idade */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="age_min">Idade Mínima</Label>
+                  <Input
+                    id="age_min"
+                    type="number"
+                    min="13"
+                    max="65"
+                    value={formData.audience.age_min}
+                    onChange={(e) => handleNestedInputChange('audience', 'age_min', parseInt(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="age_max">Idade Máxima</Label>
+                  <Input
+                    id="age_max"
+                    type="number"
+                    min="13"
+                    max="65"
+                    value={formData.audience.age_max}
+                    onChange={(e) => handleNestedInputChange('audience', 'age_max', parseInt(e.target.value))}
+                  />
+                </div>
               </div>
-            </div>
-            
-            <div style={styles.gridCols2}>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Idade Mínima</label>
-                <input
-                  style={styles.input}
-                  type="number"
-                  min="13"
-                  max="65"
-                  value={formData.audience.age_min}
-                  onChange={(e) => handleNestedInputChange('audience', 'age_min', parseInt(e.target.value))}
+
+              {/* Gênero */}
+              <div className="space-y-2">
+                <Label htmlFor="gender">Gênero</Label>
+                <Select 
+                  value={formData.audience.gender} 
+                  onValueChange={(value) => handleNestedInputChange('audience', 'gender', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o gênero" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {genderOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Interesses */}
+              <div className="space-y-2">
+                <Label htmlFor="interests">Interesses</Label>
+                <Textarea
+                  id="interests"
+                  value={formData.audience.interests.join(', ')}
+                  onChange={(e) => handleNestedInputChange('audience', 'interests', e.target.value.split(', ').filter(i => i.trim()))}
+                  placeholder="Ex: tecnologia, smartphones, eletrônicos"
+                  rows={2}
                 />
               </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Idade Máxima</label>
-                <input
-                  style={styles.input}
-                  type="number"
-                  min="13"
-                  max="65"
-                  value={formData.audience.age_max}
-                  onChange={(e) => handleNestedInputChange('audience', 'age_max', parseInt(e.target.value))}
-                />
-              </div>
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Gênero</label>
-              <select 
-                style={styles.select}
-                value={formData.audience.gender} 
-                onChange={(e) => handleNestedInputChange('audience', 'gender', e.target.value)}
-              >
-                {genderOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Interesses</label>
-              <textarea
-                style={styles.textarea}
-                value={formData.audience.interests.join(', ')}
-                onChange={(e) => handleNestedInputChange('audience', 'interests', e.target.value.split(', ').filter(i => i.trim()))}
-                placeholder="Ex: tecnologia, smartphones, eletrônicos"
-                rows={2}
-              />
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Localização */}
-          <div style={styles.card}>
-            <div style={styles.cardHeader}>
-              <h3 style={styles.cardTitle}>📍 Localização</h3>
-              <p style={styles.cardDescription}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Localização
+              </CardTitle>
+              <CardDescription>
                 Configure a localização geográfica do público-alvo
-              </p>
-            </div>
-            
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Buscar Cidades</label>
-              <div style={{position: 'relative'}}>
-                <input
-                  style={styles.input}
-                  type="text"
-                  value={citySearch}
-                  onChange={(e) => setCitySearch(e.target.value)}
-                  placeholder="Digite o nome da cidade..."
-                />
-                {isSearchingCities && (
-                  <div style={{position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)'}}>
-                    ⏳
-                  </div>
-                )}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Busca de Cidades */}
+              <div className="space-y-2">
+                <Label htmlFor="city_search">Buscar Cidades</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="city_search"
+                    value={citySearch}
+                    onChange={(e) => setCitySearch(e.target.value)}
+                    placeholder="Digite o nome da cidade..."
+                    className="pl-10"
+                  />
+                  {isSearchingCities && (
+                    <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-gray-400" />
+                  )}
+                </div>
 
                 {/* Dropdown de Resultados */}
                 {cityResults.length > 0 && (
-                  <div style={styles.dropdown}>
+                  <div className="border rounded-md bg-white shadow-lg max-h-48 overflow-y-auto">
                     {cityResults.map((city, index) => (
-                      <div
+                      <button
                         key={index}
-                        style={styles.dropdownItem}
                         onClick={() => addSelectedCity(city)}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100 border-b last:border-b-0"
                       >
-                        <div style={{fontWeight: '500'}}>{city.name}</div>
-                        <div style={{fontSize: '12px', color: '#6b7280'}}>{city.state}</div>
+                        <div className="font-medium">{city.name}</div>
+                        <div className="text-sm text-gray-500">{city.state}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Cidades Selecionadas */}
+              {selectedCities.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Cidades Selecionadas</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedCities.map((city, index) => (
+                      <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                        {city.name}
+                        <button
+                          onClick={() => removeSelectedCity(city.name)}
+                          className="ml-1 hover:text-red-500"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Mapa Simulado */}
+              <div className="space-y-2">
+                <Label>Mapa de Localização</Label>
+                <div className="bg-gray-100 rounded-lg p-4 text-center">
+                  <MapPin className="h-8 w-8 mx-auto mb-2 text-blue-500" />
+                  <div className="text-sm text-gray-600">
+                    Centro: {mapCenter.lat.toFixed(4)}, {mapCenter.lng.toFixed(4)}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Raio: {mapRadius}km
+                  </div>
+                </div>
+                
+                {/* Controle de Raio */}
+                <div className="space-y-2">
+                  <Label htmlFor="radius">Raio de Alcance (km)</Label>
+                  <Input
+                    id="radius"
+                    type="range"
+                    min="1"
+                    max="100"
+                    value={mapRadius}
+                    onChange={(e) => setMapRadius(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="text-sm text-gray-500 text-center">
+                    {mapRadius} km
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Coluna Direita */}
+        <div className="space-y-6">
+          {/* Orçamento */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Orçamento e Cronograma
+              </CardTitle>
+              <CardDescription>
+                Configure o orçamento e período da campanha
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Tipo de Orçamento */}
+              <div className="space-y-2">
+                <Label htmlFor="budget_type">Tipo de Orçamento</Label>
+                <Select 
+                  value={formData.budget_type} 
+                  onValueChange={(value) => handleInputChange('budget_type', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo de orçamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {budgetTypes.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        <div>
+                          <div className="font-medium">{type.label}</div>
+                          <div className="text-sm text-gray-500">{type.description}</div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Valor do Orçamento */}
+              <div className="space-y-2">
+                <Label htmlFor="budget_amount">
+                  Valor do Orçamento (R$)
+                </Label>
+                <Input
+                  id="budget_amount"
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={formData.budget_amount}
+                  onChange={(e) => handleInputChange('budget_amount', e.target.value)}
+                  placeholder="Ex: 100.00"
+                />
+              </div>
+
+              {/* Datas */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="start_date">Data de Início</Label>
+                  <Input
+                    id="start_date"
+                    type="date"
+                    value={formData.start_date}
+                    onChange={(e) => handleInputChange('start_date', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="end_date">Data de Fim</Label>
+                  <Input
+                    id="end_date"
+                    type="date"
+                    value={formData.end_date}
+                    onChange={(e) => handleInputChange('end_date', e.target.value)}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Tipo de Criativo */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Tipo de Criativo</CardTitle>
+              <CardDescription>
+                Escolha o formato do seu anúncio
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 gap-3">
+                {creativeTypes.map((type) => (
+                  <div
+                    key={type.value}
+                    className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                      formData.creative_type === type.value
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => handleInputChange('creative_type', type.value)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <type.icon className="h-5 w-5 mt-1 text-blue-500" />
+                      <div className="flex-1">
+                        <div className="font-medium">{type.label}</div>
+                        <div className="text-sm text-gray-600 mb-2">{type.description}</div>
+                        <div className="text-xs text-gray-500">
+                          <div>Formatos: {type.specs.formats.join(', ')}</div>
+                          <div>Tamanho máx: {type.specs.maxSize}</div>
+                          <div>Proporções: {type.specs.ratios.join(', ')}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Posicionamentos */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Posicionamentos</CardTitle>
+              <CardDescription>
+                Selecione onde seus anúncios aparecerão
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {Object.entries(groupedPlacements).map(([category, placements]) => (
+                  <div key={category}>
+                    <h4 className="font-medium text-sm text-gray-700 mb-2">{category}</h4>
+                    <div className="space-y-2">
+                      {placements.map((placement) => (
+                        <label
+                          key={placement.value}
+                          className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.placements.includes(placement.value)}
+                            onChange={() => handleArrayToggle('placements', placement.value)}
+                            className="mt-1"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{placement.label}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {placement.recommended}
+                              </Badge>
+                            </div>
+                            <div className="text-sm text-gray-600">{placement.description}</div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Upload de Imagens - SIMPLIFICADO */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="h-5 w-5" />
+                Upload de Imagens
+              </CardTitle>
+              <CardDescription>
+                Faça upload das suas imagens
+                {formData.placements.length === 0 && (
+                  <div className="flex items-center gap-1 mt-2 text-amber-600">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="text-sm">Selecione posicionamentos primeiro!</span>
+                  </div>
+                )}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Input de Upload */}
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                  <div className="text-sm text-gray-600 mb-2">
+                    Clique para selecionar imagens ou arraste aqui
+                  </div>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="file-upload"
+                  />
+                  <label
+                    htmlFor="file-upload"
+                    className="inline-flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 cursor-pointer"
+                  >
+                    Selecionar Imagens
+                  </label>
+                  <div className="text-xs text-gray-500 mt-2">
+                    JPG, PNG até 30MB cada
+                  </div>
+                </div>
+
+                {/* Preview das Imagens Carregadas */}
+                {uploadedImages.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium">Imagens Carregadas</h4>
+                      <Badge variant="secondary">
+                        {uploadedImages.length} imagem(ns)
+                      </Badge>
+                    </div>
+                    
+                    {uploadedImages.map((image, index) => (
+                      <div key={image.id} className="border rounded-lg p-4">
+                        <div className="flex items-start gap-4">
+                          {/* Preview da Imagem Original */}
+                          <div className="flex-shrink-0">
+                            <img
+                              src={image.preview}
+                              alt={image.name}
+                              className="w-24 h-24 object-cover rounded-lg"
+                            />
+                          </div>
+                          
+                          {/* Informações da Imagem */}
+                          <div className="flex-1">
+                            <div className="font-medium">{image.name}</div>
+                            <div className="text-sm text-gray-500">
+                              Tamanho: {(image.size / 1024 / 1024).toFixed(2)} MB
+                            </div>
+                            
+                            {/* Botão para Gerar Versões */}
+                            {formData.placements.length > 0 && (
+                              <div className="mt-2">
+                                <Button
+                                  onClick={() => generateVersionsForPlacements(image)}
+                                  disabled={isProcessingImages}
+                                  size="sm"
+                                  className="bg-green-500 hover:bg-green-600"
+                                >
+                                  {isProcessingImages ? (
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                  ) : (
+                                    <Resize className="h-4 w-4 mr-2" />
+                                  )}
+                                  Gerar Versões
+                                </Button>
+                              </div>
+                            )}
+                            
+                            {/* Versões Geradas */}
+                            {image.versions.length > 0 && (
+                              <div className="mt-3">
+                                <div className="text-sm font-medium mb-2">Versões Geradas:</div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {image.versions.map((version, vIndex) => (
+                                    <div key={vIndex} className="border rounded p-2">
+                                      <img
+                                        src={version.url}
+                                        alt={`${version.format}`}
+                                        className="w-full h-16 object-cover rounded mb-2"
+                                      />
+                                      <div className="text-xs">
+                                        <div className="font-medium">{version.format}</div>
+                                        <div className="text-gray-500">
+                                          {version.width}x{version.height}
+                                        </div>
+                                        <div className="text-gray-500">
+                                          Para: {version.placements.join(', ')}
+                                        </div>
+                                      </div>
+                                      <Button
+                                        onClick={() => downloadVersion(version, image.name)}
+                                        size="sm"
+                                        variant="outline"
+                                        className="w-full mt-2"
+                                      >
+                                        <Download className="h-3 w-3 mr-1" />
+                                        Download
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* Cidades Selecionadas */}
-            {selectedCities.length > 0 && (
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Cidades Selecionadas</label>
-                <div>
-                  {selectedCities.map((city, index) => (
-                    <span key={index} style={styles.cityTag}>
-                      {city.name}
-                      <span
-                        style={styles.cityTagClose}
-                        onClick={() => removeSelectedCity(city.name)}
-                      >
-                        ✕
-                      </span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Mapa Simulado */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Mapa de Localização</label>
-              <div style={{...styles.metricCard, padding: '24px'}}>
-                <div style={{fontSize: '32px', marginBottom: '8px'}}>📍</div>
-                <div style={{fontSize: '14px', color: '#6b7280'}}>
-                  Centro: {mapCenter.lat.toFixed(4)}, {mapCenter.lng.toFixed(4)}
-                </div>
-                <div style={{fontSize: '14px', color: '#6b7280'}}>
-                  Raio: {mapRadius}km
-                </div>
-              </div>
-              
-              <div style={{marginTop: '12px'}}>
-                <label style={styles.label}>Raio de Alcance: {mapRadius}km</label>
-                <input
-                  style={styles.input}
-                  type="range"
-                  min="1"
-                  max="100"
-                  value={mapRadius}
-                  onChange={(e) => setMapRadius(parseInt(e.target.value))}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Coluna Direita */}
-        <div>
-          {/* Orçamento */}
-          <div style={styles.card}>
-            <div style={styles.cardHeader}>
-              <h3 style={styles.cardTitle}>💰 Orçamento e Cronograma</h3>
-              <p style={styles.cardDescription}>
-                Configure o orçamento e período da campanha
-              </p>
-            </div>
-            
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Tipo de Orçamento</label>
-              <select 
-                style={styles.select}
-                value={formData.budget_type} 
-                onChange={(e) => handleInputChange('budget_type', e.target.value)}
-              >
-                {budgetTypes.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label} - {type.description}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Valor do Orçamento (R$)</label>
-              <input
-                style={styles.input}
-                type="number"
-                min="1"
-                step="0.01"
-                value={formData.budget_amount}
-                onChange={(e) => handleInputChange('budget_amount', e.target.value)}
-                placeholder="Ex: 100.00"
-              />
-            </div>
-
-            <div style={styles.gridCols2}>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Data de Início</label>
-                <input
-                  style={styles.input}
-                  type="date"
-                  value={formData.start_date}
-                  onChange={(e) => handleInputChange('start_date', e.target.value)}
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Data de Fim</label>
-                <input
-                  style={styles.input}
-                  type="date"
-                  value={formData.end_date}
-                  onChange={(e) => handleInputChange('end_date', e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Tipo de Criativo */}
-          <div style={styles.card}>
-            <div style={styles.cardHeader}>
-              <h3 style={styles.cardTitle}>🎨 Tipo de Criativo</h3>
-              <p style={styles.cardDescription}>
-                Escolha o formato do seu anúncio
-              </p>
-            </div>
-            
-            {creativeTypes.map((type) => (
-              <div
-                key={type.value}
-                style={{
-                  ...styles.checkboxLabel,
-                  backgroundColor: formData.creative_type === type.value ? '#dbeafe' : 'white',
-                  borderColor: formData.creative_type === type.value ? '#3b82f6' : '#e5e7eb'
-                }}
-                onClick={() => handleInputChange('creative_type', type.value)}
-              >
-                <input
-                  type="radio"
-                  name="creative_type"
-                  checked={formData.creative_type === type.value}
-                  onChange={() => handleInputChange('creative_type', type.value)}
-                  style={{marginRight: '12px'}}
-                />
-                <div>
-                  <div style={{fontWeight: '500', marginBottom: '4px'}}>{type.label}</div>
-                  <div style={{fontSize: '12px', color: '#6b7280', marginBottom: '8px'}}>{type.description}</div>
-                  <div style={{fontSize: '11px', color: '#9ca3af'}}>
-                    <div>Formatos: {type.specs.formats.join(', ')}</div>
-                    <div>Tamanho máx: {type.specs.maxSize}</div>
-                    <div>Proporções: {type.specs.ratios.join(', ')}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Posicionamentos */}
-          <div style={styles.card}>
-            <div style={styles.cardHeader}>
-              <h3 style={styles.cardTitle}>📱 Posicionamentos</h3>
-              <p style={styles.cardDescription}>
-                Selecione onde seus anúncios aparecerão
-              </p>
-            </div>
-            
-            {Object.entries(groupedPlacements).map(([category, placements]) => (
-              <div key={category} style={{marginBottom: '16px'}}>
-                <h4 style={{fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px'}}>
-                  {category}
-                </h4>
-                {placements.map((placement) => (
-                  <label
-                    key={placement.value}
-                    style={styles.checkboxLabel}
-                  >
-                    <input
-                      type="checkbox"
-                      style={styles.checkbox}
-                      checked={formData.placements.includes(placement.value)}
-                      onChange={() => handleArrayToggle('placements', placement.value)}
-                    />
-                    <div style={{flex: 1}}>
-                      <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px'}}>
-                        <span style={{fontWeight: '500'}}>{placement.label}</span>
-                        <span style={styles.badge}>{placement.recommended}</span>
-                      </div>
-                      <div style={{fontSize: '12px', color: '#6b7280'}}>{placement.description}</div>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            ))}
-          </div>
-
-          {/* Upload de Imagens - SIMPLIFICADO */}
-          <div style={styles.card}>
-            <div style={styles.cardHeader}>
-              <h3 style={styles.cardTitle}>📤 Upload de Imagens</h3>
-              <p style={styles.cardDescription}>
-                Faça upload das suas imagens
-                {formData.placements.length === 0 && (
-                  <div style={{display: 'flex', alignItems: 'center', gap: '4px', marginTop: '8px', color: '#f59e0b'}}>
-                    ⚠️ <span style={{fontSize: '12px'}}>Selecione posicionamentos primeiro!</span>
-                  </div>
-                )}
-              </p>
-            </div>
-            
-            {/* Input de Upload */}
-            <div style={styles.uploadArea}>
-              <div style={{fontSize: '32px', marginBottom: '8px'}}>📤</div>
-              <div style={{fontSize: '14px', color: '#6b7280', marginBottom: '12px'}}>
-                Clique para selecionar imagens ou arraste aqui
-              </div>
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleFileUpload}
-                style={{display: 'none'}}
-                id="file-upload"
-              />
-              <label
-                htmlFor="file-upload"
-                style={{...styles.button, display: 'inline-flex'}}
-              >
-                Selecionar Imagens
-              </label>
-              <div style={{fontSize: '12px', color: '#9ca3af', marginTop: '8px'}}>
-                JPG, PNG até 30MB cada
-              </div>
-            </div>
-
-            {/* Preview das Imagens Carregadas */}
-            {uploadedImages.length > 0 && (
-              <div style={{marginTop: '24px'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
-                  <h4 style={{fontSize: '16px', fontWeight: '500', margin: 0}}>Imagens Carregadas</h4>
-                  <span style={styles.badge}>{uploadedImages.length} imagem(ns)</span>
-                </div>
-                
-                {uploadedImages.map((image, index) => (
-                  <div key={image.id} style={{border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px', marginBottom: '16px'}}>
-                    <div style={{display: 'flex', gap: '16px'}}>
-                      {/* Preview da Imagem Original */}
-                      <div style={{flexShrink: 0}}>
-                        <img
-                          src={image.preview}
-                          alt={image.name}
-                          style={styles.imagePreview}
-                        />
-                      </div>
-                      
-                      {/* Informações da Imagem */}
-                      <div style={{flex: 1}}>
-                        <div style={{fontWeight: '500', marginBottom: '4px'}}>{image.name}</div>
-                        <div style={{fontSize: '12px', color: '#6b7280', marginBottom: '12px'}}>
-                          Tamanho: {(image.size / 1024 / 1024).toFixed(2)} MB
-                        </div>
-                        
-                        {/* Botão para Gerar Versões */}
-                        {formData.placements.length > 0 && (
-                          <button
-                            style={styles.buttonSuccess}
-                            onClick={() => generateVersionsForPlacements(image)}
-                            disabled={isProcessingImages}
-                          >
-                            {isProcessingImages ? '⏳' : '🔄'} Gerar Versões
-                          </button>
-                        )}
-                        
-                        {/* Versões Geradas */}
-                        {image.versions.length > 0 && (
-                          <div style={{marginTop: '16px'}}>
-                            <div style={{fontSize: '14px', fontWeight: '500', marginBottom: '8px'}}>Versões Geradas:</div>
-                            <div style={styles.imageGrid}>
-                              {image.versions.map((version, vIndex) => (
-                                <div key={vIndex} style={styles.versionCard}>
-                                  <img
-                                    src={version.url}
-                                    alt={`${version.format}`}
-                                    style={styles.versionImage}
-                                  />
-                                  <div style={{fontSize: '11px', marginBottom: '8px'}}>
-                                    <div style={{fontWeight: '500'}}>{version.format}</div>
-                                    <div style={{color: '#6b7280'}}>
-                                      {version.width}x{version.height}
-                                    </div>
-                                    <div style={{color: '#6b7280'}}>
-                                      Para: {version.placements.join(', ')}
-                                    </div>
-                                  </div>
-                                  <button
-                                    style={{...styles.buttonSecondary, width: '100%', fontSize: '11px', padding: '6px 8px'}}
-                                    onClick={() => downloadVersion(version, image.name)}
-                                  >
-                                    💾 Download
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
       {/* Botão de Gerar Anúncio */}
-      <div style={styles.card}>
-        <button style={styles.buttonLarge}>
-          ⚡ Gerar Anúncio
-        </button>
-      </div>
+      <Card>
+        <CardContent className="pt-6">
+          <Button 
+            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-3"
+            size="lg"
+          >
+            <Zap className="h-5 w-5 mr-2" />
+            Gerar Anúncio
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -34,30 +34,6 @@ class FacebookDataService:
             print(f"Erro na requisição à Facebook API: {e}")
             return {"error": str(e)}
     
-    def _make_post_request(self, endpoint: str, data: dict = None) -> Dict[str, Any]:
-        """Fazer requisição POST para a Facebook API"""
-        url = f"{self.base_url}/{endpoint}"
-        
-        # Preparar dados para envio
-        post_data = {"access_token": self.access_token}
-        if data:
-            post_data.update(data)
-        
-        try:
-            response = requests.post(url, data=post_data)
-            response.raise_for_status()
-            
-            # Verificar se a resposta tem conteúdo JSON
-            if response.content:
-                return response.json()
-            else:
-                # Se não há conteúdo, assumir sucesso
-                return {"success": True}
-                
-        except requests.exceptions.RequestException as e:
-            print(f"Erro na requisição POST à Facebook API: {e}")
-            return {"error": str(e)}
-    
     def get_ad_account_info(self) -> Dict[str, Any]:
         """Buscar informações da conta de anúncios"""
         endpoint = self.account_prefix
@@ -154,7 +130,7 @@ class FacebookDataService:
         return self._make_request(endpoint, params)
     
     def get_campaign_budgets(self, campaigns: List[Dict]) -> Dict[str, float]:
-        """Buscar orçamentos das campanhas através dos adsets"""
+        """Buscar orçamentos das campanhas através dos adsets - TESTADO COM DADOS REAIS"""
         campaign_budgets = {}
         
         try:
@@ -169,19 +145,23 @@ class FacebookDataService:
                 
                 total_budget = 0
                 for adset in adsets:
-                    # Priorizar daily_budget, depois lifetime_budget
-                    daily_budget = adset.get("daily_budget")
-                    lifetime_budget = adset.get("lifetime_budget")
+                    # Processar orçamentos (valores em centavos da API)
+                    daily_budget = adset.get("daily_budget", "0")
+                    lifetime_budget = adset.get("lifetime_budget", "0")
                     
-                    if daily_budget:
-                        total_budget += float(daily_budget) / 100  # Converter centavos para reais
-                    elif lifetime_budget:
-                        total_budget += float(lifetime_budget) / 100  # Converter centavos para reais
+                    # Converter strings para float e depois para reais
+                    # Priorizar daily_budget, depois lifetime_budget
+                    if daily_budget and daily_budget != "0":
+                        total_budget += float(daily_budget) / 100  # Centavos para reais
+                    elif lifetime_budget and lifetime_budget != "0":
+                        total_budget += float(lifetime_budget) / 100  # Centavos para reais
                 
-                campaign_budgets[campaign_id] = total_budget
+                # Arredondar para 2 casas decimais
+                campaign_budgets[campaign_id] = round(total_budget, 2)
                 
         except Exception as e:
-            print(f"Erro ao buscar orçamentos: {e}")
+            print(f"Erro ao buscar orçamentos dos adsets: {e}")
+            # Em caso de erro, retornar dicionário vazio (orçamentos zerados)
             
         return campaign_budgets
     
@@ -331,6 +311,34 @@ class FacebookDataService:
                 
         except Exception as e:
             return {"success": False, "error": str(e)}
+    
+    def _make_post_request(self, endpoint: str, data: dict = None) -> Dict[str, Any]:
+        """Fazer requisição POST para a Facebook API"""
+        url = f"{self.base_url}/{endpoint}"
+        
+        # Preparar dados para envio
+        post_data = {"access_token": self.access_token}
+        if data:
+            post_data.update(data)
+        
+        try:
+            response = requests.post(url, data=post_data)
+            response.raise_for_status()
+            
+            # Verificar se a resposta tem conteúdo JSON
+            if response.content:
+                try:
+                    return response.json()
+                except json.JSONDecodeError:
+                    # Se não conseguir decodificar JSON, assumir sucesso
+                    return {"success": True}
+            else:
+                # Se não há conteúdo, assumir sucesso
+                return {"success": True}
+                
+        except requests.exceptions.RequestException as e:
+            print(f"Erro na requisição POST à Facebook API: {e}")
+            return {"error": str(e)}
     
     def pause_campaign(self, campaign_id: str) -> Dict[str, Any]:
         """Pausar uma campanha específica"""

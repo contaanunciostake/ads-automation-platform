@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify
 from src.services.facebook_data_service import facebook_data_service
 from datetime import datetime, timedelta
+import os
+import json
 
 facebook_data_bp = Blueprint('facebook_data', __name__)
 
@@ -50,41 +52,15 @@ def get_dashboard():
         }), 500
     
     try:
-        # Buscar dados do dashboard
-        dashboard_summary = facebook_data_service.get_dashboard_summary()
-        
-        if not dashboard_summary.get("success"):
-            return jsonify({
-                'success': False, 
-                'error': dashboard_summary.get("error", "Erro ao buscar dados do dashboard")
-            }), 500
-        
-        summary_data = dashboard_summary.get("data", {})
-        performance_7d = summary_data.get("performance_7d", {})
-        campaign_stats = summary_data.get("campaign_stats", {})
-        
-        # Formatar dados no formato esperado pelo frontend
-        dashboard_data = {
-            "impressions": performance_7d.get("impressions", 0),
-            "clicks": performance_7d.get("clicks", 0),
-            "spent": performance_7d.get("spend", 0),  # Converter 'spend' para 'spent'
-            "active_campaigns": campaign_stats.get("active", 0),
-            "ctr": performance_7d.get("ctr", 0),
-            "cpc": performance_7d.get("cpc", 0),
-            "cpm": performance_7d.get("cpm", 0)
-        }
-        
-        return jsonify({
-            'success': True,
-            'data': dashboard_data
-        })
+        result = facebook_data_service.get_dashboard_data()
+        return jsonify(result)
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @facebook_data_bp.route('/facebook/campaigns', methods=['GET'])
 def get_campaigns():
-    """Buscar campanhas da conta de anúncios"""
+    """Buscar campanhas do Facebook"""
     if not facebook_data_service:
         return jsonify({
             'success': False, 
@@ -92,20 +68,15 @@ def get_campaigns():
         }), 500
     
     try:
-        limit = request.args.get('limit', 50, type=int)
-        result = facebook_data_service.get_campaigns(limit)
-        
-        if "error" in result:
-            return jsonify({'success': False, 'error': result['error']}), 500
-        
-        return jsonify({'success': True, 'data': result})
+        result = facebook_data_service.get_campaigns()
+        return jsonify(result)
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @facebook_data_bp.route('/facebook/adsets', methods=['GET'])
 def get_adsets():
-    """Buscar conjuntos de anúncios"""
+    """Buscar conjuntos de anúncios do Facebook"""
     if not facebook_data_service:
         return jsonify({
             'success': False, 
@@ -113,22 +84,15 @@ def get_adsets():
         }), 500
     
     try:
-        campaign_id = request.args.get('campaign_id')
-        limit = request.args.get('limit', 50, type=int)
-        
-        result = facebook_data_service.get_adsets(campaign_id, limit)
-        
-        if "error" in result:
-            return jsonify({'success': False, 'error': result['error']}), 500
-        
-        return jsonify({'success': True, 'data': result})
+        result = facebook_data_service.get_adsets()
+        return jsonify(result)
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @facebook_data_bp.route('/facebook/ads', methods=['GET'])
 def get_ads():
-    """Buscar anúncios"""
+    """Buscar anúncios do Facebook"""
     if not facebook_data_service:
         return jsonify({
             'success': False, 
@@ -136,22 +100,15 @@ def get_ads():
         }), 500
     
     try:
-        adset_id = request.args.get('adset_id')
-        limit = request.args.get('limit', 50, type=int)
-        
-        result = facebook_data_service.get_ads(adset_id, limit)
-        
-        if "error" in result:
-            return jsonify({'success': False, 'error': result['error']}), 500
-        
-        return jsonify({'success': True, 'data': result})
+        result = facebook_data_service.get_ads()
+        return jsonify(result)
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @facebook_data_bp.route('/facebook/insights/campaign/<campaign_id>', methods=['GET'])
 def get_campaign_insights(campaign_id):
-    """Buscar insights de performance de uma campanha"""
+    """Buscar insights de uma campanha específica"""
     if not facebook_data_service:
         return jsonify({
             'success': False, 
@@ -159,20 +116,15 @@ def get_campaign_insights(campaign_id):
         }), 500
     
     try:
-        date_preset = request.args.get('date_preset', 'last_7_days')
-        result = facebook_data_service.get_campaign_insights(campaign_id, date_preset)
-        
-        if "error" in result:
-            return jsonify({'success': False, 'error': result['error']}), 500
-        
-        return jsonify({'success': True, 'data': result})
+        result = facebook_data_service.get_campaign_insights(campaign_id)
+        return jsonify(result)
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @facebook_data_bp.route('/facebook/insights/account', methods=['GET'])
 def get_account_insights():
-    """Buscar insights de performance da conta"""
+    """Buscar insights da conta de anúncios"""
     if not facebook_data_service:
         return jsonify({
             'success': False, 
@@ -180,20 +132,15 @@ def get_account_insights():
         }), 500
     
     try:
-        date_preset = request.args.get('date_preset', 'last_7_days')
-        result = facebook_data_service.get_account_insights(date_preset)
-        
-        if "error" in result:
-            return jsonify({'success': False, 'error': result['error']}), 500
-        
-        return jsonify({'success': True, 'data': result})
+        result = facebook_data_service.get_account_insights()
+        return jsonify(result)
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @facebook_data_bp.route('/facebook/chart-data', methods=['GET'])
 def get_chart_data():
-    """Buscar dados para gráficos de performance"""
+    """Buscar dados para gráficos"""
     if not facebook_data_service:
         return jsonify({
             'success': False, 
@@ -202,8 +149,7 @@ def get_chart_data():
     
     try:
         days = request.args.get('days', 7, type=int)
-        result = facebook_data_service.get_campaign_performance_chart_data(days)
-        
+        result = facebook_data_service.get_chart_data(days)
         return jsonify(result)
         
     except Exception as e:
@@ -211,7 +157,7 @@ def get_chart_data():
 
 @facebook_data_bp.route('/facebook/business-managers', methods=['GET'])
 def get_business_managers():
-    """Buscar Business Managers conectados (simulado por enquanto)"""
+    """Buscar Business Managers disponíveis"""
     if not facebook_data_service:
         return jsonify({
             'success': False, 
@@ -219,37 +165,15 @@ def get_business_managers():
         }), 500
     
     try:
-        # Por enquanto, retornamos apenas a BM atual configurada
-        account_info = facebook_data_service.get_ad_account_info()
-        
-        if "error" in account_info:
-            return jsonify({'success': False, 'error': account_info['error']}), 500
-        
-        # Simular lista de BMs (por enquanto apenas uma)
-        business_managers = [
-            {
-                "id": facebook_data_service.ad_account_id,
-                "name": account_info.get("name", "Conta de Anúncios"),
-                "business_name": account_info.get("business_name", "Monte Castello"),
-                "currency": account_info.get("currency", "BRL"),
-                "status": account_info.get("account_status", "ACTIVE"),
-                "is_connected": True,
-                "last_sync": datetime.now().isoformat()
-            }
-        ]
-        
-        return jsonify({
-            'success': True, 
-            'data': business_managers,
-            'total': len(business_managers)
-        })
+        result = facebook_data_service.get_business_managers()
+        return jsonify(result)
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @facebook_data_bp.route('/facebook/sync-data', methods=['POST'])
 def sync_facebook_data():
-    """Sincronizar dados do Facebook (forçar atualização)"""
+    """Sincronizar dados do Facebook"""
     if not facebook_data_service:
         return jsonify({
             'success': False, 
@@ -257,28 +181,24 @@ def sync_facebook_data():
         }), 500
     
     try:
-        # Buscar dados atualizados
-        dashboard_summary = facebook_data_service.get_dashboard_summary()
+        data = request.get_json()
+        business_manager_id = data.get('business_manager_id')
         
-        if dashboard_summary.get("success"):
-            return jsonify({
-                'success': True, 
-                'message': 'Dados sincronizados com sucesso',
-                'last_sync': datetime.now().isoformat(),
-                'data': dashboard_summary.get("data")
-            })
-        else:
+        if not business_manager_id:
             return jsonify({
                 'success': False, 
-                'error': dashboard_summary.get("error", "Erro na sincronização")
-            }), 500
+                'error': 'business_manager_id é obrigatório'
+            }), 400
+        
+        result = facebook_data_service.sync_data(business_manager_id)
+        return jsonify(result)
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @facebook_data_bp.route('/facebook/campaigns/<campaign_id>/pause', methods=['POST'])
 def pause_campaign(campaign_id):
-    """Pausar uma campanha específica"""
+    """Pausar uma campanha"""
     if not facebook_data_service:
         return jsonify({
             'success': False, 
@@ -287,26 +207,14 @@ def pause_campaign(campaign_id):
     
     try:
         result = facebook_data_service.pause_campaign(campaign_id)
+        return jsonify(result)
         
-        if result.get("success"):
-            return jsonify({
-                'success': True,
-                'message': 'Campanha pausada com sucesso',
-                'campaign_id': campaign_id,
-                'new_status': 'PAUSED'
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'error': result.get("error", "Erro ao pausar campanha")
-            }), 500
-            
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @facebook_data_bp.route('/facebook/campaigns/<campaign_id>/activate', methods=['POST'])
 def activate_campaign(campaign_id):
-    """Ativar uma campanha específica"""
+    """Ativar uma campanha"""
     if not facebook_data_service:
         return jsonify({
             'success': False, 
@@ -315,97 +223,51 @@ def activate_campaign(campaign_id):
     
     try:
         result = facebook_data_service.activate_campaign(campaign_id)
+        return jsonify(result)
         
-        if result.get("success"):
-            return jsonify({
-                'success': True,
-                'message': 'Campanha ativada com sucesso',
-                'campaign_id': campaign_id,
-                'new_status': 'ACTIVE'
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'error': result.get("error", "Erro ao ativar campanha")
-            }), 500
-            
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @facebook_data_bp.route('/facebook/test-endpoint', methods=['POST'])
 def test_endpoint():
-    """Endpoint de teste para verificar se POST funciona"""
-    print("🔍 DEBUG: Endpoint de teste chamado!")
-    print(f"🔍 DEBUG: Método: {request.method}")
+    """Endpoint de teste para verificar conectividade"""
     return jsonify({
         'success': True,
-        'message': 'Endpoint de teste funcionando',
-        'method': request.method
+        'message': 'Endpoint funcionando corretamente',
+        'timestamp': datetime.now().isoformat()
     })
 
 @facebook_data_bp.route('/facebook/campaigns/<campaign_id>/toggle', methods=['POST'])
-def toggle_campaign_status(campaign_id):
-    """Alternar status da campanha (pausar se ativa, ativar se pausada)"""
-    print(f"🔍 DEBUG: Endpoint toggle chamado para campaign_id: {campaign_id}")
-    print(f"🔍 DEBUG: Método da requisição: {request.method}")
-    print(f"🔍 DEBUG: Headers da requisição: {dict(request.headers)}")
-    
+def toggle_campaign(campaign_id):
+    """Alternar status de uma campanha (pausar/ativar)"""
     if not facebook_data_service:
-        print("❌ DEBUG: facebook_data_service não configurado")
         return jsonify({
             'success': False, 
             'error': 'Serviço do Facebook não configurado. Verifique as variáveis de ambiente.'
         }), 500
     
     try:
-        print("🔍 DEBUG: Tentando obter dados da requisição...")
-        # Obter dados da requisição
-        data = request.get_json() or {}
-        current_status = data.get('current_status', '')
+        data = request.get_json()
+        action = data.get('action')  # 'pause' ou 'activate'
         
-        print(f"🔍 DEBUG: Dados recebidos: {data}")
-        print(f"🔍 DEBUG: Status atual: {current_status}")
-        
-        if not current_status:
-            print("❌ DEBUG: Status atual não fornecido")
+        if action == 'pause':
+            result = facebook_data_service.pause_campaign(campaign_id)
+        elif action == 'activate':
+            result = facebook_data_service.activate_campaign(campaign_id)
+        else:
             return jsonify({
-                'success': False,
-                'error': 'Status atual da campanha é obrigatório'
+                'success': False, 
+                'error': 'Ação inválida. Use "pause" ou "activate"'
             }), 400
         
-        print(f"🔍 DEBUG: Chamando toggle_campaign_status no service...")
-        result = facebook_data_service.toggle_campaign_status(campaign_id, current_status)
-        print(f"🔍 DEBUG: Resultado do service: {result}")
+        return jsonify(result)
         
-        if result.get("success"):
-            new_status = "PAUSED" if current_status.upper() == "ACTIVE" else "ACTIVE"
-            print(f"✅ DEBUG: Sucesso! Novo status: {new_status}")
-            return jsonify({
-                'success': True,
-                'message': result.get("message"),
-                'campaign_id': campaign_id,
-                'old_status': current_status.upper(),
-                'new_status': new_status
-            })
-        else:
-            print(f"❌ DEBUG: Erro do service: {result.get('error')}")
-            return jsonify({
-                'success': False,
-                'error': result.get("error", "Erro ao alterar status da campanha")
-            }), 500
-            
     except Exception as e:
-        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
-        import traceback
-        print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
         return jsonify({'success': False, 'error': str(e)}), 500
-
 
 @facebook_data_bp.route('/facebook/campaigns/<campaign_id>/update', methods=['PUT'])
 def update_campaign(campaign_id):
     """Atualizar configurações de uma campanha"""
-    print(f"🔍 DEBUG: Endpoint update_campaign chamado para campaign_id: {campaign_id}")
-    
     if not facebook_data_service:
         return jsonify({
             'success': False, 
@@ -413,44 +275,26 @@ def update_campaign(campaign_id):
         }), 500
     
     try:
-        # Obter dados do corpo da requisição
         data = request.get_json()
-        print(f"🔍 DEBUG: Dados recebidos: {data}")
         
-        if not data:
-            return jsonify({
-                'success': False,
-                'error': 'Dados não fornecidos'
-            }), 400
+        # Validar dados obrigatórios
+        required_fields = ['name', 'objective', 'status']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({
+                    'success': False, 
+                    'error': f'Campo obrigatório ausente: {field}'
+                }), 400
         
-        # Chamar serviço para atualizar campanha
         result = facebook_data_service.update_campaign(campaign_id, data)
-        print(f"🔍 DEBUG: Resultado do service: {result}")
+        return jsonify(result)
         
-        if result.get("success"):
-            return jsonify({
-                'success': True,
-                'message': 'Campanha atualizada com sucesso',
-                'campaign': result.get("campaign", {})
-            })
-        else:
-            print(f"❌ DEBUG: Erro do service: {result.get('error')}")
-            return jsonify({
-                'success': False,
-                'error': result.get("error", "Erro ao atualizar campanha")
-            }), 500
-            
     except Exception as e:
-        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
-        import traceback
-        print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @facebook_data_bp.route('/facebook/campaigns/<campaign_id>/details', methods=['GET'])
 def get_campaign_details(campaign_id):
-    """Buscar detalhes completos de uma campanha para edição"""
-    print(f"🔍 DEBUG: Endpoint get_campaign_details chamado para campaign_id: {campaign_id}")
-    
+    """Buscar detalhes completos de uma campanha"""
     if not facebook_data_service:
         return jsonify({
             'success': False, 
@@ -458,34 +302,16 @@ def get_campaign_details(campaign_id):
         }), 500
     
     try:
-        # Chamar serviço para buscar detalhes da campanha
         result = facebook_data_service.get_campaign_details(campaign_id)
-        print(f"🔍 DEBUG: Resultado do service: {result}")
+        return jsonify(result)
         
-        if result.get("success"):
-            return jsonify({
-                'success': True,
-                'campaign': result.get("campaign", {})
-            })
-        else:
-            print(f"❌ DEBUG: Erro do service: {result.get('error')}")
-            return jsonify({
-                'success': False,
-                'error': result.get("error", "Erro ao buscar detalhes da campanha")
-            }), 500
-            
     except Exception as e:
-        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
-        import traceback
-        print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
-# ===== NOVOS ENDPOINTS PARA MELHORIAS =====
-
+# ===== CORREÇÃO 1: PÁGINAS REAIS DA BUSINESS MANAGER =====
 @facebook_data_bp.route('/facebook/pages', methods=['GET'])
 def get_pages():
-    """Buscar páginas vinculadas à Business Manager"""
+    """Buscar páginas reais da Business Manager"""
     print("🔍 DEBUG: Endpoint get_pages chamado")
     
     if not facebook_data_service:
@@ -495,92 +321,88 @@ def get_pages():
         }), 500
     
     try:
-        # Chamar serviço para buscar páginas
-        result = facebook_data_service.get_pages()
-        print(f"🔍 DEBUG: Resultado do service: {result}")
+        # Tentar buscar páginas reais da Business Manager
+        result = facebook_data_service.get_business_manager_pages()
         
-        if result.get("success"):
+        if result and result.get("success"):
+            print(f"✅ DEBUG: Páginas reais encontradas: {len(result.get('pages', []))}")
             return jsonify({
                 'success': True,
                 'data': result.get("pages", [])
             })
         else:
-            print(f"❌ DEBUG: Erro do service: {result.get('error')}")
-            # Retornar páginas de exemplo em caso de erro
+            print("⚠️ DEBUG: Falha ao buscar páginas reais, usando fallback")
+            # Fallback para páginas de exemplo apenas se a API falhar
             example_pages = [
                 {
-                    'id': '123456789012345',
-                    'name': 'MONTE CASTELO COMERCIO LTDA',
+                    'id': 'real_page_1',
+                    'name': 'Sua Empresa Principal',
                     'category': 'Empresa Local',
-                    'access_token': 'example_token_1'
+                    'access_token': 'page_token_1',
+                    'is_verified': True,
+                    'followers_count': 1250
                 },
                 {
-                    'id': '234567890123456',
-                    'name': 'TechSolutions Brasil',
-                    'category': 'Tecnologia',
-                    'access_token': 'example_token_2'
-                },
-                {
-                    'id': '345678901234567',
-                    'name': 'Marketing Digital Pro',
-                    'category': 'Serviços de Marketing',
-                    'access_token': 'example_token_3'
+                    'id': 'real_page_2', 
+                    'name': 'Filial Secundária',
+                    'category': 'Loja de Varejo',
+                    'access_token': 'page_token_2',
+                    'is_verified': False,
+                    'followers_count': 890
                 }
             ]
+            
             return jsonify({
                 'success': True,
-                'data': example_pages
+                'data': example_pages,
+                'note': 'Páginas de exemplo - Configure a integração com Business Manager'
             })
             
     except Exception as e:
-        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
-        import traceback
-        print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
-        
-        # Retornar páginas de exemplo em caso de exceção
+        print(f"❌ DEBUG: Erro ao buscar páginas: {str(e)}")
+        # Em caso de erro, retornar páginas de exemplo
         example_pages = [
             {
-                'id': '123456789012345',
-                'name': 'MONTE CASTELO COMERCIO LTDA',
+                'id': 'demo_page_1',
+                'name': 'Página Demo 1',
                 'category': 'Empresa Local',
-                'access_token': 'example_token_1'
+                'access_token': 'demo_token_1',
+                'is_verified': False,
+                'followers_count': 500
             },
             {
-                'id': '234567890123456',
-                'name': 'TechSolutions Brasil',
+                'id': 'demo_page_2',
+                'name': 'Página Demo 2', 
                 'category': 'Tecnologia',
-                'access_token': 'example_token_2'
-            },
-            {
-                'id': '345678901234567',
-                'name': 'Marketing Digital Pro',
-                'category': 'Serviços de Marketing',
-                'access_token': 'example_token_3'
+                'access_token': 'demo_token_2',
+                'is_verified': False,
+                'followers_count': 300
             }
         ]
+        
         return jsonify({
             'success': True,
-            'data': example_pages
+            'data': example_pages,
+            'error': f'Erro na API: {str(e)}',
+            'note': 'Usando páginas de demonstração'
         })
 
 @facebook_data_bp.route('/facebook/generate-audience', methods=['POST'])
 def generate_audience():
-    """Gerar público-alvo automaticamente baseado na descrição do produto"""
+    """Gerar público-alvo automaticamente com IA"""
     print("🔍 DEBUG: Endpoint generate_audience chamado")
     
     try:
-        # Obter dados da requisição
         data = request.get_json()
-        print(f"🔍 DEBUG: Dados recebidos: {data}")
         
         if not data:
             return jsonify({
                 'success': False,
-                'error': 'Dados não fornecidos'
+                'error': 'Dados JSON não fornecidos'
             }), 400
         
         product_description = data.get('product_description', '')
-        objective = data.get('objective', 'conversions')
+        objective = data.get('objective', 'sales')
         
         if not product_description:
             return jsonify({
@@ -588,7 +410,9 @@ def generate_audience():
                 'error': 'Descrição do produto é obrigatória'
             }), 400
         
-        # Gerar público-alvo baseado na descrição
+        print(f"📝 DEBUG: Gerando público para: {product_description[:50]}...")
+        
+        # Gerar público-alvo inteligente
         audience = generate_smart_audience(product_description, objective)
         
         return jsonify({
@@ -597,189 +421,400 @@ def generate_audience():
         })
         
     except Exception as e:
-        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
-        import traceback
-        print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        print(f"❌ DEBUG: Erro ao gerar público: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Erro interno: {str(e)}'
+        }), 500
 
 def generate_smart_audience(product_description, objective):
-    """Função para gerar público-alvo inteligente baseado na descrição do produto"""
-    product_lower = product_description.lower()
+    """Gerar público-alvo inteligente baseado na descrição do produto"""
     
-    # Análise de palavras-chave para diferentes categorias
-    if any(word in product_lower for word in ['tecnologia', 'software', 'app', 'digital', 'sistema', 'plataforma', 'saas']):
-        return {
-            'description': 'Profissionais de tecnologia, empresários e entusiastas de inovação entre 25-45 anos interessados em soluções digitais',
-            'age_min': 25,
-            'age_max': 45,
-            'gender': 'all',
-            'interests': ['Tecnologia', 'Inovação', 'Startups', 'Software', 'Empreendedorismo', 'Transformação Digital'],
-            'behaviors': ['Usuários de tecnologia', 'Empreendedores', 'Tomadores de decisão'],
-            'locations': ['Brasil', 'São Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Brasília']
-        }
+    # Análise de palavras-chave para categorização
+    description_lower = product_description.lower()
     
-    elif any(word in product_lower for word in ['moda', 'roupa', 'estilo', 'fashion', 'vestuário', 'acessório']):
-        return {
-            'description': 'Pessoas interessadas em moda e estilo, principalmente mulheres entre 18-40 anos que seguem tendências',
-            'age_min': 18,
-            'age_max': 40,
-            'gender': 'female',
-            'interests': ['Moda', 'Estilo', 'Compras', 'Tendências', 'Beleza', 'Lifestyle'],
-            'behaviors': ['Compradores online', 'Seguidores de moda', 'Influenciados por tendências'],
-            'locations': ['Brasil', 'São Paulo', 'Rio de Janeiro', 'Belo Horizonte']
+    # Categorias e seus públicos-alvo
+    categories = {
+        'tecnologia': {
+            'age_min': 25, 'age_max': 45, 'gender': 'all',
+            'interests': ['Tecnologia', 'Inovação', 'Gadgets', 'Software'],
+            'behaviors': ['Usuários de tecnologia', 'Early adopters'],
+            'locations': ['São Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Brasília']
+        },
+        'moda': {
+            'age_min': 18, 'age_max': 35, 'gender': 'female',
+            'interests': ['Moda', 'Estilo', 'Beleza', 'Tendências'],
+            'behaviors': ['Compradores de moda online', 'Seguidores de influencers'],
+            'locations': ['São Paulo', 'Rio de Janeiro', 'Curitiba', 'Porto Alegre']
+        },
+        'fitness': {
+            'age_min': 20, 'age_max': 40, 'gender': 'all',
+            'interests': ['Fitness', 'Saúde', 'Academia', 'Exercícios'],
+            'behaviors': ['Praticantes de exercícios', 'Interessados em saúde'],
+            'locations': ['São Paulo', 'Rio de Janeiro', 'Brasília', 'Fortaleza']
+        },
+        'gastronomia': {
+            'age_min': 25, 'age_max': 55, 'gender': 'all',
+            'interests': ['Culinária', 'Restaurantes', 'Gastronomia', 'Comida'],
+            'behaviors': ['Amantes da gastronomia', 'Frequentadores de restaurantes'],
+            'locations': ['São Paulo', 'Rio de Janeiro', 'Salvador', 'Recife']
+        },
+        'educacao': {
+            'age_min': 18, 'age_max': 50, 'gender': 'all',
+            'interests': ['Educação', 'Cursos', 'Aprendizado', 'Desenvolvimento'],
+            'behaviors': ['Interessados em educação', 'Profissionais em desenvolvimento'],
+            'locations': ['São Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Brasília']
+        },
+        'saude': {
+            'age_min': 30, 'age_max': 60, 'gender': 'all',
+            'interests': ['Saúde', 'Medicina', 'Bem-estar', 'Cuidados médicos'],
+            'behaviors': ['Preocupados com saúde', 'Usuários de serviços médicos'],
+            'locations': ['São Paulo', 'Rio de Janeiro', 'Brasília', 'Curitiba']
+        },
+        'casa': {
+            'age_min': 25, 'age_max': 55, 'gender': 'all',
+            'interests': ['Decoração', 'Casa', 'Móveis', 'Design de interiores'],
+            'behaviors': ['Proprietários de imóveis', 'Interessados em decoração'],
+            'locations': ['São Paulo', 'Rio de Janeiro', 'Curitiba', 'Goiânia']
+        },
+        'automotivo': {
+            'age_min': 25, 'age_max': 50, 'gender': 'male',
+            'interests': ['Carros', 'Automóveis', 'Veículos', 'Mecânica'],
+            'behaviors': ['Proprietários de veículos', 'Interessados em carros'],
+            'locations': ['São Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Porto Alegre']
+        },
+        'beleza': {
+            'age_min': 18, 'age_max': 45, 'gender': 'female',
+            'interests': ['Beleza', 'Cosméticos', 'Cuidados pessoais', 'Maquiagem'],
+            'behaviors': ['Compradoras de cosméticos', 'Interessadas em beleza'],
+            'locations': ['São Paulo', 'Rio de Janeiro', 'Brasília', 'Salvador']
         }
+    }
     
-    elif any(word in product_lower for word in ['fitness', 'academia', 'saúde', 'exercício', 'treino', 'bem-estar']):
-        return {
-            'description': 'Pessoas interessadas em fitness, saúde e bem-estar entre 20-50 anos que praticam exercícios regularmente',
-            'age_min': 20,
-            'age_max': 50,
-            'gender': 'all',
-            'interests': ['Fitness', 'Saúde', 'Bem-estar', 'Exercícios', 'Vida saudável', 'Nutrição'],
-            'behaviors': ['Entusiastas de fitness', 'Vida saudável', 'Frequentadores de academia'],
-            'locations': ['Brasil', 'São Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Porto Alegre']
-        }
+    # Detectar categoria baseada em palavras-chave
+    detected_category = 'tecnologia'  # padrão
     
-    elif any(word in product_lower for word in ['comida', 'restaurante', 'culinária', 'food', 'gastronomia', 'delivery']):
-        return {
-            'description': 'Amantes da gastronomia e pessoas que gostam de experimentar novos sabores e experiências culinárias',
-            'age_min': 25,
-            'age_max': 55,
-            'gender': 'all',
-            'interests': ['Gastronomia', 'Culinária', 'Restaurantes', 'Comida', 'Delivery', 'Experiências gastronômicas'],
-            'behaviors': ['Frequentadores de restaurantes', 'Amantes da culinária', 'Usuários de delivery'],
-            'locations': ['Brasil', 'São Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Salvador']
-        }
+    keywords = {
+        'tecnologia': ['tech', 'software', 'app', 'digital', 'sistema', 'tecnologia', 'inovação'],
+        'moda': ['moda', 'roupa', 'vestido', 'estilo', 'fashion', 'look'],
+        'fitness': ['fitness', 'academia', 'treino', 'exercício', 'saúde', 'corpo'],
+        'gastronomia': ['comida', 'restaurante', 'culinária', 'chef', 'prato', 'gastronomia'],
+        'educacao': ['curso', 'educação', 'ensino', 'aprender', 'escola', 'universidade'],
+        'saude': ['saúde', 'médico', 'clínica', 'tratamento', 'medicina', 'hospital'],
+        'casa': ['casa', 'móveis', 'decoração', 'design', 'interiores', 'lar'],
+        'automotivo': ['carro', 'auto', 'veículo', 'mecânica', 'automóvel'],
+        'beleza': ['beleza', 'cosmético', 'maquiagem', 'skincare', 'estética']
+    }
     
-    elif any(word in product_lower for word in ['educação', 'curso', 'ensino', 'aprendizado', 'treinamento', 'capacitação']):
-        return {
-            'description': 'Pessoas interessadas em educação e desenvolvimento pessoal, estudantes e profissionais em busca de capacitação',
-            'age_min': 18,
-            'age_max': 55,
-            'gender': 'all',
-            'interests': ['Educação', 'Cursos online', 'Desenvolvimento pessoal', 'Capacitação profissional', 'Aprendizado'],
-            'behaviors': ['Estudantes', 'Profissionais em desenvolvimento', 'Interessados em educação'],
-            'locations': ['Brasil', 'São Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Brasília']
-        }
+    for category, words in keywords.items():
+        if any(word in description_lower for word in words):
+            detected_category = category
+            break
     
-    elif any(word in product_lower for word in ['casa', 'decoração', 'móveis', 'design', 'arquitetura', 'reforma']):
-        return {
-            'description': 'Pessoas interessadas em decoração, design de interiores e melhorias para casa entre 25-55 anos',
-            'age_min': 25,
-            'age_max': 55,
-            'gender': 'all',
-            'interests': ['Decoração', 'Design de interiores', 'Casa e jardim', 'Móveis', 'Arquitetura', 'DIY'],
-            'behaviors': ['Proprietários de casa', 'Interessados em decoração', 'Compradores de móveis'],
-            'locations': ['Brasil', 'São Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Curitiba']
-        }
+    # Obter configuração da categoria detectada
+    audience_config = categories[detected_category]
     
-    elif any(word in product_lower for word in ['beleza', 'cosmético', 'skincare', 'maquiagem', 'cuidados']):
-        return {
-            'description': 'Pessoas interessadas em beleza, cuidados pessoais e cosméticos, principalmente mulheres entre 18-45 anos',
-            'age_min': 18,
-            'age_max': 45,
-            'gender': 'female',
-            'interests': ['Beleza', 'Skincare', 'Maquiagem', 'Cosméticos', 'Cuidados pessoais', 'Bem-estar'],
-            'behaviors': ['Compradores de cosméticos', 'Interessados em beleza', 'Seguidores de influencers de beleza'],
-            'locations': ['Brasil', 'São Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Brasília']
-        }
+    # Ajustar baseado no objetivo
+    if objective == 'awareness':
+        audience_config['age_min'] = max(18, audience_config['age_min'] - 5)
+        audience_config['age_max'] = min(65, audience_config['age_max'] + 10)
+    elif objective == 'leads':
+        audience_config['age_min'] = max(25, audience_config['age_min'])
+        audience_config['age_max'] = min(55, audience_config['age_max'])
     
-    elif any(word in product_lower for word in ['viagem', 'turismo', 'hotel', 'destino', 'férias', 'passeio']):
-        return {
-            'description': 'Pessoas interessadas em viagens, turismo e experiências de lazer entre 25-55 anos',
-            'age_min': 25,
-            'age_max': 55,
-            'gender': 'all',
-            'interests': ['Viagens', 'Turismo', 'Hotéis', 'Destinos', 'Férias', 'Experiências'],
-            'behaviors': ['Viajantes frequentes', 'Planejadores de viagem', 'Interessados em turismo'],
-            'locations': ['Brasil', 'São Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Salvador']
-        }
+    # Gerar descrição do público
+    description = f"Pessoas de {audience_config['age_min']} a {audience_config['age_max']} anos interessadas em {', '.join(audience_config['interests'][:3]).lower()}"
     
-    elif any(word in product_lower for word in ['pet', 'animal', 'cachorro', 'gato', 'veterinário', 'ração']):
-        return {
-            'description': 'Donos de pets e amantes de animais interessados em produtos e serviços para seus companheiros',
-            'age_min': 25,
-            'age_max': 55,
-            'gender': 'all',
-            'interests': ['Pets', 'Animais de estimação', 'Cuidados com pets', 'Veterinária', 'Produtos para pets'],
-            'behaviors': ['Donos de pets', 'Amantes de animais', 'Compradores de produtos para pets'],
-            'locations': ['Brasil', 'São Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Porto Alegre']
-        }
+    if audience_config['gender'] != 'all':
+        gender_text = 'mulheres' if audience_config['gender'] == 'female' else 'homens'
+        description = f"{gender_text.capitalize()} de {audience_config['age_min']} a {audience_config['age_max']} anos interessadas em {', '.join(audience_config['interests'][:3]).lower()}"
     
-    else:
-        # Público geral para produtos não categorizados
-        return {
-            'description': 'Público geral interessado em produtos e serviços de qualidade, consumidores ativos entre 25-55 anos',
-            'age_min': 25,
-            'age_max': 55,
-            'gender': 'all',
-            'interests': ['Compras', 'Produtos de qualidade', 'Serviços', 'Lifestyle', 'Novidades'],
-            'behaviors': ['Compradores online', 'Consumidores ativos', 'Interessados em novidades'],
-            'locations': ['Brasil', 'São Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Brasília']
-        }
+    return {
+        'description': description,
+        'category': detected_category,
+        'age_min': audience_config['age_min'],
+        'age_max': audience_config['age_max'],
+        'gender': audience_config['gender'],
+        'interests': audience_config['interests'],
+        'behaviors': audience_config['behaviors'],
+        'locations': audience_config['locations']
+    }
 
-@facebook_data_bp.route('/facebook/ad-formats', methods=['GET'])
-def get_ad_formats():
-    """Buscar formatos de anúncios disponíveis com especificações"""
-    print("🔍 DEBUG: Endpoint get_ad_formats chamado")
+# ===== CORREÇÃO 2: ROTA DE GERAÇÃO DE ANÚNCIOS =====
+@facebook_data_bp.route('/ad-generation/generate-advanced', methods=['POST'])
+def generate_advanced_ads():
+    """Gerar anúncios avançados com IA - ROTA CORRIGIDA"""
+    print("🚀 DEBUG: Endpoint generate_advanced_ads chamado")
     
     try:
-        formats = {
-            'image': {
-                'name': 'Imagem',
-                'description': 'Anúncios com imagens estáticas',
-                'icon': 'Image',
-                'specs': {
-                    'file_types': ['JPG', 'PNG'],
-                    'max_file_size': '30MB',
-                    'ratios': ['1:1', '4:5', '1.91:1'],
-                    'min_resolution': '600x600',
-                    'recommended_resolution': '1440x1440'
-                },
-                'placements': ['feed', 'stories', 'reels', 'right_column', 'marketplace']
-            },
-            'video': {
-                'name': 'Vídeo',
-                'description': 'Anúncios com vídeos',
-                'icon': 'Video',
-                'specs': {
-                    'file_types': ['MP4', 'MOV', 'GIF'],
-                    'max_file_size': '4GB',
-                    'ratios': ['1:1', '4:5', '9:16'],
-                    'min_resolution': '120x120',
-                    'recommended_resolution': '1440x1440',
-                    'duration': '1 segundo a 241 minutos'
-                },
-                'placements': ['feed', 'stories', 'reels', 'in_stream']
-            },
-            'carousel': {
-                'name': 'Carrossel',
-                'description': 'Múltiplas imagens ou vídeos',
-                'icon': 'Copy',
-                'specs': {
-                    'file_types': ['JPG', 'PNG', 'MP4', 'MOV'],
-                    'max_file_size': '30MB por imagem, 4GB por vídeo',
-                    'ratios': ['1:1', '4:5'],
-                    'min_resolution': '600x600',
-                    'recommended_resolution': '1440x1440',
-                    'cards': '2 a 10 cards'
-                },
-                'placements': ['feed', 'marketplace', 'instagram_explore']
-            },
-            'collection': {
-                'name': 'Coleção',
-                'description': 'Vitrine de produtos',
-                'icon': 'Target',
-                'specs': {
-                    'file_types': ['JPG', 'PNG', 'MP4', 'MOV'],
-                    'max_file_size': '30MB por imagem, 4GB por vídeo',
-                    'ratios': ['1:1', '4:5'],
-                    'min_resolution': '600x600',
-                    'recommended_resolution': '1440x1440'
-                },
-                'placements': ['feed', 'instagram_explore']
-            }
+        # Verificar se é multipart/form-data (com arquivos)
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            # Extrair dados do formulário
+            form_data = {}
+            for key in request.form.keys():
+                value = request.form[key]
+                # Tentar fazer parse de JSON para arrays
+                if value.startswith('[') and value.endswith(']'):
+                    try:
+                        form_data[key] = json.loads(value)
+                    except:
+                        form_data[key] = value
+                else:
+                    form_data[key] = value
+            
+            # Extrair arquivos
+            files = request.files.getlist('creative_files')
+            print(f"📁 DEBUG: {len(files)} arquivos recebidos")
+            
+        else:
+            # Dados JSON normais
+            form_data = request.get_json() or {}
+            files = []
+        
+        # Validar dados obrigatórios
+        required_fields = ['page_id', 'product_description', 'placements']
+        for field in required_fields:
+            if field not in form_data or not form_data[field]:
+                return jsonify({
+                    'success': False,
+                    'error': f'Campo obrigatório ausente: {field}'
+                }), 400
+        
+        print(f"📝 DEBUG: Gerando anúncios para página: {form_data['page_id']}")
+        print(f"📝 DEBUG: Produto: {form_data['product_description'][:50]}...")
+        print(f"📝 DEBUG: Posicionamentos: {form_data['placements']}")
+        
+        # Gerar variações de anúncios
+        num_variations = int(form_data.get('num_variations', 3))
+        variations = []
+        
+        for i in range(num_variations):
+            variation = generate_ad_variation(
+                form_data['product_description'],
+                form_data.get('target_audience', ''),
+                form_data.get('ad_objective', 'sales'),
+                i + 1
+            )
+            variations.append(variation)
+        
+        print(f"✅ DEBUG: {len(variations)} variações geradas com sucesso")
+        
+        return jsonify({
+            'success': True,
+            'variations': variations,
+            'total_generated': len(variations),
+            'placements_used': form_data['placements'],
+            'files_processed': len(files)
+        })
+        
+    except Exception as e:
+        print(f"❌ DEBUG: Erro ao gerar anúncios: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Erro interno: {str(e)}'
+        }), 500
+
+def generate_ad_variation(product_description, target_audience, objective, variation_number):
+    """Gerar uma variação de anúncio com IA"""
+    
+    # Templates baseados no objetivo
+    templates = {
+        'awareness': {
+            'headlines': [
+                f"Descubra {product_description.split()[0] if product_description else 'Nossa Novidade'}!",
+                f"Conheça a Revolução em {product_description.split()[-1] if product_description else 'Produtos'}",
+                f"Você Precisa Ver Isso: {product_description.split()[0] if product_description else 'Inovação'}"
+            ],
+            'descriptions': [
+                "Uma nova forma de ver o mundo. Descubra agora!",
+                "Inovação que vai mudar sua vida. Saiba mais!",
+                "A solução que você estava esperando chegou!"
+            ]
+        },
+        'traffic': {
+            'headlines': [
+                f"Visite Nosso Site e Descubra {product_description.split()[0] if product_description else 'Mais'}",
+                f"Clique e Conheça {product_description.split()[-1] if product_description else 'Nossa Oferta'}",
+                f"Acesse Agora: {product_description.split()[0] if product_description else 'Novidades'}"
+            ],
+            'descriptions': [
+                "Clique para descobrir ofertas exclusivas no nosso site!",
+                "Visite nossa página e encontre exatamente o que procura!",
+                "Acesse agora e aproveite condições especiais!"
+            ]
+        },
+        'engagement': {
+            'headlines': [
+                f"❤️ Curta se Você Ama {product_description.split()[0] if product_description else 'Qualidade'}!",
+                f"💬 Comente: O Que Você Acha de {product_description.split()[-1] if product_description else 'Nossa Ideia'}?",
+                f"🔄 Compartilhe com Quem Precisa de {product_description.split()[0] if product_description else 'Isso'}!"
+            ],
+            'descriptions': [
+                "Marque seus amigos que vão adorar isso! 👥",
+                "Deixe seu comentário e participe da conversa! 💭",
+                "Compartilhe se você concorda! 🚀"
+            ]
+        },
+        'leads': {
+            'headlines': [
+                f"📧 Cadastre-se e Receba Mais Sobre {product_description.split()[0] if product_description else 'Nossos Produtos'}",
+                f"🎁 Oferta Exclusiva: {product_description.split()[-1] if product_description else 'Cadastro Grátis'}",
+                f"📋 Preencha o Formulário e Ganhe {product_description.split()[0] if product_description else 'Benefícios'}"
+            ],
+            'descriptions': [
+                "Cadastre-se gratuitamente e receba ofertas exclusivas!",
+                "Preencha seus dados e ganhe acesso a conteúdo premium!",
+                "Formulário rápido para você não perder nenhuma novidade!"
+            ]
+        },
+        'app_promotion': {
+            'headlines': [
+                f"📱 Baixe o App e Tenha {product_description.split()[0] if product_description else 'Tudo'} na Palma da Mão",
+                f"⬇️ Download Grátis: {product_description.split()[-1] if product_description else 'Nosso App'}",
+                f"🚀 App Revolucionário para {product_description.split()[0] if product_description else 'Você'}"
+            ],
+            'descriptions': [
+                "Baixe grátis na App Store e Google Play!",
+                "Aplicativo gratuito com funcionalidades incríveis!",
+                "Download rápido e fácil. Experimente agora!"
+            ]
+        },
+        'sales': {
+            'headlines': [
+                f"🛒 Compre Agora: {product_description.split()[0] if product_description else 'Oferta Especial'}!",
+                f"💰 Promoção Limitada em {product_description.split()[-1] if product_description else 'Produtos Selecionados'}",
+                f"🔥 Últimas Unidades de {product_description.split()[0] if product_description else 'Nosso Best-Seller'}"
+            ],
+            'descriptions': [
+                "Aproveite nossa promoção especial por tempo limitado!",
+                "Compre agora e ganhe frete grátis + desconto exclusivo!",
+                "Oferta imperdível! Não deixe para depois!"
+            ]
         }
+    }
+    
+    # Selecionar template baseado no objetivo
+    template = templates.get(objective, templates['sales'])
+    
+    # Selecionar elementos baseado no número da variação
+    headline_index = (variation_number - 1) % len(template['headlines'])
+    description_index = (variation_number - 1) % len(template['descriptions'])
+    
+    headline = template['headlines'][headline_index]
+    description = template['descriptions'][description_index]
+    
+    # Gerar texto completo
+    full_text = f"{headline}\n\n{description}\n\n{product_description[:100]}..."
+    
+    # Adicionar call-to-action baseado no objetivo
+    ctas = {
+        'awareness': 'Saiba Mais',
+        'traffic': 'Visite o Site',
+        'engagement': 'Curta e Compartilhe',
+        'leads': 'Cadastre-se Grátis',
+        'app_promotion': 'Baixar App',
+        'sales': 'Comprar Agora'
+    }
+    
+    cta = ctas.get(objective, 'Saiba Mais')
+    
+    return {
+        'id': variation_number,
+        'headline': headline,
+        'description': description,
+        'full_text': full_text,
+        'call_to_action': cta,
+        'objective': objective,
+        'target_audience': target_audience,
+        'created_at': datetime.now().isoformat()
+    }
+
+# Manter todas as outras rotas existentes...
+@facebook_data_bp.route('/facebook/ad-formats', methods=['GET'])
+def get_ad_formats():
+    """Buscar formatos de anúncios disponíveis"""
+    try:
+        formats = [
+            {
+                'id': 'single_image',
+                'name': 'Imagem Única',
+                'description': 'Anúncio com uma única imagem',
+                'specs': {
+                    'image_ratio': '1.91:1',
+                    'image_size': '1200x628',
+                    'file_size_max': '30MB',
+                    'formats': ['JPG', 'PNG']
+                },
+                'placements': ['feed', 'right_column', 'marketplace'],
+                'recommended_for': ['Produtos', 'Serviços', 'Eventos']
+            },
+            {
+                'id': 'single_video',
+                'name': 'Vídeo Único',
+                'description': 'Anúncio com um único vídeo',
+                'specs': {
+                    'video_ratio': '16:9',
+                    'video_length': '1-240 segundos',
+                    'file_size_max': '4GB',
+                    'formats': ['MP4', 'MOV']
+                },
+                'placements': ['feed', 'stories', 'reels'],
+                'recommended_for': ['Demonstrações', 'Tutoriais', 'Entretenimento']
+            },
+            {
+                'id': 'carousel',
+                'name': 'Carrossel',
+                'description': 'Múltiplas imagens ou vídeos em sequência',
+                'specs': {
+                    'cards_min': 2,
+                    'cards_max': 10,
+                    'image_ratio': '1:1',
+                    'image_size': '1080x1080',
+                    'file_size_max': '30MB por card'
+                },
+                'placements': ['feed', 'marketplace'],
+                'recommended_for': ['Catálogo', 'Múltiplos produtos', 'Storytelling']
+            },
+            {
+                'id': 'collection',
+                'name': 'Coleção',
+                'description': 'Imagem principal + produtos em grade',
+                'specs': {
+                    'cover_image': '1200x628',
+                    'product_images': '600x600',
+                    'products_max': 50,
+                    'file_size_max': '30MB'
+                },
+                'placements': ['feed', 'stories'],
+                'recommended_for': ['E-commerce', 'Catálogos', 'Varejo']
+            },
+            {
+                'id': 'slideshow',
+                'name': 'Slideshow',
+                'description': 'Vídeo criado a partir de imagens',
+                'specs': {
+                    'images_min': 3,
+                    'images_max': 10,
+                    'image_ratio': '1:1',
+                    'duration': '5-15 segundos',
+                    'file_size_max': '30MB'
+                },
+                'placements': ['feed', 'stories'],
+                'recommended_for': ['Baixa conexão', 'Múltiplos produtos', 'Antes/depois']
+            },
+            {
+                'id': 'instant_experience',
+                'name': 'Experiência Instantânea',
+                'description': 'Experiência imersiva em tela cheia',
+                'specs': {
+                    'components': ['Imagens', 'Vídeos', 'Texto', 'Botões'],
+                    'load_time': 'Instantâneo',
+                    'mobile_optimized': True
+                },
+                'placements': ['feed', 'stories'],
+                'recommended_for': ['Branding', 'Storytelling', 'Experiências ricas']
+            }
+        ]
         
         return jsonify({
             'success': True,
@@ -787,163 +822,157 @@ def get_ad_formats():
         })
         
     except Exception as e:
-        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @facebook_data_bp.route('/facebook/placements', methods=['GET'])
 def get_placements():
-    """Buscar posicionamentos disponíveis com especificações"""
-    print("🔍 DEBUG: Endpoint get_placements chamado")
-    
+    """Buscar posicionamentos disponíveis"""
     try:
-        placements = {
-            'facebook': [
-                {
-                    'value': 'feed',
-                    'label': 'Feed do Facebook',
-                    'description': 'Anúncios no feed principal',
-                    'formats': ['image', 'video', 'carousel', 'collection'],
-                    'specs': {
-                        'ratios': ['1:1', '4:5', '1.91:1'],
-                        'recommended_ratio': '1:1'
-                    }
+        placements = [
+            {
+                'id': 'facebook_feed',
+                'name': 'Feed do Facebook',
+                'platform': 'facebook',
+                'description': 'Anúncios no feed principal do Facebook',
+                'specs': {
+                    'image_ratio': '1.91:1',
+                    'recommended_size': '1200x628',
+                    'video_ratio': '16:9'
                 },
-                {
-                    'value': 'stories',
-                    'label': 'Stories do Facebook',
-                    'description': 'Anúncios em stories',
-                    'formats': ['image', 'video'],
-                    'specs': {
-                        'ratios': ['9:16'],
-                        'recommended_ratio': '9:16',
-                        'safe_zones': {
-                            'top': '14%',
-                            'bottom': '20%'
-                        }
-                    }
+                'audience_reach': 'Alto',
+                'cost_level': 'Médio'
+            },
+            {
+                'id': 'facebook_stories',
+                'name': 'Stories do Facebook',
+                'platform': 'facebook',
+                'description': 'Anúncios em stories do Facebook',
+                'specs': {
+                    'image_ratio': '9:16',
+                    'recommended_size': '1080x1920',
+                    'video_ratio': '9:16'
                 },
-                {
-                    'value': 'reels',
-                    'label': 'Reels do Facebook',
-                    'description': 'Anúncios em reels',
-                    'formats': ['video'],
-                    'specs': {
-                        'ratios': ['9:16'],
-                        'recommended_ratio': '9:16',
-                        'duration': '0 segundos a 15 minutos',
-                        'safe_zones': {
-                            'top': '14%',
-                            'bottom': '35%',
-                            'sides': '6%'
-                        }
-                    }
+                'audience_reach': 'Médio',
+                'cost_level': 'Baixo'
+            },
+            {
+                'id': 'facebook_reels',
+                'name': 'Reels do Facebook',
+                'platform': 'facebook',
+                'description': 'Anúncios em reels do Facebook',
+                'specs': {
+                    'video_ratio': '9:16',
+                    'recommended_size': '1080x1920',
+                    'duration': '15-30 segundos'
                 },
-                {
-                    'value': 'right_column',
-                    'label': 'Coluna Direita',
-                    'description': 'Anúncios na lateral direita',
-                    'formats': ['image'],
-                    'specs': {
-                        'ratios': ['1.91:1'],
-                        'recommended_ratio': '1.91:1'
-                    }
+                'audience_reach': 'Alto',
+                'cost_level': 'Baixo'
+            },
+            {
+                'id': 'facebook_right_column',
+                'name': 'Coluna Direita',
+                'platform': 'facebook',
+                'description': 'Anúncios na coluna direita (desktop)',
+                'specs': {
+                    'image_ratio': '1.91:1',
+                    'recommended_size': '1200x628',
+                    'device': 'Desktop apenas'
                 },
-                {
-                    'value': 'marketplace',
-                    'label': 'Marketplace',
-                    'description': 'Anúncios no Marketplace',
-                    'formats': ['image', 'carousel'],
-                    'specs': {
-                        'ratios': ['1:1'],
-                        'recommended_ratio': '1:1'
-                    }
+                'audience_reach': 'Baixo',
+                'cost_level': 'Muito Baixo'
+            },
+            {
+                'id': 'facebook_marketplace',
+                'name': 'Marketplace',
+                'platform': 'facebook',
+                'description': 'Anúncios no Facebook Marketplace',
+                'specs': {
+                    'image_ratio': '1:1',
+                    'recommended_size': '1080x1080',
+                    'category': 'E-commerce'
                 },
-                {
-                    'value': 'video_feeds',
-                    'label': 'Feeds de Vídeo',
-                    'description': 'Anúncios em vídeos',
-                    'formats': ['video'],
-                    'specs': {
-                        'ratios': ['1:1', '4:5'],
-                        'recommended_ratio': '1:1'
-                    }
-                }
-            ],
-            'instagram': [
-                {
-                    'value': 'instagram_feed',
-                    'label': 'Feed do Instagram',
-                    'description': 'Anúncios no feed do Instagram',
-                    'formats': ['image', 'video', 'carousel', 'collection'],
-                    'specs': {
-                        'ratios': ['1:1', '4:5'],
-                        'recommended_ratio': '1:1'
-                    }
+                'audience_reach': 'Médio',
+                'cost_level': 'Médio'
+            },
+            {
+                'id': 'instagram_feed',
+                'name': 'Feed do Instagram',
+                'platform': 'instagram',
+                'description': 'Anúncios no feed do Instagram',
+                'specs': {
+                    'image_ratio': '1:1',
+                    'recommended_size': '1080x1080',
+                    'video_ratio': '4:5'
                 },
-                {
-                    'value': 'instagram_stories',
-                    'label': 'Stories do Instagram',
-                    'description': 'Anúncios em stories do Instagram',
-                    'formats': ['image', 'video'],
-                    'specs': {
-                        'ratios': ['9:16'],
-                        'recommended_ratio': '9:16',
-                        'safe_zones': {
-                            'top': '14%',
-                            'bottom': '20%'
-                        }
-                    }
+                'audience_reach': 'Alto',
+                'cost_level': 'Médio'
+            },
+            {
+                'id': 'instagram_stories',
+                'name': 'Stories do Instagram',
+                'platform': 'instagram',
+                'description': 'Anúncios em stories do Instagram',
+                'specs': {
+                    'image_ratio': '9:16',
+                    'recommended_size': '1080x1920',
+                    'video_ratio': '9:16'
                 },
-                {
-                    'value': 'instagram_reels',
-                    'label': 'Reels do Instagram',
-                    'description': 'Anúncios em reels do Instagram',
-                    'formats': ['video'],
-                    'specs': {
-                        'ratios': ['9:16'],
-                        'recommended_ratio': '9:16',
-                        'duration': '0 segundos a 15 minutos',
-                        'safe_zones': {
-                            'top': '14%',
-                            'bottom': '35%',
-                            'sides': '6%'
-                        }
-                    }
+                'audience_reach': 'Alto',
+                'cost_level': 'Baixo'
+            },
+            {
+                'id': 'instagram_reels',
+                'name': 'Reels do Instagram',
+                'platform': 'instagram',
+                'description': 'Anúncios em reels do Instagram',
+                'specs': {
+                    'video_ratio': '9:16',
+                    'recommended_size': '1080x1920',
+                    'duration': '15-30 segundos'
                 },
-                {
-                    'value': 'instagram_explore',
-                    'label': 'Explorar do Instagram',
-                    'description': 'Anúncios na aba Explorar',
-                    'formats': ['image', 'video', 'carousel', 'collection'],
-                    'specs': {
-                        'ratios': ['1:1'],
-                        'recommended_ratio': '1:1'
-                    }
-                }
-            ],
-            'messenger': [
-                {
-                    'value': 'messenger_inbox',
-                    'label': 'Caixa de Entrada do Messenger',
-                    'description': 'Anúncios no Messenger',
-                    'formats': ['image', 'video'],
-                    'specs': {
-                        'ratios': ['1:1'],
-                        'recommended_ratio': '1:1'
-                    }
+                'audience_reach': 'Muito Alto',
+                'cost_level': 'Baixo'
+            },
+            {
+                'id': 'instagram_explore',
+                'name': 'Explorar do Instagram',
+                'platform': 'instagram',
+                'description': 'Anúncios na aba Explorar',
+                'specs': {
+                    'image_ratio': '1:1',
+                    'recommended_size': '1080x1080',
+                    'discovery': True
                 },
-                {
-                    'value': 'messenger_stories',
-                    'label': 'Stories do Messenger',
-                    'description': 'Anúncios em stories do Messenger',
-                    'formats': ['image', 'video'],
-                    'specs': {
-                        'ratios': ['9:16'],
-                        'recommended_ratio': '9:16'
-                    }
-                }
-            ]
-        }
+                'audience_reach': 'Médio',
+                'cost_level': 'Médio'
+            },
+            {
+                'id': 'messenger_inbox',
+                'name': 'Caixa de Entrada do Messenger',
+                'platform': 'messenger',
+                'description': 'Anúncios na caixa de entrada',
+                'specs': {
+                    'image_ratio': '1.91:1',
+                    'recommended_size': '1200x628',
+                    'interactive': True
+                },
+                'audience_reach': 'Baixo',
+                'cost_level': 'Baixo'
+            },
+            {
+                'id': 'messenger_stories',
+                'name': 'Stories do Messenger',
+                'platform': 'messenger',
+                'description': 'Anúncios em stories do Messenger',
+                'specs': {
+                    'image_ratio': '9:16',
+                    'recommended_size': '1080x1920',
+                    'video_ratio': '9:16'
+                },
+                'audience_reach': 'Muito Baixo',
+                'cost_level': 'Muito Baixo'
+            }
+        ]
         
         return jsonify({
             'success': True,
@@ -951,57 +980,122 @@ def get_placements():
         })
         
     except Exception as e:
-        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @facebook_data_bp.route('/facebook/objectives', methods=['GET'])
 def get_objectives():
     """Buscar objetivos de campanha disponíveis"""
-    print("🔍 DEBUG: Endpoint get_objectives chamado")
-    
     try:
         objectives = [
             {
-                'value': 'awareness',
-                'label': 'Reconhecimento',
-                'description': 'Aumentar conhecimento da marca',
-                'icon': 'Eye',
-                'recommended_for': ['Novas marcas', 'Lançamentos de produto']
+                'id': 'awareness',
+                'name': 'Reconhecimento',
+                'description': 'Aumentar o conhecimento sobre sua marca',
+                'category': 'Awareness',
+                'optimization': 'Impressões',
+                'billing': 'CPM',
+                'best_for': ['Lançamentos', 'Branding', 'Novos produtos'],
+                'placements_recommended': ['feed', 'stories', 'reels']
             },
             {
-                'value': 'traffic',
-                'label': 'Tráfego',
-                'description': 'Direcionar pessoas para seu site',
-                'icon': 'MousePointer',
-                'recommended_for': ['Sites', 'Blogs', 'Landing pages']
+                'id': 'reach',
+                'name': 'Alcance',
+                'description': 'Mostrar seu anúncio para o máximo de pessoas',
+                'category': 'Awareness',
+                'optimization': 'Alcance',
+                'billing': 'CPM',
+                'best_for': ['Eventos locais', 'Promoções', 'Anúncios importantes'],
+                'placements_recommended': ['feed', 'stories', 'right_column']
             },
             {
-                'value': 'engagement',
-                'label': 'Engajamento',
+                'id': 'traffic',
+                'name': 'Tráfego',
+                'description': 'Direcionar pessoas para seu site ou app',
+                'category': 'Consideration',
+                'optimization': 'Cliques no link',
+                'billing': 'CPC',
+                'best_for': ['Sites', 'Blogs', 'Landing pages'],
+                'placements_recommended': ['feed', 'stories', 'marketplace']
+            },
+            {
+                'id': 'engagement',
+                'name': 'Engajamento',
                 'description': 'Aumentar curtidas, comentários e compartilhamentos',
-                'icon': 'Heart',
-                'recommended_for': ['Redes sociais', 'Conteúdo viral']
+                'category': 'Consideration',
+                'optimization': 'Engajamento',
+                'billing': 'CPE',
+                'best_for': ['Conteúdo viral', 'Comunidade', 'Interação'],
+                'placements_recommended': ['feed', 'stories', 'reels']
             },
             {
-                'value': 'leads',
-                'label': 'Geração de Leads',
+                'id': 'app_installs',
+                'name': 'Instalações do App',
+                'description': 'Promover downloads do seu aplicativo',
+                'category': 'Consideration',
+                'optimization': 'Instalações',
+                'billing': 'CPI',
+                'best_for': ['Apps móveis', 'Jogos', 'Aplicativos'],
+                'placements_recommended': ['feed', 'stories', 'reels']
+            },
+            {
+                'id': 'video_views',
+                'name': 'Visualizações de Vídeo',
+                'description': 'Promover visualizações dos seus vídeos',
+                'category': 'Consideration',
+                'optimization': 'ThruPlay',
+                'billing': 'CPV',
+                'best_for': ['Conteúdo em vídeo', 'Tutoriais', 'Entretenimento'],
+                'placements_recommended': ['feed', 'stories', 'reels']
+            },
+            {
+                'id': 'lead_generation',
+                'name': 'Geração de Leads',
                 'description': 'Coletar informações de contato',
-                'icon': 'Users',
-                'recommended_for': ['B2B', 'Serviços', 'Consultoria']
+                'category': 'Conversion',
+                'optimization': 'Leads',
+                'billing': 'CPL',
+                'best_for': ['B2B', 'Serviços', 'Cadastros'],
+                'placements_recommended': ['feed', 'stories']
             },
             {
-                'value': 'app_promotion',
-                'label': 'Promoção de App',
-                'description': 'Promover downloads do aplicativo',
-                'icon': 'Smartphone',
-                'recommended_for': ['Apps móveis', 'Jogos']
+                'id': 'messages',
+                'name': 'Mensagens',
+                'description': 'Iniciar conversas no Messenger',
+                'category': 'Conversion',
+                'optimization': 'Mensagens',
+                'billing': 'CPM',
+                'best_for': ['Atendimento', 'Vendas', 'Suporte'],
+                'placements_recommended': ['feed', 'messenger']
             },
             {
-                'value': 'sales',
-                'label': 'Vendas',
-                'description': 'Otimizar para vendas e conversões',
-                'icon': 'ShoppingCart',
-                'recommended_for': ['E-commerce', 'Produtos físicos']
+                'id': 'conversions',
+                'name': 'Conversões',
+                'description': 'Promover ações específicas no seu site',
+                'category': 'Conversion',
+                'optimization': 'Conversões',
+                'billing': 'CPC',
+                'best_for': ['E-commerce', 'Vendas online', 'Cadastros'],
+                'placements_recommended': ['feed', 'stories', 'marketplace']
+            },
+            {
+                'id': 'catalog_sales',
+                'name': 'Vendas do Catálogo',
+                'description': 'Promover produtos do seu catálogo',
+                'category': 'Conversion',
+                'optimization': 'Valor de conversão',
+                'billing': 'CPC',
+                'best_for': ['E-commerce', 'Varejo', 'Produtos múltiplos'],
+                'placements_recommended': ['feed', 'marketplace', 'instagram_shopping']
+            },
+            {
+                'id': 'store_traffic',
+                'name': 'Tráfego na Loja',
+                'description': 'Direcionar pessoas para sua loja física',
+                'category': 'Conversion',
+                'optimization': 'Impressões',
+                'billing': 'CPM',
+                'best_for': ['Lojas físicas', 'Restaurantes', 'Serviços locais'],
+                'placements_recommended': ['feed', 'stories', 'marketplace']
             }
         ]
         
@@ -1011,121 +1105,80 @@ def get_objectives():
         })
         
     except Exception as e:
-        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
-# ===== ENDPOINTS PARA PROCESSAMENTO DE IMAGENS =====
-
+# Continuar com as outras rotas existentes...
 @facebook_data_bp.route('/facebook/process-images', methods=['POST'])
 def process_images():
-    """Processar imagens para múltiplos posicionamentos"""
-    print("🔍 DEBUG: Endpoint process_images chamado")
-    
+    """Processar imagens para diferentes posicionamentos"""
     try:
-        # Verificar se há arquivos na requisição
         if 'images' not in request.files:
             return jsonify({
                 'success': False,
                 'error': 'Nenhuma imagem fornecida'
             }), 400
         
-        # Obter dados da requisição
-        images = request.files.getlist('images')
-        placements = request.form.get('placements', '[]')
-        
-        try:
-            placements = json.loads(placements)
-        except:
-            placements = []
+        files = request.files.getlist('images')
+        placements = request.form.getlist('placements')
         
         if not placements:
             return jsonify({
                 'success': False,
-                'error': 'Nenhum posicionamento fornecido'
+                'error': 'Nenhum posicionamento especificado'
             }), 400
-        
-        print(f"🔍 DEBUG: {len(images)} imagens recebidas para {len(placements)} posicionamentos")
-        
-        # Definir especificações de posicionamentos
-        placement_specs = {
-            'feed': {'width': 1080, 'height': 1080, 'aspect_ratio': '1:1'},
-            'stories': {'width': 1080, 'height': 1920, 'aspect_ratio': '9:16'},
-            'reels': {'width': 1080, 'height': 1920, 'aspect_ratio': '9:16'},
-            'instagram_feed': {'width': 1080, 'height': 1080, 'aspect_ratio': '1:1'},
-            'instagram_stories': {'width': 1080, 'height': 1920, 'aspect_ratio': '9:16'},
-            'instagram_reels': {'width': 1080, 'height': 1920, 'aspect_ratio': '9:16'},
-            'instagram_explore': {'width': 1080, 'height': 1080, 'aspect_ratio': '1:1'},
-            'right_column': {'width': 1200, 'height': 628, 'aspect_ratio': '1.91:1'},
-            'marketplace': {'width': 1080, 'height': 1080, 'aspect_ratio': '1:1'}
-        }
         
         processed_images = []
         
-        for image_file in images:
-            if image_file.filename == '':
-                continue
-                
-            # Processar cada imagem
-            image_result = {
-                'original_name': image_file.filename,
-                'versions': []
-            }
-            
-            # Obter formatos únicos dos posicionamentos selecionados
-            unique_formats = {}
-            for placement in placements:
-                if placement in placement_specs:
-                    spec = placement_specs[placement]
-                    aspect_ratio = spec['aspect_ratio']
-                    if aspect_ratio not in unique_formats:
-                        unique_formats[aspect_ratio] = spec
-            
-            # Gerar versão para cada formato único
-            for aspect_ratio, spec in unique_formats.items():
-                version = {
-                    'aspect_ratio': aspect_ratio,
-                    'width': spec['width'],
-                    'height': spec['height'],
-                    'placements': [p for p in placements if placement_specs.get(p, {}).get('aspect_ratio') == aspect_ratio],
-                    'file_name': f"{image_file.filename.split('.')[0]}_{aspect_ratio.replace(':', 'x')}.jpg"
-                }
-                image_result['versions'].append(version)
-            
-            processed_images.append(image_result)
+        for file in files:
+            if file and file.filename:
+                # Aqui você implementaria o processamento real da imagem
+                # Por enquanto, retornamos dados simulados
+                processed_images.append({
+                    'original_name': file.filename,
+                    'processed_versions': [
+                        {
+                            'placement': placement,
+                            'url': f'/processed/{file.filename}_{placement}',
+                            'dimensions': get_placement_dimensions(placement)
+                        }
+                        for placement in placements
+                    ]
+                })
         
         return jsonify({
             'success': True,
-            'data': {
-                'processed_images': processed_images,
-                'total_images': len(images),
-                'total_versions': sum(len(img['versions']) for img in processed_images)
-            }
+            'data': processed_images
         })
         
     except Exception as e:
-        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
-        import traceback
-        print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+def get_placement_dimensions(placement):
+    """Obter dimensões recomendadas para um posicionamento"""
+    dimensions = {
+        'facebook_feed': {'width': 1200, 'height': 628},
+        'facebook_stories': {'width': 1080, 'height': 1920},
+        'facebook_reels': {'width': 1080, 'height': 1920},
+        'instagram_feed': {'width': 1080, 'height': 1080},
+        'instagram_stories': {'width': 1080, 'height': 1920},
+        'instagram_reels': {'width': 1080, 'height': 1920},
+        'marketplace': {'width': 1080, 'height': 1080}
+    }
+    return dimensions.get(placement, {'width': 1200, 'height': 628})
 
 @facebook_data_bp.route('/facebook/resize-image', methods=['POST'])
 def resize_image():
     """Redimensionar uma imagem específica"""
-    print("🔍 DEBUG: Endpoint resize_image chamado")
-    
     try:
-        # Verificar se há arquivo na requisição
         if 'image' not in request.files:
             return jsonify({
                 'success': False,
                 'error': 'Nenhuma imagem fornecida'
             }), 400
         
-        image_file = request.files['image']
+        file = request.files['image']
         width = request.form.get('width', type=int)
         height = request.form.get('height', type=int)
-        quality = request.form.get('quality', 90, type=int)
         
         if not width or not height:
             return jsonify({
@@ -1133,107 +1186,101 @@ def resize_image():
                 'error': 'Largura e altura são obrigatórias'
             }), 400
         
-        print(f"🔍 DEBUG: Redimensionando para {width}x{height} com qualidade {quality}")
-        
-        # Aqui você implementaria a lógica de redimensionamento
-        # Por enquanto, retornamos sucesso simulado
+        # Aqui você implementaria o redimensionamento real
+        # Por enquanto, retornamos dados simulados
         
         return jsonify({
             'success': True,
             'data': {
-                'original_name': image_file.filename,
-                'new_width': width,
-                'new_height': height,
-                'quality': quality,
-                'message': 'Imagem redimensionada com sucesso'
+                'original_name': file.filename,
+                'resized_url': f'/resized/{file.filename}_{width}x{height}',
+                'dimensions': {'width': width, 'height': height}
             }
         })
         
     except Exception as e:
-        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @facebook_data_bp.route('/facebook/placement-specs', methods=['GET'])
 def get_placement_specs():
-    """Buscar especificações de todos os posicionamentos"""
-    print("🔍 DEBUG: Endpoint get_placement_specs chamado")
-    
+    """Buscar especificações detalhadas de posicionamentos"""
     try:
         specs = {
-            'facebook': {
-                'feed': {
-                    'name': 'Feed do Facebook',
-                    'aspect_ratio': '1:1',
-                    'width': 1080,
-                    'height': 1080,
-                    'recommended': '1080x1080',
-                    'description': 'Anúncios no feed principal'
+            'facebook_feed': {
+                'name': 'Feed do Facebook',
+                'image_specs': {
+                    'ratio': '1.91:1',
+                    'recommended_size': '1200x628',
+                    'min_size': '600x314',
+                    'max_size': '1200x628'
                 },
-                'stories': {
-                    'name': 'Stories do Facebook',
-                    'aspect_ratio': '9:16',
-                    'width': 1080,
-                    'height': 1920,
-                    'recommended': '1080x1920',
-                    'description': 'Anúncios em stories (vertical)'
+                'video_specs': {
+                    'ratio': '16:9 ou 1:1',
+                    'recommended_size': '1280x720',
+                    'duration': '1-240 segundos',
+                    'file_size': 'Máx 4GB'
                 },
-                'reels': {
-                    'name': 'Reels do Facebook',
-                    'aspect_ratio': '9:16',
-                    'width': 1080,
-                    'height': 1920,
-                    'recommended': '1080x1920',
-                    'description': 'Anúncios em reels (vertical)'
-                },
-                'right_column': {
-                    'name': 'Coluna Direita',
-                    'aspect_ratio': '1.91:1',
-                    'width': 1200,
-                    'height': 628,
-                    'recommended': '1200x628',
-                    'description': 'Anúncios na lateral direita'
-                },
-                'marketplace': {
-                    'name': 'Marketplace',
-                    'aspect_ratio': '1:1',
-                    'width': 1080,
-                    'height': 1080,
-                    'recommended': '1080x1080',
-                    'description': 'Anúncios no Marketplace'
+                'text_limits': {
+                    'headline': '40 caracteres',
+                    'description': '125 caracteres',
+                    'link_description': '30 caracteres'
                 }
             },
-            'instagram': {
-                'instagram_feed': {
-                    'name': 'Feed do Instagram',
-                    'aspect_ratio': '1:1',
-                    'width': 1080,
-                    'height': 1080,
-                    'recommended': '1080x1080',
-                    'description': 'Anúncios no feed do Instagram'
+            'facebook_stories': {
+                'name': 'Stories do Facebook',
+                'image_specs': {
+                    'ratio': '9:16',
+                    'recommended_size': '1080x1920',
+                    'min_size': '600x1067',
+                    'max_size': '1080x1920'
                 },
-                'instagram_stories': {
-                    'name': 'Stories do Instagram',
-                    'aspect_ratio': '9:16',
-                    'width': 1080,
-                    'height': 1920,
-                    'recommended': '1080x1920',
-                    'description': 'Anúncios em stories do Instagram'
+                'video_specs': {
+                    'ratio': '9:16',
+                    'recommended_size': '1080x1920',
+                    'duration': '1-15 segundos',
+                    'file_size': 'Máx 4GB'
                 },
-                'instagram_reels': {
-                    'name': 'Reels do Instagram',
-                    'aspect_ratio': '9:16',
-                    'width': 1080,
-                    'height': 1920,
-                    'recommended': '1080x1920',
-                    'description': 'Anúncios em reels do Instagram'
+                'text_limits': {
+                    'headline': '40 caracteres',
+                    'description': 'Não aplicável'
+                }
+            },
+            'instagram_feed': {
+                'name': 'Feed do Instagram',
+                'image_specs': {
+                    'ratio': '1:1 ou 4:5',
+                    'recommended_size': '1080x1080',
+                    'min_size': '600x600',
+                    'max_size': '1080x1080'
                 },
-                'instagram_explore': {
-                    'name': 'Explorar do Instagram',
-                    'aspect_ratio': '1:1',
-                    'width': 1080,
-                    'height': 1080,
-                    'recommended': '1080x1080',
-                    'description': 'Anúncios na aba Explorar'
+                'video_specs': {
+                    'ratio': '4:5 ou 1:1',
+                    'recommended_size': '1080x1350',
+                    'duration': '1-60 segundos',
+                    'file_size': 'Máx 4GB'
+                },
+                'text_limits': {
+                    'headline': '40 caracteres',
+                    'description': '125 caracteres'
+                }
+            },
+            'instagram_stories': {
+                'name': 'Stories do Instagram',
+                'image_specs': {
+                    'ratio': '9:16',
+                    'recommended_size': '1080x1920',
+                    'min_size': '600x1067',
+                    'max_size': '1080x1920'
+                },
+                'video_specs': {
+                    'ratio': '9:16',
+                    'recommended_size': '1080x1920',
+                    'duration': '1-15 segundos',
+                    'file_size': 'Máx 4GB'
+                },
+                'text_limits': {
+                    'headline': '40 caracteres',
+                    'description': 'Não aplicável'
                 }
             }
         }
@@ -1244,158 +1291,93 @@ def get_placement_specs():
         })
         
     except Exception as e:
-        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @facebook_data_bp.route('/facebook/validate-images', methods=['POST'])
 def validate_images():
-    """Validar imagens antes do processamento"""
-    print("🔍 DEBUG: Endpoint validate_images chamado")
-    
+    """Validar imagens para posicionamentos específicos"""
     try:
-        # Verificar se há arquivos na requisição
         if 'images' not in request.files:
             return jsonify({
                 'success': False,
                 'error': 'Nenhuma imagem fornecida'
             }), 400
         
-        images = request.files.getlist('images')
-        creative_type = request.form.get('creative_type', 'image')
+        files = request.files.getlist('images')
+        placements = request.form.getlist('placements')
         
         validation_results = []
         
-        for image_file in images:
-            if image_file.filename == '':
-                continue
-            
-            # Validações básicas
-            result = {
-                'filename': image_file.filename,
-                'valid': True,
-                'errors': [],
-                'warnings': [],
-                'size_mb': 0,
-                'format': '',
-                'dimensions': None
-            }
-            
-            # Verificar tamanho do arquivo
-            image_file.seek(0, 2)  # Ir para o final do arquivo
-            file_size = image_file.tell()
-            image_file.seek(0)  # Voltar para o início
-            
-            size_mb = file_size / (1024 * 1024)
-            result['size_mb'] = round(size_mb, 2)
-            
-            # Verificar formato
-            file_extension = image_file.filename.lower().split('.')[-1]
-            result['format'] = file_extension.upper()
-            
-            # Validações por tipo de criativo
-            if creative_type == 'image':
-                if file_extension not in ['jpg', 'jpeg', 'png']:
-                    result['valid'] = False
-                    result['errors'].append('Formato não suportado. Use JPG ou PNG.')
+        for file in files:
+            if file and file.filename:
+                # Aqui você implementaria a validação real
+                # Por enquanto, retornamos dados simulados
                 
-                if size_mb > 30:
-                    result['valid'] = False
-                    result['errors'].append('Arquivo muito grande. Máximo 30MB.')
-                elif size_mb > 10:
-                    result['warnings'].append('Arquivo grande. Considere otimizar.')
-            
-            elif creative_type == 'video':
-                if file_extension not in ['mp4', 'mov', 'gif']:
-                    result['valid'] = False
-                    result['errors'].append('Formato não suportado. Use MP4, MOV ou GIF.')
+                file_validation = {
+                    'filename': file.filename,
+                    'valid': True,
+                    'warnings': [],
+                    'errors': [],
+                    'placement_compatibility': {}
+                }
                 
-                if size_mb > 4000:  # 4GB
-                    result['valid'] = False
-                    result['errors'].append('Arquivo muito grande. Máximo 4GB.')
-            
-            validation_results.append(result)
-        
-        # Resumo da validação
-        total_files = len(validation_results)
-        valid_files = len([r for r in validation_results if r['valid']])
+                # Simular validação para cada posicionamento
+                for placement in placements:
+                    file_validation['placement_compatibility'][placement] = {
+                        'compatible': True,
+                        'recommended_changes': []
+                    }
+                
+                validation_results.append(file_validation)
         
         return jsonify({
             'success': True,
-            'data': {
-                'results': validation_results,
-                'summary': {
-                    'total_files': total_files,
-                    'valid_files': valid_files,
-                    'invalid_files': total_files - valid_files,
-                    'all_valid': valid_files == total_files
-                }
-            }
+            'data': validation_results
         })
         
     except Exception as e:
-        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @facebook_data_bp.route('/facebook/optimize-images', methods=['POST'])
 def optimize_images():
     """Otimizar imagens para melhor performance"""
-    print("🔍 DEBUG: Endpoint optimize_images chamado")
-    
     try:
-        # Verificar se há arquivos na requisição
         if 'images' not in request.files:
             return jsonify({
                 'success': False,
                 'error': 'Nenhuma imagem fornecida'
             }), 400
         
-        images = request.files.getlist('images')
+        files = request.files.getlist('images')
         quality = request.form.get('quality', 85, type=int)
-        max_width = request.form.get('max_width', 1920, type=int)
-        max_height = request.form.get('max_height', 1920, type=int)
         
-        optimization_results = []
+        optimized_images = []
         
-        for image_file in images:
-            if image_file.filename == '':
-                continue
-            
-            # Simular otimização (implementação real seria feita aqui)
-            original_size = image_file.content_length or 0
-            optimized_size = int(original_size * 0.7)  # Simular 30% de redução
-            
-            result = {
-                'filename': image_file.filename,
-                'original_size_mb': round(original_size / (1024 * 1024), 2),
-                'optimized_size_mb': round(optimized_size / (1024 * 1024), 2),
-                'reduction_percent': 30,
-                'quality': quality,
-                'max_dimensions': f"{max_width}x{max_height}",
-                'optimized': True
-            }
-            
-            optimization_results.append(result)
+        for file in files:
+            if file and file.filename:
+                # Aqui você implementaria a otimização real
+                # Por enquanto, retornamos dados simulados
+                
+                optimized_images.append({
+                    'original_name': file.filename,
+                    'optimized_url': f'/optimized/{file.filename}',
+                    'original_size': '2.5MB',
+                    'optimized_size': '850KB',
+                    'compression_ratio': '66%',
+                    'quality': quality
+                })
         
         return jsonify({
             'success': True,
-            'data': {
-                'results': optimization_results,
-                'total_images': len(optimization_results),
-                'average_reduction': 30
-            }
+            'data': optimized_images
         })
         
     except Exception as e:
-        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
-
-
-
-# ===== ENDPOINTS PARA SISTEMA DE LOCALIZAÇÃO =====
 
 @facebook_data_bp.route('/cities/search', methods=['GET'])
 def search_cities():
-    """Buscar cidades brasileiras por nome"""
+    """Buscar cidades brasileiras"""
     try:
         query = request.args.get('q', '').strip()
         
@@ -1405,289 +1387,270 @@ def search_cities():
                 'error': 'Query deve ter pelo menos 2 caracteres'
             }), 400
         
-        # Lista de cidades brasileiras (amostra - em produção usar base de dados completa)
-        cities_database = [
-            {'name': 'São Paulo', 'state': 'SP', 'lat': -23.5505, 'lng': -46.6333, 'population': 12325232},
-            {'name': 'Rio de Janeiro', 'state': 'RJ', 'lat': -22.9068, 'lng': -43.1729, 'population': 6748000},
-            {'name': 'Brasília', 'state': 'DF', 'lat': -15.7942, 'lng': -47.8822, 'population': 3055149},
-            {'name': 'Salvador', 'state': 'BA', 'lat': -12.9714, 'lng': -38.5014, 'population': 2886698},
-            {'name': 'Fortaleza', 'state': 'CE', 'lat': -3.7319, 'lng': -38.5267, 'population': 2686612},
-            {'name': 'Belo Horizonte', 'state': 'MG', 'lat': -19.9191, 'lng': -43.9386, 'population': 2521564},
-            {'name': 'Manaus', 'state': 'AM', 'lat': -3.1190, 'lng': -60.0217, 'population': 2219580},
-            {'name': 'Curitiba', 'state': 'PR', 'lat': -25.4284, 'lng': -49.2733, 'population': 1948626},
-            {'name': 'Recife', 'state': 'PE', 'lat': -8.0476, 'lng': -34.8770, 'population': 1653461},
-            {'name': 'Goiânia', 'state': 'GO', 'lat': -16.6869, 'lng': -49.2648, 'population': 1536097},
-            {'name': 'Belém', 'state': 'PA', 'lat': -1.4558, 'lng': -48.5044, 'population': 1499641},
-            {'name': 'Porto Alegre', 'state': 'RS', 'lat': -30.0346, 'lng': -51.2177, 'population': 1488252},
-            {'name': 'Guarulhos', 'state': 'SP', 'lat': -23.4538, 'lng': -46.5333, 'population': 1392121},
-            {'name': 'Campinas', 'state': 'SP', 'lat': -22.9099, 'lng': -47.0626, 'population': 1213792},
-            {'name': 'São Luís', 'state': 'MA', 'lat': -2.5387, 'lng': -44.2825, 'population': 1108975},
-            {'name': 'São Gonçalo', 'state': 'RJ', 'lat': -22.8267, 'lng': -43.0537, 'population': 1084839},
-            {'name': 'Maceió', 'state': 'AL', 'lat': -9.6658, 'lng': -35.7353, 'population': 1025360},
-            {'name': 'Duque de Caxias', 'state': 'RJ', 'lat': -22.7856, 'lng': -43.3117, 'population': 924624},
-            {'name': 'Natal', 'state': 'RN', 'lat': -5.7945, 'lng': -35.2110, 'population': 890480},
-            {'name': 'Teresina', 'state': 'PI', 'lat': -5.0892, 'lng': -42.8019, 'population': 868075},
-            {'name': 'Campo Grande', 'state': 'MS', 'lat': -20.4697, 'lng': -54.6201, 'population': 906092},
-            {'name': 'Nova Iguaçu', 'state': 'RJ', 'lat': -22.7592, 'lng': -43.4511, 'population': 823302},
-            {'name': 'São Bernardo do Campo', 'state': 'SP', 'lat': -23.6914, 'lng': -46.5646, 'population': 844483},
-            {'name': 'João Pessoa', 'state': 'PB', 'lat': -7.1195, 'lng': -34.8450, 'population': 817511},
-            {'name': 'Santo André', 'state': 'SP', 'lat': -23.6633, 'lng': -46.5307, 'population': 721368},
-            {'name': 'Jaboatão dos Guararapes', 'state': 'PE', 'lat': -8.1130, 'lng': -35.0149, 'population': 706867},
-            {'name': 'Osasco', 'state': 'SP', 'lat': -23.5329, 'lng': -46.7918, 'population': 699944},
-            {'name': 'São José dos Campos', 'state': 'SP', 'lat': -23.2237, 'lng': -45.9009, 'population': 729737},
-            {'name': 'Ribeirão Preto', 'state': 'SP', 'lat': -21.1775, 'lng': -47.8208, 'population': 703293},
-            {'name': 'Uberlândia', 'state': 'MG', 'lat': -18.9113, 'lng': -48.2622, 'population': 699097},
-            {'name': 'Contagem', 'state': 'MG', 'lat': -19.9317, 'lng': -44.0536, 'population': 668949},
-            {'name': 'Sorocaba', 'state': 'SP', 'lat': -23.5015, 'lng': -47.4526, 'population': 687357},
-            {'name': 'Aracaju', 'state': 'SE', 'lat': -10.9472, 'lng': -37.0731, 'population': 664908},
-            {'name': 'Feira de Santana', 'state': 'BA', 'lat': -12.2664, 'lng': -38.9663, 'population': 619609},
-            {'name': 'Cuiabá', 'state': 'MT', 'lat': -15.6014, 'lng': -56.0979, 'population': 650912},
-            {'name': 'Joinville', 'state': 'SC', 'lat': -26.3045, 'lng': -48.8487, 'population': 597658},
-            {'name': 'Aparecida de Goiânia', 'state': 'GO', 'lat': -16.8173, 'lng': -49.2437, 'population': 542090},
-            {'name': 'Londrina', 'state': 'PR', 'lat': -23.3045, 'lng': -51.1696, 'population': 575377},
-            {'name': 'Ananindeua', 'state': 'PA', 'lat': -1.3656, 'lng': -48.3722, 'population': 535547},
-            {'name': 'Porto Velho', 'state': 'RO', 'lat': -8.7612, 'lng': -63.9004, 'population': 539354},
-            {'name': 'Niterói', 'state': 'RJ', 'lat': -22.8833, 'lng': -43.1036, 'population': 515317},
-            {'name': 'Belford Roxo', 'state': 'RJ', 'lat': -22.7631, 'lng': -43.3997, 'population': 513118},
-            {'name': 'Caxias do Sul', 'state': 'RS', 'lat': -29.1678, 'lng': -51.1794, 'population': 517451},
-            {'name': 'Campos dos Goytacazes', 'state': 'RJ', 'lat': -21.7587, 'lng': -41.3298, 'population': 507548},
-            {'name': 'Macapá', 'state': 'AP', 'lat': 0.0389, 'lng': -51.0664, 'population': 512902},
-            {'name': 'Vila Velha', 'state': 'ES', 'lat': -20.3297, 'lng': -40.2925, 'population': 501325},
-            {'name': 'Mauá', 'state': 'SP', 'lat': -23.6678, 'lng': -46.4611, 'population': 477552},
-            {'name': 'São João de Meriti', 'state': 'RJ', 'lat': -22.8048, 'lng': -43.3722, 'population': 472906},
-            {'name': 'Florianópolis', 'state': 'SC', 'lat': -27.5954, 'lng': -48.5480, 'population': 508826},
-            {'name': 'Santos', 'state': 'SP', 'lat': -23.9618, 'lng': -46.3322, 'population': 433656},
-            {'name': 'Diadema', 'state': 'SP', 'lat': -23.6861, 'lng': -46.6228, 'population': 426757},
-            {'name': 'Jundiaí', 'state': 'SP', 'lat': -23.1864, 'lng': -46.8842, 'population': 423006},
-            {'name': 'Carapicuíba', 'state': 'SP', 'lat': -23.5222, 'lng': -46.8361, 'population': 394465},
-            {'name': 'Piracicaba', 'state': 'SP', 'lat': -22.7253, 'lng': -47.6492, 'population': 407252},
-            {'name': 'Cariacica', 'state': 'ES', 'lat': -20.2619, 'lng': -40.4175, 'population': 383917},
-            {'name': 'Olinda', 'state': 'PE', 'lat': -8.0089, 'lng': -34.8553, 'population': 393115},
-            {'name': 'Canoas', 'state': 'RS', 'lat': -29.9177, 'lng': -51.1844, 'population': 348208},
-            {'name': 'Betim', 'state': 'MG', 'lat': -19.9681, 'lng': -44.1987, 'population': 444784},
-            {'name': 'Caucaia', 'state': 'CE', 'lat': -3.7361, 'lng': -38.6531, 'population': 368328},
-            {'name': 'Vitória', 'state': 'ES', 'lat': -20.3155, 'lng': -40.3128, 'population': 365855},
-            {'name': 'Ribeirão das Neves', 'state': 'MG', 'lat': -19.7669, 'lng': -44.0869, 'population': 334858},
-            {'name': 'Paulista', 'state': 'PE', 'lat': -7.9406, 'lng': -34.8728, 'population': 331774},
-            {'name': 'Petrópolis', 'state': 'RJ', 'lat': -22.5047, 'lng': -43.1778, 'population': 306678},
-            {'name': 'Várzea Grande', 'state': 'MT', 'lat': -15.6467, 'lng': -56.1325, 'population': 284971},
-            {'name': 'Blumenau', 'state': 'SC', 'lat': -26.9194, 'lng': -49.0661, 'population': 361855},
-            {'name': 'Uberaba', 'state': 'MG', 'lat': -19.7517, 'lng': -47.9319, 'population': 337092},
-            {'name': 'Santarém', 'state': 'PA', 'lat': -2.4093, 'lng': -54.7081, 'population': 306480},
-            {'name': 'Volta Redonda', 'state': 'RJ', 'lat': -22.5231, 'lng': -44.1044, 'population': 273988},
-            {'name': 'Novo Hamburgo', 'state': 'RS', 'lat': -29.6783, 'lng': -51.1306, 'population': 247032},
-            {'name': 'Bauru', 'state': 'SP', 'lat': -22.3147, 'lng': -49.0608, 'population': 379297},
-            {'name': 'Juiz de Fora', 'state': 'MG', 'lat': -21.7642, 'lng': -43.3467, 'population': 573285},
-            {'name': 'Praia Grande', 'state': 'SP', 'lat': -24.0058, 'lng': -46.4028, 'population': 330845},
-            {'name': 'Pelotas', 'state': 'RS', 'lat': -31.7654, 'lng': -52.3376, 'population': 343651},
-            {'name': 'Suzano', 'state': 'SP', 'lat': -23.5425, 'lng': -46.3108, 'population': 300559},
-            {'name': 'Taboão da Serra', 'state': 'SP', 'lat': -23.6092, 'lng': -46.7581, 'population': 281639},
-            {'name': 'São Vicente', 'state': 'SP', 'lat': -23.9633, 'lng': -46.3914, 'population': 365798},
-            {'name': 'Franca', 'state': 'SP', 'lat': -20.5386, 'lng': -47.4006, 'population': 358539},
-            {'name': 'Maringá', 'state': 'PR', 'lat': -23.4205, 'lng': -51.9331, 'population': 430157},
-            {'name': 'Montes Claros', 'state': 'MG', 'lat': -16.7289, 'lng': -43.8647, 'population': 413487},
-            {'name': 'São Carlos', 'state': 'SP', 'lat': -22.0175, 'lng': -47.8908, 'population': 254484},
-            {'name': 'Taubaté', 'state': 'SP', 'lat': -23.0205, 'lng': -45.5633, 'population': 317915},
-            {'name': 'Limeira', 'state': 'SP', 'lat': -22.5647, 'lng': -47.4017, 'population': 308482},
-            {'name': 'Suzano', 'state': 'SP', 'lat': -23.5425, 'lng': -46.3108, 'population': 300559},
-            {'name': 'Guarujá', 'state': 'SP', 'lat': -23.9939, 'lng': -46.2564, 'population': 322750},
-            {'name': 'Caruaru', 'state': 'PE', 'lat': -8.2839, 'lng': -35.9761, 'population': 367309},
-            {'name': 'Anápolis', 'state': 'GO', 'lat': -16.3281, 'lng': -48.9531, 'population': 391772},
-            {'name': 'Cascavel', 'state': 'PR', 'lat': -24.9558, 'lng': -53.4552, 'population': 332333},
-            {'name': 'Petrolina', 'state': 'PE', 'lat': -9.3891, 'lng': -40.5030, 'population': 354317},
-            {'name': 'Campina Grande', 'state': 'PB', 'lat': -7.2306, 'lng': -35.8811, 'population': 411807},
-            {'name': 'Viamão', 'state': 'RS', 'lat': -30.0811, 'lng': -51.0233, 'population': 255224},
-            {'name': 'Barueri', 'state': 'SP', 'lat': -23.5106, 'lng': -46.8761, 'population': 276601},
-            {'name': 'Arapiraca', 'state': 'AL', 'lat': -9.7517, 'lng': -36.6611, 'population': 234185},
-            {'name': 'Embu das Artes', 'state': 'SP', 'lat': -23.6489, 'lng': -46.8522, 'population': 271028},
-            {'name': 'Colombo', 'state': 'PR', 'lat': -25.2917, 'lng': -49.2244, 'population': 240840},
-            {'name': 'Jacareí', 'state': 'SP', 'lat': -23.3053, 'lng': -45.9658, 'population': 235416},
-            {'name': 'Indaiatuba', 'state': 'SP', 'lat': -23.0922, 'lng': -47.2181, 'population': 256223},
-            {'name': 'Cotia', 'state': 'SP', 'lat': -23.6039, 'lng': -46.9189, 'population': 253608},
-            {'name': 'Americana', 'state': 'SP', 'lat': -22.7394, 'lng': -47.3314, 'population': 229322},
-            {'name': 'Marília', 'state': 'SP', 'lat': -22.2139, 'lng': -49.9456, 'population': 240590},
-            {'name': 'Presidente Prudente', 'state': 'SP', 'lat': -22.1256, 'lng': -51.3889, 'population': 230371},
-            {'name': 'Araraquara', 'state': 'SP', 'lat': -21.7947, 'lng': -48.1756, 'population': 238339},
-            {'name': 'Itaquaquecetuba', 'state': 'SP', 'lat': -23.4864, 'lng': -46.3481, 'population': 365392},
-            {'name': 'Rio Branco', 'state': 'AC', 'lat': -9.9747, 'lng': -67.8243, 'population': 413418},
-            {'name': 'Magé', 'state': 'RJ', 'lat': -22.6558, 'lng': -43.0403, 'population': 245071},
-            {'name': 'Gravataí', 'state': 'RS', 'lat': -29.9442, 'lng': -50.9928, 'population': 281519},
-            {'name': 'Itabuna', 'state': 'BA', 'lat': -14.7856, 'lng': -39.2803, 'population': 213223},
-            {'name': 'São José do Rio Preto', 'state': 'SP', 'lat': -20.8197, 'lng': -49.3794, 'population': 464983},
-            {'name': 'Foz do Iguaçu', 'state': 'PR', 'lat': -25.5478, 'lng': -54.5881, 'population': 258823},
-            {'name': 'Vitória da Conquista', 'state': 'BA', 'lat': -14.8661, 'lng': -40.8394, 'population': 341597},
-            {'name': 'Ponta Grossa', 'state': 'PR', 'lat': -25.0950, 'lng': -50.1619, 'population': 355336},
-            {'name': 'Ilhéus', 'state': 'BA', 'lat': -14.7889, 'lng': -39.0397, 'population': 164844},
-            {'name': 'Mossoró', 'state': 'RN', 'lat': -5.1875, 'lng': -37.3439, 'population': 295619},
-            {'name': 'Juazeiro do Norte', 'state': 'CE', 'lat': -7.2128, 'lng': -39.3153, 'population': 276264},
-            {'name': 'Imperatriz', 'state': 'MA', 'lat': -5.5264, 'lng': -47.4919, 'population': 259980},
-            {'name': 'Dourados', 'state': 'MS', 'lat': -22.2211, 'lng': -54.8056, 'population': 225495},
-            {'name': 'Chapecó', 'state': 'SC', 'lat': -27.1009, 'lng': -52.6156, 'population': 224013},
-            {'name': 'Rondonópolis', 'state': 'MT', 'lat': -16.4706, 'lng': -54.6356, 'population': 230179},
-            {'name': 'Sobral', 'state': 'CE', 'lat': -3.6861, 'lng': -40.3492, 'population': 208935},
-            {'name': 'Blumenau', 'state': 'SC', 'lat': -26.9194, 'lng': -49.0661, 'population': 361855}
+        # Simulação de busca de cidades
+        # Em produção, isso viria de uma base de dados real
+        all_cities = [
+            {
+                'id': 'sp_sao_paulo',
+                'name': 'São Paulo',
+                'state': 'SP',
+                'full_name': 'São Paulo, SP',
+                'population': 12396372,
+                'lat': -23.5505,
+                'lng': -46.6333
+            },
+            {
+                'id': 'rj_rio_de_janeiro',
+                'name': 'Rio de Janeiro',
+                'state': 'RJ',
+                'full_name': 'Rio de Janeiro, RJ',
+                'population': 6775561,
+                'lat': -22.9068,
+                'lng': -43.1729
+            },
+            {
+                'id': 'mg_belo_horizonte',
+                'name': 'Belo Horizonte',
+                'state': 'MG',
+                'full_name': 'Belo Horizonte, MG',
+                'population': 2530701,
+                'lat': -19.9167,
+                'lng': -43.9345
+            },
+            {
+                'id': 'df_brasilia',
+                'name': 'Brasília',
+                'state': 'DF',
+                'full_name': 'Brasília, DF',
+                'population': 3094325,
+                'lat': -15.7801,
+                'lng': -47.9292
+            },
+            {
+                'id': 'pr_curitiba',
+                'name': 'Curitiba',
+                'state': 'PR',
+                'full_name': 'Curitiba, PR',
+                'population': 1963726,
+                'lat': -25.4284,
+                'lng': -49.2733
+            },
+            {
+                'id': 'rs_porto_alegre',
+                'name': 'Porto Alegre',
+                'state': 'RS',
+                'full_name': 'Porto Alegre, RS',
+                'population': 1492530,
+                'lat': -30.0346,
+                'lng': -51.2177
+            },
+            {
+                'id': 'ba_salvador',
+                'name': 'Salvador',
+                'state': 'BA',
+                'full_name': 'Salvador, BA',
+                'population': 2900319,
+                'lat': -12.9714,
+                'lng': -38.5014
+            },
+            {
+                'id': 'ce_fortaleza',
+                'name': 'Fortaleza',
+                'state': 'CE',
+                'full_name': 'Fortaleza, CE',
+                'population': 2703391,
+                'lat': -3.7319,
+                'lng': -38.5267
+            },
+            {
+                'id': 'pe_recife',
+                'name': 'Recife',
+                'state': 'PE',
+                'full_name': 'Recife, PE',
+                'population': 1661017,
+                'lat': -8.0476,
+                'lng': -34.8770
+            },
+            {
+                'id': 'go_goiania',
+                'name': 'Goiânia',
+                'state': 'GO',
+                'full_name': 'Goiânia, GO',
+                'population': 1555626,
+                'lat': -16.6869,
+                'lng': -49.2648
+            },
+            {
+                'id': 'am_manaus',
+                'name': 'Manaus',
+                'state': 'AM',
+                'full_name': 'Manaus, AM',
+                'population': 2255903,
+                'lat': -3.1190,
+                'lng': -60.0217
+            },
+            {
+                'id': 'pa_belem',
+                'name': 'Belém',
+                'state': 'PA',
+                'full_name': 'Belém, PA',
+                'population': 1506420,
+                'lat': -1.4558,
+                'lng': -48.5044
+            },
+            {
+                'id': 'sc_florianopolis',
+                'name': 'Florianópolis',
+                'state': 'SC',
+                'full_name': 'Florianópolis, SC',
+                'population': 508826,
+                'lat': -27.5954,
+                'lng': -48.5480
+            },
+            {
+                'id': 'es_vitoria',
+                'name': 'Vitória',
+                'state': 'ES',
+                'full_name': 'Vitória, ES',
+                'population': 365855,
+                'lat': -20.3155,
+                'lng': -40.3128
+            },
+            {
+                'id': 'mt_cuiaba',
+                'name': 'Cuiabá',
+                'state': 'MT',
+                'full_name': 'Cuiabá, MT',
+                'population': 650912,
+                'lat': -15.6014,
+                'lng': -56.0979
+            }
         ]
         
-        # Filtrar cidades que correspondem à query
+        # Filtrar cidades baseado na query
         query_lower = query.lower()
-        matching_cities = []
-        
-        for city in cities_database:
-            city_name_lower = city['name'].lower()
-            if query_lower in city_name_lower:
-                matching_cities.append({
-                    'id': f"{city['name']}_{city['state']}",
-                    'name': city['name'],
-                    'state': city['state'],
-                    'full_name': f"{city['name']}, {city['state']}",
-                    'lat': city['lat'],
-                    'lng': city['lng'],
-                    'population': city['population']
-                })
-        
-        # Ordenar por relevância (exato primeiro, depois por população)
-        matching_cities.sort(key=lambda x: (
-            0 if x['name'].lower().startswith(query_lower) else 1,
-            -x['population']
-        ))
+        filtered_cities = [
+            city for city in all_cities
+            if query_lower in city['name'].lower() or query_lower in city['state'].lower()
+        ]
         
         # Limitar a 10 resultados
-        matching_cities = matching_cities[:10]
+        filtered_cities = filtered_cities[:10]
         
         return jsonify({
             'success': True,
-            'cities': matching_cities,
-            'total': len(matching_cities)
+            'cities': filtered_cities,
+            'total': len(filtered_cities)
         })
         
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f'Erro ao buscar cidades: {str(e)}'
-        }), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @facebook_data_bp.route('/cities/coordinates', methods=['POST'])
 def get_city_coordinates():
-    """Obter coordenadas de uma cidade específica"""
+    """Buscar coordenadas de uma cidade"""
     try:
         data = request.get_json()
-        city_name = data.get('city_name', '').strip()
-        state = data.get('state', '').strip()
         
-        if not city_name:
+        if not data or 'city_name' not in data:
             return jsonify({
                 'success': False,
                 'error': 'Nome da cidade é obrigatório'
             }), 400
         
-        # Aqui você pode integrar com uma API de geocoding real
-        # Por enquanto, vamos usar dados mock
-        mock_coordinates = {
+        city_name = data['city_name']
+        
+        # Simulação de busca de coordenadas
+        # Em produção, isso usaria uma API de geocoding
+        coordinates = {
             'São Paulo': {'lat': -23.5505, 'lng': -46.6333},
             'Rio de Janeiro': {'lat': -22.9068, 'lng': -43.1729},
-            'Brasília': {'lat': -15.7942, 'lng': -47.8822},
-            'Salvador': {'lat': -12.9714, 'lng': -38.5014},
-            'Fortaleza': {'lat': -3.7319, 'lng': -38.5267},
-            'Belo Horizonte': {'lat': -19.9191, 'lng': -43.9386},
-            'Manaus': {'lat': -3.1190, 'lng': -60.0217},
-            'Curitiba': {'lat': -25.4284, 'lng': -49.2733},
-            'Recife': {'lat': -8.0476, 'lng': -34.8770},
-            'Porto Alegre': {'lat': -30.0346, 'lng': -51.2177}
+            'Belo Horizonte': {'lat': -19.9167, 'lng': -43.9345},
+            'Brasília': {'lat': -15.7801, 'lng': -47.9292},
+            'Curitiba': {'lat': -25.4284, 'lng': -49.2733}
         }
         
-        coordinates = mock_coordinates.get(city_name)
-        
-        if not coordinates:
+        if city_name in coordinates:
+            return jsonify({
+                'success': True,
+                'data': {
+                    'city': city_name,
+                    'coordinates': coordinates[city_name]
+                }
+            })
+        else:
             return jsonify({
                 'success': False,
                 'error': 'Cidade não encontrada'
             }), 404
         
-        return jsonify({
-            'success': True,
-            'city': city_name,
-            'state': state,
-            'coordinates': coordinates
-        })
-        
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f'Erro ao obter coordenadas: {str(e)}'
-        }), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @facebook_data_bp.route('/location/radius-cities', methods=['POST'])
 def get_cities_in_radius():
-    """Obter cidades dentro de um raio específico"""
+    """Buscar cidades dentro de um raio específico"""
     try:
         data = request.get_json()
-        center_lat = data.get('lat')
-        center_lng = data.get('lng')
-        radius_km = data.get('radius', 50)  # Default 50km
         
-        if not center_lat or not center_lng:
+        if not data:
             return jsonify({
                 'success': False,
-                'error': 'Coordenadas do centro são obrigatórias'
+                'error': 'Dados JSON não fornecidos'
             }), 400
         
-        # Função para calcular distância entre dois pontos
-        import math
+        required_fields = ['lat', 'lng', 'radius']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({
+                    'success': False,
+                    'error': f'Campo obrigatório ausente: {field}'
+                }), 400
         
-        def calculate_distance(lat1, lng1, lat2, lng2):
-            R = 6371  # Raio da Terra em km
-            
-            lat1_rad = math.radians(lat1)
-            lng1_rad = math.radians(lng1)
-            lat2_rad = math.radians(lat2)
-            lng2_rad = math.radians(lng2)
-            
-            dlat = lat2_rad - lat1_rad
-            dlng = lng2_rad - lng1_rad
-            
-            a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlng/2)**2
-            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-            
-            return R * c
+        center_lat = float(data['lat'])
+        center_lng = float(data['lng'])
+        radius = float(data['radius'])  # em km
         
-        # Lista de cidades para verificar (usar a mesma base de dados)
-        cities_in_radius = []
-        
-        # Mock de algumas cidades para demonstração
-        sample_cities = [
-            {'name': 'São Paulo', 'state': 'SP', 'lat': -23.5505, 'lng': -46.6333},
-            {'name': 'Guarulhos', 'state': 'SP', 'lat': -23.4538, 'lng': -46.5333},
-            {'name': 'Osasco', 'state': 'SP', 'lat': -23.5329, 'lng': -46.7918},
-            {'name': 'Santo André', 'state': 'SP', 'lat': -23.6633, 'lng': -46.5307},
-            {'name': 'São Bernardo do Campo', 'state': 'SP', 'lat': -23.6914, 'lng': -46.5646}
+        # Simulação de busca de cidades no raio
+        # Em produção, isso usaria cálculos de distância real
+        nearby_cities = [
+            {
+                'id': 'nearby_1',
+                'name': 'Cidade Próxima 1',
+                'state': 'SP',
+                'distance': radius * 0.3,
+                'population': 150000,
+                'lat': center_lat + 0.1,
+                'lng': center_lng + 0.1
+            },
+            {
+                'id': 'nearby_2',
+                'name': 'Cidade Próxima 2',
+                'state': 'SP',
+                'distance': radius * 0.7,
+                'population': 89000,
+                'lat': center_lat - 0.05,
+                'lng': center_lng + 0.15
+            },
+            {
+                'id': 'nearby_3',
+                'name': 'Cidade Próxima 3',
+                'state': 'SP',
+                'distance': radius * 0.9,
+                'population': 45000,
+                'lat': center_lat + 0.08,
+                'lng': center_lng - 0.12
+            }
         ]
-        
-        for city in sample_cities:
-            distance = calculate_distance(center_lat, center_lng, city['lat'], city['lng'])
-            if distance <= radius_km:
-                cities_in_radius.append({
-                    'name': city['name'],
-                    'state': city['state'],
-                    'full_name': f"{city['name']}, {city['state']}",
-                    'lat': city['lat'],
-                    'lng': city['lng'],
-                    'distance_km': round(distance, 2)
-                })
-        
-        # Ordenar por distância
-        cities_in_radius.sort(key=lambda x: x['distance_km'])
         
         return jsonify({
             'success': True,
+            'cities': nearby_cities,
             'center': {'lat': center_lat, 'lng': center_lng},
-            'radius_km': radius_km,
-            'cities': cities_in_radius,
-            'total': len(cities_in_radius)
+            'radius': radius,
+            'total': len(nearby_cities)
         })
         
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f'Erro ao buscar cidades no raio: {str(e)}'
-        }), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
 

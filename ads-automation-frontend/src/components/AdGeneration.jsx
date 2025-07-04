@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 
-const AdGeneration = () => {
+const AdGeneration = ({ selectedBM }) => {
   // Estados principais
   const [formData, setFormData] = useState({
     page_id: '',
@@ -443,9 +443,11 @@ const AdGeneration = () => {
 
   // Função para buscar páginas
   const fetchPages = async () => {
+    if (!selectedBM) return
+    
     setIsLoadingPages(true)
     try {
-      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook-data/pages')
+      const response = await fetch(`https://ads-automation-backend-otpl.onrender.com/api/facebook-data/pages?business_manager_id=${selectedBM}`)
       const data = await response.json()
       
       if (data.success) {
@@ -501,8 +503,10 @@ const AdGeneration = () => {
 
   // Carregar dados iniciais
   useEffect(() => {
-    fetchPages()
-  }, [])
+    if (selectedBM) {
+      fetchPages()
+    }
+  }, [selectedBM])
 
   // Funções auxiliares
   const handleInputChange = (field, value) => {

@@ -28,12 +28,6 @@ const AdGeneration = () => {
   const [uploadedImages, setUploadedImages] = useState([])
   const [isProcessingImages, setIsProcessingImages] = useState(false)
 
-  // Estados para dashboard
-  const [dashboardData, setDashboardData] = useState(null)
-  const [isLoadingDashboard, setIsLoadingDashboard] = useState(false)
-  const [dashboardError, setDashboardError] = useState(null)
-  const [lastUpdated, setLastUpdated] = useState('')
-
   // Estados para páginas
   const [pages, setPages] = useState([])
   const [isLoadingPages, setIsLoadingPages] = useState(false)
@@ -447,56 +441,6 @@ const AdGeneration = () => {
     }))
   }
 
-  // Função para buscar dados do dashboard
-  const fetchDashboardData = async () => {
-    setIsLoadingDashboard(true)
-    setDashboardError(null)
-
-    try {
-      const chartResponse = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook-data/chart-data?days=7')
-      const chartResult = await chartResponse.json()
-
-      const summaryResponse = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook-data/dashboard-summary')
-      const summaryResult = await summaryResponse.json()
-
-      if (chartResult.success && summaryResult.success) {
-        const chartData = chartResult.data || []
-        
-        const totals = chartData.reduce((acc, day) => {
-          acc.impressions += day.impressions || 0
-          acc.clicks += day.clicks || 0
-          acc.spend += day.spend || 0
-          return acc
-        }, { impressions: 0, clicks: 0, spend: 0 })
-
-        const ctr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0
-        const cpc = totals.clicks > 0 ? totals.spend / totals.clicks : 0
-        const cpm = totals.impressions > 0 ? (totals.spend / totals.impressions) * 1000 : 0
-
-        const campaign_stats = summaryResult.data?.campaign_stats || {}
-        
-        const formattedData = {
-          impressions: totals.impressions,
-          clicks: totals.clicks,
-          spent: totals.spend,
-          active_campaigns: campaign_stats.active || 0,
-          ctr: parseFloat(ctr.toFixed(2)),
-          cpc: parseFloat(cpc.toFixed(2)),
-          cpm: parseFloat(cpm.toFixed(2))
-        }
-        
-        setDashboardData(formattedData)
-        setLastUpdated(new Date().toLocaleString('pt-BR'))
-      } else {
-        setDashboardError('Erro ao carregar dados do dashboard')
-      }
-    } catch (error) {
-      setDashboardError(`Erro na conexão: ${error.message}`)
-    } finally {
-      setIsLoadingDashboard(false)
-    }
-  }
-
   // Função para buscar páginas
   const fetchPages = async () => {
     setIsLoadingPages(true)
@@ -557,7 +501,6 @@ const AdGeneration = () => {
 
   // Carregar dados iniciais
   useEffect(() => {
-    fetchDashboardData()
     fetchPages()
   }, [])
 
@@ -853,62 +796,6 @@ const AdGeneration = () => {
 
   return (
     <div style={styles.container}>
-      {/* Dashboard de Métricas */}
-      <div style={styles.card}>
-        <div style={styles.cardHeader}>
-          <h2 style={styles.cardTitle}>📊 Dashboard de Performance</h2>
-          <p style={styles.cardDescription}>
-            Métricas dos últimos 7 dias
-            {lastUpdated && (
-              <span style={{marginLeft: '8px', fontSize: '12px'}}>
-                Atualizado: {lastUpdated}
-              </span>
-            )}
-          </p>
-        </div>
-        
-        {isLoadingDashboard ? (
-          <div style={styles.loading}>
-            ⏳ Carregando métricas...
-          </div>
-        ) : dashboardError ? (
-          <div style={styles.error}>
-            ⚠️ {dashboardError}
-          </div>
-        ) : dashboardData ? (
-          <div style={styles.gridCols4}>
-            <div style={{...styles.metricCard, backgroundColor: '#dbeafe'}}>
-              <div>👁️</div>
-              <div style={{...styles.metricValue, color: '#2563eb'}}>
-                {dashboardData.impressions.toLocaleString()}
-              </div>
-              <div style={styles.metricLabel}>Impressões</div>
-            </div>
-            <div style={{...styles.metricCard, backgroundColor: '#dcfce7'}}>
-              <div>👆</div>
-              <div style={{...styles.metricValue, color: '#16a34a'}}>
-                {dashboardData.clicks.toLocaleString()}
-              </div>
-              <div style={styles.metricLabel}>Cliques</div>
-            </div>
-            <div style={{...styles.metricCard, backgroundColor: '#f3e8ff'}}>
-              <div>💰</div>
-              <div style={{...styles.metricValue, color: '#9333ea'}}>
-                R$ {dashboardData.spent.toFixed(2)}
-              </div>
-              <div style={styles.metricLabel}>Gasto</div>
-            </div>
-            <div style={{...styles.metricCard, backgroundColor: '#fed7aa'}}>
-              <div>📈</div>
-              <div style={{...styles.metricValue, color: '#ea580c'}}>
-                {dashboardData.active_campaigns}
-              </div>
-              <div style={styles.metricLabel}>Campanhas Ativas</div>
-            </div>
-          </div>
-        ) : null}
-      </div>
-
       {/* Formulário Principal */}
       <div style={styles.grid}>
         {/* Coluna Esquerda */}

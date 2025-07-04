@@ -595,7 +595,7 @@ function App() {
                 Powered by AI
               </Badge>
             </div>
-            <AdGeneration />
+            <AdGeneration selectedBM={selectedBM} />
           </TabsContent>
         </Tabs>
 

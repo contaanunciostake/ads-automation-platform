@@ -34,6 +34,11 @@ const AdGeneration = ({ selectedBM }) => {
   const [pages, setPages] = useState([])
   const [isLoadingPages, setIsLoadingPages] = useState(false)
 
+  // Estados para geração de anúncio
+  const [isGeneratingAd, setIsGeneratingAd] = useState(false)
+  const [adGenerationResult, setAdGenerationResult] = useState(null)
+  const [adGenerationError, setAdGenerationError] = useState(null)
+
   // Estados para público-alvo
   const [isGeneratingAudience, setIsGeneratingAudience] = useState(false)
 
@@ -441,6 +446,70 @@ const AdGeneration = ({ selectedBM }) => {
       ...prev,
       locations: newCities.map(c => c.name)
     }))
+  }
+
+  // Função para gerar anúncio
+  const generateAd = async () => {
+    console.log('🚀 DEBUG: Iniciando geração de anúncio...')
+    
+    // Validações básicas
+    if (!formData.page_id) {
+      alert('Por favor, selecione uma página da Business Manager')
+      return
+    }
+    
+    if (!formData.product_name.trim()) {
+      alert('Por favor, preencha o nome do produto/serviço')
+      return
+    }
+    
+    if (!formData.product_description.trim()) {
+      alert('Por favor, preencha a descrição do produto/serviço')
+      return
+    }
+    
+    if (formData.platforms.length === 0) {
+      alert('Por favor, selecione pelo menos uma plataforma')
+      return
+    }
+    
+    setIsGeneratingAd(true)
+    setAdGenerationError(null)
+    setAdGenerationResult(null)
+    
+    try {
+      console.log('🚀 DEBUG: Dados do formulário:', formData)
+      
+      const response = await fetch(`${API_BASE_URL}/facebook/generate-ad`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      })
+      
+      console.log('🚀 DEBUG: Status da resposta:', response.status)
+      
+      const data = await response.json()
+      console.log('🚀 DEBUG: Resposta da API:', data)
+      
+      if (data.success) {
+        setAdGenerationResult(data)
+        console.log('✅ DEBUG: Anúncio gerado com sucesso!')
+        alert('Anúncio gerado com sucesso! Verifique o resultado abaixo.')
+      } else {
+        setAdGenerationError(data.error || 'Erro desconhecido')
+        console.log('❌ DEBUG: Erro na geração:', data.error)
+        alert(`Erro na geração do anúncio: ${data.error || 'Erro desconhecido'}`)
+      }
+    } catch (error) {
+      console.error('💥 DEBUG: Erro na requisição:', error)
+      setAdGenerationError(`Erro de conexão: ${error.message}`)
+      alert(`Erro de conexão: ${error.message}`)
+    } finally {
+      setIsGeneratingAd(false)
+      console.log('🚀 DEBUG: Geração de anúncio finalizada')
+    }
   }
 
   // Função de teste para forçar páginas (temporária para debug)
@@ -1359,9 +1428,57 @@ const AdGeneration = ({ selectedBM }) => {
 
       {/* Botão de Gerar Anúncio */}
       <div style={styles.card}>
-        <button style={styles.buttonLarge}>
-          ⚡ Gerar Anúncio
+        <button 
+          style={{
+            ...styles.buttonLarge,
+            backgroundColor: isGeneratingAd ? '#6b7280' : '#3b82f6',
+            cursor: isGeneratingAd ? 'not-allowed' : 'pointer',
+            opacity: isGeneratingAd ? 0.7 : 1
+          }}
+          onClick={generateAd}
+          disabled={isGeneratingAd}
+        >
+          {isGeneratingAd ? '⏳ Gerando Anúncio...' : '⚡ Gerar Anúncio'}
         </button>
+        
+        {/* Resultado da geração */}
+        {adGenerationResult && (
+          <div style={{
+            marginTop: '20px',
+            padding: '15px',
+            backgroundColor: '#f0f9ff',
+            border: '1px solid #0ea5e9',
+            borderRadius: '8px'
+          }}>
+            <h3 style={{color: '#0ea5e9', marginBottom: '10px'}}>✅ Anúncio Gerado com Sucesso!</h3>
+            <pre style={{
+              backgroundColor: '#ffffff',
+              padding: '10px',
+              borderRadius: '4px',
+              fontSize: '12px',
+              overflow: 'auto',
+              maxHeight: '300px'
+            }}>
+              {JSON.stringify(adGenerationResult, null, 2)}
+            </pre>
+          </div>
+        )}
+        
+        {/* Erro na geração */}
+        {adGenerationError && (
+          <div style={{
+            marginTop: '20px',
+            padding: '15px',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #ef4444',
+            borderRadius: '8px'
+          }}>
+            <h3 style={{color: '#ef4444', marginBottom: '10px'}}>❌ Erro na Geração</h3>
+            <p style={{color: '#dc2626', fontSize: '14px'}}>
+              {adGenerationError}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )

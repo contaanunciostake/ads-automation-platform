@@ -382,7 +382,7 @@ const AdGeneration = ({ selectedBM }) => {
     document.body.removeChild(link)
   }
 
-    // Função para buscar cidades usando API de geocodificação
+    // Função para buscar cidades usando API do IBGE (mais precisa para Brasil)
   const searchCities = async (query) => {
     if (query.length < 2) {
       setCityResults([])
@@ -393,45 +393,130 @@ const AdGeneration = ({ selectedBM }) => {
     try {
       console.log('🔍 DEBUG: Buscando cidades para:', query)
       
-      // Usar API do OpenStreetMap Nominatim (gratuita)
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=br&limit=10&addressdetails=1`
+      // Primeira tentativa: API do IBGE (oficial do Brasil)
+      const ibgeResponse = await fetch(
+        'https://servicodados.ibge.gov.br/api/v1/localidades/municipios'
       )
       
-      if (!response.ok) {
-        throw new Error(`Erro na API: ${response.status}`)
+      if (!ibgeResponse.ok) {
+        throw new Error(`Erro na API do IBGE: ${ibgeResponse.status}`)
       }
       
-      const data = await response.json()
-      console.log('🔍 DEBUG: Resposta da API de geocodificação:', data)
+      const ibgeData = await ibgeResponse.json()
+      console.log('🔍 DEBUG: Dados do IBGE carregados:', ibgeData.length, 'municípios')
       
-      // Filtrar apenas cidades e transformar dados
-      const cities = data
-        .filter(item => 
-          item.type === 'city' || 
-          item.type === 'town' || 
-          item.type === 'village' ||
-          item.class === 'place'
+      // Filtrar municípios que contêm o termo de busca
+      const filteredCities = ibgeData
+        .filter(city => 
+          city.nome.toLowerCase().includes(query.toLowerCase())
         )
-        .map(item => ({
-          name: item.display_name.split(',')[0], // Nome da cidade
-          state: item.address?.state || item.address?.region || 'Brasil',
-          country: 'Brasil',
-          coordinates: {
-            lat: parseFloat(item.lat),
-            lng: parseFloat(item.lon)
-          },
-          full_name: item.display_name
-        }))
         .slice(0, 8) // Limitar a 8 resultados
+        .map(city => ({
+          name: city.nome,
+          state: city.microrregiao.mesorregiao.UF.sigla,
+          state_name: city.microrregiao.mesorregiao.UF.nome,
+          country: 'Brasil',
+          ibge_code: city.id,
+          coordinates: null, // Será preenchido depois se necessário
+          full_name: `${city.nome}, ${city.microrregiao.mesorregiao.UF.sigla}`
+        }))
       
-      console.log('🔍 DEBUG: Cidades processadas:', cities)
-      setCityResults(cities)
+      console.log('🔍 DEBUG: Cidades filtradas do IBGE:', filteredCities)
+      
+      // Se encontrou resultados no IBGE, tentar obter coordenadas do OpenStreetMap
+      if (filteredCities.length > 0) {
+        const citiesWithCoordinates = await Promise.all(
+          filteredCities.map(async (city) => {
+            try {
+              // Buscar coordenadas no OpenStreetMap
+              const osmQuery = `${city.name}, ${city.state}, Brasil`
+              const osmResponse = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(osmQuery)}&countrycodes=br&limit=1`,
+                {
+                  headers: {
+                    'User-Agent': 'AdsAutomationPlatform/1.0'
+                  }
+                }
+              )
+              
+              if (osmResponse.ok) {
+                const osmData = await osmResponse.json()
+                if (osmData.length > 0) {
+                  city.coordinates = {
+                    lat: parseFloat(osmData[0].lat),
+                    lng: parseFloat(osmData[0].lon)
+                  }
+                }
+              }
+            } catch (error) {
+              console.warn('⚠️ Não foi possível obter coordenadas para:', city.name)
+            }
+            
+            // Se não conseguiu coordenadas, usar coordenadas aproximadas baseadas no estado
+            if (!city.coordinates) {
+              const stateCoordinates = {
+                'AC': { lat: -9.0238, lng: -70.8120 },
+                'AL': { lat: -9.5713, lng: -36.7820 },
+                'AP': { lat: 1.4118, lng: -51.7739 },
+                'AM': { lat: -3.4168, lng: -65.8561 },
+                'BA': { lat: -12.5797, lng: -41.7007 },
+                'CE': { lat: -5.4984, lng: -39.3206 },
+                'DF': { lat: -15.7942, lng: -47.8822 },
+                'ES': { lat: -19.1834, lng: -40.3089 },
+                'GO': { lat: -15.827, lng: -49.8362 },
+                'MA': { lat: -4.9609, lng: -45.2744 },
+                'MT': { lat: -12.6819, lng: -56.9211 },
+                'MS': { lat: -20.7722, lng: -54.7852 },
+                'MG': { lat: -18.5122, lng: -44.5550 },
+                'PA': { lat: -3.9014, lng: -52.4858 },
+                'PB': { lat: -7.2399, lng: -36.7819 },
+                'PR': { lat: -24.89, lng: -51.55 },
+                'PE': { lat: -8.8137, lng: -36.9541 },
+                'PI': { lat: -8.5735, lng: -42.7654 },
+                'RJ': { lat: -22.9068, lng: -43.1729 },
+                'RN': { lat: -5.4026, lng: -36.9541 },
+                'RS': { lat: -30.0346, lng: -51.2177 },
+                'RO': { lat: -11.5057, lng: -63.5806 },
+                'RR': { lat: 2.7376, lng: -62.0751 },
+                'SC': { lat: -27.2423, lng: -50.2189 },
+                'SP': { lat: -23.5505, lng: -46.6333 },
+                'SE': { lat: -10.5741, lng: -37.3857 },
+                'TO': { lat: -10.1753, lng: -48.2982 }
+              }
+              
+              city.coordinates = stateCoordinates[city.state] || { lat: -15.7942, lng: -47.8822 }
+            }
+            
+            return city
+          })
+        )
+        
+        setCityResults(citiesWithCoordinates)
+        
+      } else {
+        // Se não encontrou no IBGE, usar fallback com cidades principais
+        console.log('🔍 DEBUG: Nenhuma cidade encontrada no IBGE, usando fallback')
+        const fallbackCities = [
+          { name: 'São Paulo', state: 'SP', coordinates: { lat: -23.5505, lng: -46.6333 } },
+          { name: 'Rio de Janeiro', state: 'RJ', coordinates: { lat: -22.9068, lng: -43.1729 } },
+          { name: 'Belo Horizonte', state: 'MG', coordinates: { lat: -19.9167, lng: -43.9345 } },
+          { name: 'Salvador', state: 'BA', coordinates: { lat: -12.9714, lng: -38.5014 } },
+          { name: 'Brasília', state: 'DF', coordinates: { lat: -15.7942, lng: -47.8822 } },
+          { name: 'Fortaleza', state: 'CE', coordinates: { lat: -3.7319, lng: -38.5267 } },
+          { name: 'Manaus', state: 'AM', coordinates: { lat: -3.1190, lng: -60.0217 } },
+          { name: 'Curitiba', state: 'PR', coordinates: { lat: -25.4284, lng: -49.2733 } }
+        ].filter(city => 
+          city.name.toLowerCase().includes(query.toLowerCase()) ||
+          city.state.toLowerCase().includes(query.toLowerCase())
+        )
+        
+        setCityResults(fallbackCities)
+      }
       
     } catch (error) {
       console.error('💥 DEBUG: Erro na busca de cidades:', error)
       
-      // Fallback com cidades brasileiras comuns
+      // Fallback final com cidades principais
       const fallbackCities = [
         { name: 'São Paulo', state: 'SP', coordinates: { lat: -23.5505, lng: -46.6333 } },
         { name: 'Rio de Janeiro', state: 'RJ', coordinates: { lat: -22.9068, lng: -43.1729 } },

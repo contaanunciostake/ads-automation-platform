@@ -521,40 +521,45 @@ else:
     def get_pages(self) -> Dict[str, Any]:
         """Buscar páginas vinculadas à Business Manager"""
         try:
-            # Primeiro, tentar buscar páginas através da conta de anúncios
-            endpoint = f"{self.account_prefix}/pages"
-            params = {
-                "fields": "id,name,category,access_token"
-            }
+            print("🔍 DEBUG: Iniciando busca de páginas...")
             
-            result = self._make_request(endpoint, params)
-            
-            if "data" in result and result["data"]:
-                return {
-                    "success": True,
-                    "pages": result["data"]
-                }
-            
-            # Se não encontrar páginas através da conta, tentar através do usuário
+            # Usar diretamente o endpoint que funciona (me/accounts)
             endpoint = "me/accounts"
             params = {
                 "fields": "id,name,category,access_token"
             }
             
+            print(f"🔍 DEBUG: Fazendo requisição para {endpoint}")
             result = self._make_request(endpoint, params)
+            print(f"🔍 DEBUG: Resultado da requisição: {result}")
             
-            if "data" in result:
+            if "data" in result and result["data"]:
+                pages = result["data"]
+                print(f"✅ DEBUG: Encontradas {len(pages)} páginas!")
+                for page in pages:
+                    print(f"  - {page.get('name')} (ID: {page.get('id')})")
+                
                 return {
                     "success": True,
-                    "pages": result["data"]
+                    "pages": pages
+                }
+            elif "error" in result:
+                print(f"❌ DEBUG: Erro na API: {result['error']}")
+                return {
+                    "success": False,
+                    "error": f"Erro da API do Facebook: {result['error']}"
                 }
             else:
+                print("⚠️ DEBUG: Nenhuma página encontrada")
                 return {
                     "success": False,
                     "error": "Nenhuma página encontrada"
                 }
                 
         except Exception as e:
+            print(f"💥 DEBUG: Exceção capturada: {str(e)}")
+            import traceback
+            print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
             return {
                 "success": False,
                 "error": str(e)

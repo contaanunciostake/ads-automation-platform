@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 
 const AdGeneration = ({ selectedBM }) => {
+  const API_BASE_URL = 'https://ads-automation-backend-otpl.onrender.com/api'
+  
   // Estados principais
   const [formData, setFormData] = useState({
     page_id: '',
@@ -384,7 +386,7 @@ const AdGeneration = ({ selectedBM }) => {
 
     setIsSearchingCities(true)
     try {
-      const response = await fetch(`https://ads-automation-backend-otpl.onrender.com/api/facebook-data/cities/search?q=${encodeURIComponent(query)}`)
+      const response = await fetch(`${API_BASE_URL}/facebook/cities/search?q=${encodeURIComponent(query)}`)
       const data = await response.json()
       
       if (data.success) {
@@ -441,22 +443,54 @@ const AdGeneration = ({ selectedBM }) => {
     }))
   }
 
+  // Função de teste para forçar páginas (temporária para debug)
+  const testPages = () => {
+    console.log('🧪 TESTE: Forçando páginas de exemplo...')
+    const testPagesData = [
+      { id: '647746025290224', name: 'Cergrand', category: 'Empresa Local' },
+      { id: '620850088063473', name: 'Arts Das Massas', category: 'Empresa Local' },
+      { id: '274934483000591', name: 'Monte Castello Casa de Carne e Mercearia', category: 'Empresa Local' }
+    ]
+    setPages(testPagesData)
+    console.log('🧪 TESTE: Páginas definidas:', testPagesData)
+  }
+
   // Função para buscar páginas
   const fetchPages = async () => {
-    if (!selectedBM) return
-    
+    console.log('🔍 DEBUG Frontend: Iniciando fetchPages...')
     setIsLoadingPages(true)
     try {
-      const response = await fetch(`https://ads-automation-backend-otpl.onrender.com/api/facebook-data/pages?business_manager_id=${selectedBM}`)
+      const url = `${API_BASE_URL}/facebook/pages`
+      console.log('🔍 DEBUG Frontend: URL da requisição:', url)
+      
+      const response = await fetch(url)
+      console.log('🔍 DEBUG Frontend: Status da resposta:', response.status)
+      
       const data = await response.json()
+      console.log('🔍 DEBUG Frontend: Dados recebidos:', data)
       
       if (data.success) {
-        setPages(data.pages || [])
+        const pages = data.data || []
+        console.log('🔍 DEBUG Frontend: Páginas extraídas:', pages)
+        console.log('🔍 DEBUG Frontend: Número de páginas:', pages.length)
+        setPages(pages)
+        
+        if (pages.length > 0) {
+          console.log('✅ DEBUG Frontend: Páginas carregadas com sucesso!')
+          pages.forEach((page, index) => {
+            console.log(`  ${index + 1}. ${page.name} (ID: ${page.id})`)
+          })
+        } else {
+          console.log('⚠️ DEBUG Frontend: Array de páginas está vazio')
+        }
+      } else {
+        console.log('❌ DEBUG Frontend: Resposta indica falha:', data.error || 'Erro desconhecido')
       }
     } catch (error) {
-      console.error('Erro ao buscar páginas:', error)
+      console.error('💥 DEBUG Frontend: Erro na requisição:', error)
     } finally {
       setIsLoadingPages(false)
+      console.log('🔍 DEBUG Frontend: fetchPages finalizado')
     }
   }
 
@@ -469,7 +503,7 @@ const AdGeneration = ({ selectedBM }) => {
 
     setIsGeneratingAudience(true)
     try {
-      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook-data/generate-audience', {
+      const response = await fetch(`${API_BASE_URL}/facebook/generate-audience`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -503,10 +537,8 @@ const AdGeneration = ({ selectedBM }) => {
 
   // Carregar dados iniciais
   useEffect(() => {
-    if (selectedBM) {
-      fetchPages()
-    }
-  }, [selectedBM])
+    fetchPages()
+  }, [])
 
   // Funções auxiliares
   const handleInputChange = (field, value) => {
@@ -815,17 +847,46 @@ const AdGeneration = ({ selectedBM }) => {
             
             <div style={styles.formGroup}>
               <label style={styles.label}>Página da Business Manager</label>
+              
+              {/* Botão de teste temporário */}
+              <button 
+                onClick={testPages}
+                style={{
+                  backgroundColor: '#ff6b6b',
+                  color: 'white',
+                  padding: '8px 12px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  marginBottom: '8px',
+                  cursor: 'pointer',
+                  fontSize: '12px'
+                }}
+              >
+                🧪 TESTE: Forçar Páginas
+              </button>
+              
               <select 
                 style={styles.select}
                 value={formData.page_id} 
-                onChange={(e) => handleInputChange('page_id', e.target.value)}
+                onChange={(e) => {
+                  console.log('🔍 DEBUG: Página selecionada:', e.target.value)
+                  handleInputChange('page_id', e.target.value)
+                }}
               >
                 <option value="">{isLoadingPages ? "Carregando páginas..." : "Selecione uma página"}</option>
-                {pages.map((page) => (
-                  <option key={page.id} value={page.id}>
-                    {page.name} - {page.category}
-                  </option>
-                ))}
+                {(() => {
+                  console.log('🔍 DEBUG: Renderizando dropdown com pages:', pages)
+                  console.log('🔍 DEBUG: pages.length:', pages.length)
+                  console.log('🔍 DEBUG: Array.isArray(pages):', Array.isArray(pages))
+                  return pages.map((page, index) => {
+                    console.log(`🔍 DEBUG: Renderizando página ${index}:`, page)
+                    return (
+                      <option key={page.id} value={page.id}>
+                        {page.name} - {page.category}
+                      </option>
+                    )
+                  })
+                })()}
               </select>
             </div>
 

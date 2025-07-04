@@ -876,3 +876,282 @@ else:
                 "error": str(e)
             }
 
+
+    def get_page_posts(self, page_id: str, limit: int = 20) -> Dict[str, Any]:
+        """
+        Buscar publicações de uma página do Facebook
+        
+        Args:
+            page_id: ID da página do Facebook
+            limit: Número máximo de posts a retornar
+            
+        Returns:
+            Dict com lista de posts e metadados
+        """
+        try:
+            # Buscar posts da página
+            url = f"https://graph.facebook.com/v18.0/{page_id}/posts"
+            params = {
+                'access_token': self.access_token,
+                'fields': 'id,message,created_time,full_picture,attachments{media,type,url},likes.summary(true),comments.summary(true),shares',
+                'limit': limit
+            }
+            
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            
+            data = response.json()
+            posts = data.get('data', [])
+            
+            # Formatar posts para o frontend
+            formatted_posts = []
+            for post in posts:
+                formatted_post = {
+                    'id': post.get('id'),
+                    'message': post.get('message', ''),
+                    'created_time': post.get('created_time'),
+                    'engagement': {
+                        'likes': post.get('likes', {}).get('summary', {}).get('total_count', 0),
+                        'comments': post.get('comments', {}).get('summary', {}).get('total_count', 0),
+                        'shares': post.get('shares', {}).get('count', 0)
+                    }
+                }
+                
+                # Adicionar mídia se existir
+                if post.get('full_picture'):
+                    formatted_post['media'] = {
+                        'type': 'image',
+                        'url': post['full_picture']
+                    }
+                elif post.get('attachments'):
+                    attachments = post['attachments'].get('data', [])
+                    if attachments:
+                        attachment = attachments[0]
+                        formatted_post['media'] = {
+                            'type': attachment.get('type', 'unknown'),
+                            'url': attachment.get('media', {}).get('image', {}).get('src', '')
+                        }
+                
+                formatted_posts.append(formatted_post)
+            
+            return {
+                'success': True,
+                'posts': formatted_posts,
+                'total': len(formatted_posts)
+            }
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Erro ao buscar posts da página {page_id}: {e}")
+            return {
+                'success': False,
+                'error': f'Erro na API do Facebook: {str(e)}',
+                'posts': []
+            }
+        except Exception as e:
+            logger.error(f"Erro inesperado ao buscar posts: {e}")
+            return {
+                'success': False,
+                'error': f'Erro interno: {str(e)}',
+                'posts': []
+            }
+
+    def get_instagram_posts(self, page_id: str, limit: int = 20) -> Dict[str, Any]:
+        """
+        Buscar publicações do Instagram conectado a uma página do Facebook
+        
+        Args:
+            page_id: ID da página do Facebook
+            limit: Número máximo de posts a retornar
+            
+        Returns:
+            Dict com lista de posts do Instagram e metadados
+        """
+        try:
+            # Primeiro, buscar a conta do Instagram conectada à página
+            url = f"https://graph.facebook.com/v18.0/{page_id}"
+            params = {
+                'access_token': self.access_token,
+                'fields': 'instagram_business_account'
+            }
+            
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            
+            page_data = response.json()
+            instagram_account = page_data.get('instagram_business_account')
+            
+            if not instagram_account:
+                return {
+                    'success': False,
+                    'error': 'Esta página não tem uma conta do Instagram conectada',
+                    'posts': []
+                }
+            
+            instagram_account_id = instagram_account['id']
+            
+            # Buscar posts do Instagram
+            url = f"https://graph.facebook.com/v18.0/{instagram_account_id}/media"
+            params = {
+                'access_token': self.access_token,
+                'fields': 'id,caption,media_type,media_url,thumbnail_url,timestamp,like_count,comments_count',
+                'limit': limit
+            }
+            
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            
+            data = response.json()
+            posts = data.get('data', [])
+            
+            # Formatar posts para o frontend
+            formatted_posts = []
+            for post in posts:
+                formatted_post = {
+                    'id': post.get('id'),
+                    'message': post.get('caption', ''),
+                    'created_time': post.get('timestamp'),
+                    'engagement': {
+                        'likes': post.get('like_count', 0),
+                        'comments': post.get('comments_count', 0),
+                        'shares': 0  # Instagram não tem shares públicos
+                    }
+                }
+                
+                # Adicionar mídia
+                media_type = post.get('media_type', '').lower()
+                if media_type in ['image', 'carousel_album']:
+                    formatted_post['media'] = {
+                        'type': 'image',
+                        'url': post.get('media_url', '')
+                    }
+                elif media_type == 'video':
+                    formatted_post['media'] = {
+                        'type': 'video',
+                        'url': post.get('thumbnail_url', post.get('media_url', ''))
+                    }
+                
+                formatted_posts.append(formatted_post)
+            
+            return {
+                'success': True,
+                'posts': formatted_posts,
+                'total': len(formatted_posts)
+            }
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Erro ao buscar posts do Instagram para página {page_id}: {e}")
+            return {
+                'success': False,
+                'error': f'Erro na API do Facebook/Instagram: {str(e)}',
+                'posts': []
+            }
+        except Exception as e:
+            logger.error(f"Erro inesperado ao buscar posts do Instagram: {e}")
+            return {
+                'success': False,
+                'error': f'Erro interno: {str(e)}',
+                'posts': []
+            }
+
+    def create_ad_from_post(self, ad_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Criar anúncio a partir de uma publicação existente
+        
+        Args:
+            ad_data: Dados do anúncio incluindo post_id, campaign_name, budget, etc.
+            
+        Returns:
+            Dict com resultado da criação do anúncio
+        """
+        try:
+            post_id = ad_data['post_id']
+            campaign_name = ad_data['campaign_name']
+            budget = ad_data['budget']
+            target_audience = ad_data['target_audience']
+            
+            # 1. Criar campanha
+            campaign_data = {
+                'name': campaign_name,
+                'objective': 'REACH',  # ou outro objetivo baseado no tipo de post
+                'status': 'PAUSED',
+                'access_token': self.access_token
+            }
+            
+            campaign_url = f"https://graph.facebook.com/v18.0/act_{self.ad_account_id}/campaigns"
+            campaign_response = requests.post(campaign_url, data=campaign_data)
+            campaign_response.raise_for_status()
+            
+            campaign_result = campaign_response.json()
+            campaign_id = campaign_result['id']
+            
+            # 2. Criar conjunto de anúncios
+            adset_data = {
+                'name': f"{campaign_name} - Conjunto",
+                'campaign_id': campaign_id,
+                'daily_budget': int(float(budget) * 100),  # Converter para centavos
+                'billing_event': 'IMPRESSIONS',
+                'optimization_goal': 'REACH',
+                'bid_amount': 100,  # Valor em centavos
+                'targeting': json.dumps(target_audience),
+                'status': 'PAUSED',
+                'access_token': self.access_token
+            }
+            
+            adset_url = f"https://graph.facebook.com/v18.0/act_{self.ad_account_id}/adsets"
+            adset_response = requests.post(adset_url, data=adset_data)
+            adset_response.raise_for_status()
+            
+            adset_result = adset_response.json()
+            adset_id = adset_result['id']
+            
+            # 3. Criar criativo usando o post existente
+            creative_data = {
+                'name': f"{campaign_name} - Criativo",
+                'object_story_id': post_id,  # Usar o post existente
+                'access_token': self.access_token
+            }
+            
+            creative_url = f"https://graph.facebook.com/v18.0/act_{self.ad_account_id}/adcreatives"
+            creative_response = requests.post(creative_url, data=creative_data)
+            creative_response.raise_for_status()
+            
+            creative_result = creative_response.json()
+            creative_id = creative_result['id']
+            
+            # 4. Criar anúncio
+            ad_data_final = {
+                'name': f"{campaign_name} - Anúncio",
+                'adset_id': adset_id,
+                'creative': json.dumps({'creative_id': creative_id}),
+                'status': 'PAUSED',
+                'access_token': self.access_token
+            }
+            
+            ad_url = f"https://graph.facebook.com/v18.0/act_{self.ad_account_id}/ads"
+            ad_response = requests.post(ad_url, data=ad_data_final)
+            ad_response.raise_for_status()
+            
+            ad_result = ad_response.json()
+            
+            return {
+                'success': True,
+                'message': 'Anúncio criado com sucesso a partir da publicação existente',
+                'campaign_id': campaign_id,
+                'adset_id': adset_id,
+                'creative_id': creative_id,
+                'ad_id': ad_result['id']
+            }
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Erro ao criar anúncio a partir do post {post_id}: {e}")
+            return {
+                'success': False,
+                'error': f'Erro na API do Facebook: {str(e)}'
+            }
+        except Exception as e:
+            logger.error(f"Erro inesperado ao criar anúncio: {e}")
+            return {
+                'success': False,
+                'error': f'Erro interno: {str(e)}'
+            }
+

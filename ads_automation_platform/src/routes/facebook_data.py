@@ -1014,3 +1014,84 @@ def get_objectives():
         print(f"💥 DEBUG: Exceção capturada: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
+
+@facebook_data_bp.route('/facebook/posts', methods=['POST'])
+def get_facebook_posts():
+    """Buscar publicações do Facebook de uma página específica"""
+    if not facebook_data_service:
+        return jsonify({
+            'success': False, 
+            'error': 'Serviço do Facebook não configurado. Verifique as variáveis de ambiente.'
+        }), 500
+    
+    try:
+        data = request.get_json()
+        page_id = data.get('page_id')
+        limit = data.get('limit', 20)
+        
+        if not page_id:
+            return jsonify({
+                'success': False,
+                'error': 'page_id é obrigatório'
+            }), 400
+        
+        result = facebook_data_service.get_page_posts(page_id, limit)
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@facebook_data_bp.route('/facebook/instagram-posts', methods=['POST'])
+def get_instagram_posts():
+    """Buscar publicações do Instagram conectado a uma página do Facebook"""
+    if not facebook_data_service:
+        return jsonify({
+            'success': False, 
+            'error': 'Serviço do Facebook não configurado. Verifique as variáveis de ambiente.'
+        }), 500
+    
+    try:
+        data = request.get_json()
+        page_id = data.get('page_id')
+        limit = data.get('limit', 20)
+        
+        if not page_id:
+            return jsonify({
+                'success': False,
+                'error': 'page_id é obrigatório'
+            }), 400
+        
+        result = facebook_data_service.get_instagram_posts(page_id, limit)
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@facebook_data_bp.route('/facebook/create-ad-from-post', methods=['POST'])
+def create_ad_from_existing_post():
+    """Criar anúncio a partir de uma publicação existente"""
+    if not facebook_data_service:
+        return jsonify({
+            'success': False, 
+            'error': 'Serviço do Facebook não configurado. Verifique as variáveis de ambiente.'
+        }), 500
+    
+    try:
+        data = request.get_json()
+        
+        # Validar dados obrigatórios
+        required_fields = ['post_id', 'campaign_name', 'budget', 'target_audience']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    'success': False,
+                    'error': f'{field} é obrigatório'
+                }), 400
+        
+        result = facebook_data_service.create_ad_from_post(data)
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+

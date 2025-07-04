@@ -165,8 +165,30 @@ def get_business_managers():
         }), 500
     
     try:
-        result = facebook_data_service.get_business_managers()
-        return jsonify(result)
+        # Por enquanto, retornamos apenas a BM atual configurada
+        account_info = facebook_data_service.get_ad_account_info()
+        
+        if "error" in account_info:
+            return jsonify({'success': False, 'error': account_info['error']}), 500
+        
+        # Simular lista de BMs (por enquanto apenas uma)
+        business_managers = [
+            {
+                "id": facebook_data_service.ad_account_id,
+                "name": account_info.get("name", "Conta de Anúncios"),
+                "business_name": account_info.get("business_name", "Business Manager"),
+                "currency": account_info.get("currency", "BRL"),
+                "status": account_info.get("account_status", "ACTIVE"),
+                "is_connected": True,
+                "last_sync": datetime.now().isoformat()
+            }
+        ]
+        
+        return jsonify({
+            'success': True, 
+            'data': business_managers,
+            'total': len(business_managers)
+        })
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

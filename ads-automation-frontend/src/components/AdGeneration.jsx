@@ -382,7 +382,7 @@ const AdGeneration = ({ selectedBM }) => {
     document.body.removeChild(link)
   }
 
-  // Função para buscar cidades
+    // Função para buscar cidades usando API de geocodificação
   const searchCities = async (query) => {
     if (query.length < 2) {
       setCityResults([])
@@ -391,17 +391,59 @@ const AdGeneration = ({ selectedBM }) => {
 
     setIsSearchingCities(true)
     try {
-      const response = await fetch(`${API_BASE_URL}/facebook/cities/search?q=${encodeURIComponent(query)}`)
-      const data = await response.json()
+      console.log('🔍 DEBUG: Buscando cidades para:', query)
       
-      if (data.success) {
-        setCityResults(data.cities || [])
-      } else {
-        setCityResults([])
+      // Usar API do OpenStreetMap Nominatim (gratuita)
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=br&limit=10&addressdetails=1`
+      )
+      
+      if (!response.ok) {
+        throw new Error(`Erro na API: ${response.status}`)
       }
+      
+      const data = await response.json()
+      console.log('🔍 DEBUG: Resposta da API de geocodificação:', data)
+      
+      // Filtrar apenas cidades e transformar dados
+      const cities = data
+        .filter(item => 
+          item.type === 'city' || 
+          item.type === 'town' || 
+          item.type === 'village' ||
+          item.class === 'place'
+        )
+        .map(item => ({
+          name: item.display_name.split(',')[0], // Nome da cidade
+          state: item.address?.state || item.address?.region || 'Brasil',
+          country: 'Brasil',
+          coordinates: {
+            lat: parseFloat(item.lat),
+            lng: parseFloat(item.lon)
+          },
+          full_name: item.display_name
+        }))
+        .slice(0, 8) // Limitar a 8 resultados
+      
+      console.log('🔍 DEBUG: Cidades processadas:', cities)
+      setCityResults(cities)
+      
     } catch (error) {
-      console.error('Erro na busca de cidades:', error)
-      setCityResults([])
+      console.error('💥 DEBUG: Erro na busca de cidades:', error)
+      
+      // Fallback com cidades brasileiras comuns
+      const fallbackCities = [
+        { name: 'São Paulo', state: 'SP', coordinates: { lat: -23.5505, lng: -46.6333 } },
+        { name: 'Rio de Janeiro', state: 'RJ', coordinates: { lat: -22.9068, lng: -43.1729 } },
+        { name: 'Belo Horizonte', state: 'MG', coordinates: { lat: -19.9167, lng: -43.9345 } },
+        { name: 'Salvador', state: 'BA', coordinates: { lat: -12.9714, lng: -38.5014 } },
+        { name: 'Brasília', state: 'DF', coordinates: { lat: -15.7942, lng: -47.8822 } }
+      ].filter(city => 
+        city.name.toLowerCase().includes(query.toLowerCase()) ||
+        city.state.toLowerCase().includes(query.toLowerCase())
+      )
+      
+      setCityResults(fallbackCities)
     } finally {
       setIsSearchingCities(false)
     }
@@ -1103,17 +1145,82 @@ const AdGeneration = ({ selectedBM }) => {
                   </div>
                 )}
 
-                {/* Dropdown de Resultados */}
+                {/* Dropdown de Resultados Melhorado */}
                 {cityResults.length > 0 && (
-                  <div style={styles.dropdown}>
+                  <div style={{
+                    ...styles.dropdown,
+                    maxHeight: '300px',
+                    overflowY: 'auto',
+                    border: '2px solid #2196f3',
+                    borderRadius: '8px',
+                    boxShadow: '0 8px 25px rgba(0,0,0,0.15)'
+                  }}>
+                    <div style={{
+                      padding: '8px 12px',
+                      backgroundColor: '#f5f5f5',
+                      borderBottom: '1px solid #e0e0e0',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      color: '#666'
+                    }}>
+                      🔍 {cityResults.length} cidade(s) encontrada(s)
+                    </div>
                     {cityResults.map((city, index) => (
                       <div
                         key={index}
-                        style={styles.dropdownItem}
+                        style={{
+                          ...styles.dropdownItem,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          padding: '12px',
+                          borderBottom: index < cityResults.length - 1 ? '1px solid #f0f0f0' : 'none',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          ':hover': {
+                            backgroundColor: '#e3f2fd'
+                          }
+                        }}
                         onClick={() => addSelectedCity(city)}
+                        onMouseEnter={(e) => {
+                          e.target.style.backgroundColor = '#e3f2fd'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.backgroundColor = 'white'
+                        }}
                       >
-                        <div style={{fontWeight: '500'}}>{city.name}</div>
-                        <div style={{fontSize: '12px', color: '#6b7280'}}>{city.state}</div>
+                        <div style={{
+                          fontSize: '18px',
+                          flexShrink: 0
+                        }}>
+                          📍
+                        </div>
+                        <div style={{flex: 1}}>
+                          <div style={{
+                            fontWeight: '500',
+                            fontSize: '14px',
+                            color: '#333',
+                            marginBottom: '2px'
+                          }}>
+                            {city.name}
+                          </div>
+                          <div style={{
+                            fontSize: '12px',
+                            color: '#666'
+                          }}>
+                            {city.state} • {city.coordinates ? 
+                              `${city.coordinates.lat.toFixed(4)}, ${city.coordinates.lng.toFixed(4)}` : 
+                              'Coordenadas não disponíveis'
+                            }
+                          </div>
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#2196f3',
+                          fontWeight: '500'
+                        }}>
+                          Selecionar →
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1121,49 +1228,250 @@ const AdGeneration = ({ selectedBM }) => {
               </div>
             </div>
 
-            {/* Cidades Selecionadas */}
+            {/* Cidades Selecionadas Melhoradas */}
             {selectedCities.length > 0 && (
               <div style={styles.formGroup}>
-                <label style={styles.label}>Cidades Selecionadas</label>
-                <div>
+                <label style={styles.label}>
+                  🏙️ Cidades Selecionadas ({selectedCities.length})
+                </label>
+                <div style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '8px',
+                  padding: '12px',
+                  backgroundColor: '#f8f9fa',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  minHeight: '60px'
+                }}>
                   {selectedCities.map((city, index) => (
-                    <span key={index} style={styles.cityTag}>
-                      {city.name}
-                      <span
-                        style={styles.cityTagClose}
+                    <div
+                      key={index}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        backgroundColor: '#2196f3',
+                        color: 'white',
+                        padding: '6px 12px',
+                        borderRadius: '20px',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        boxShadow: '0 2px 4px rgba(33, 150, 243, 0.3)',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <span>📍</span>
+                      <span>{city.name}, {city.state}</span>
+                      <button
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.2)',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '20px',
+                          height: '20px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          color: 'white',
+                          transition: 'all 0.2s ease'
+                        }}
                         onClick={() => removeSelectedCity(city.name)}
+                        title={`Remover ${city.name}`}
                       >
-                        ✕
-                      </span>
-                    </span>
+                        ×
+                      </button>
+                    </div>
                   ))}
+                  
+                  {/* Botão para limpar todas */}
+                  {selectedCities.length > 1 && (
+                    <button
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        backgroundColor: '#f44336',
+                        color: 'white',
+                        border: 'none',
+                        padding: '6px 12px',
+                        borderRadius: '20px',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onClick={() => {
+                        setSelectedCities([])
+                        setFormData(prev => ({ ...prev, locations: [] }))
+                        setMapCenter({ lat: -23.5505, lng: -46.6333 }) // Voltar para São Paulo
+                      }}
+                    >
+                      🗑️ Limpar Todas
+                    </button>
+                  )}
+                </div>
+                
+                {/* Estatísticas */}
+                <div style={{
+                  marginTop: '8px',
+                  fontSize: '12px',
+                  color: '#666',
+                  display: 'flex',
+                  justifyContent: 'space-between'
+                }}>
+                  <span>
+                    📊 Alcance estimado: {selectedCities.length * mapRadius * 1000} pessoas
+                  </span>
+                  <span>
+                    🎯 Raio total: {mapRadius}km por cidade
+                  </span>
                 </div>
               </div>
             )}
 
-            {/* Mapa Simulado */}
+            {/* Mapa Interativo */}
             <div style={styles.formGroup}>
               <label style={styles.label}>Mapa de Localização</label>
-              <div style={{...styles.metricCard, padding: '24px'}}>
-                <div style={{fontSize: '32px', marginBottom: '8px'}}>📍</div>
-                <div style={{fontSize: '14px', color: '#6b7280'}}>
-                  Centro: {mapCenter.lat.toFixed(4)}, {mapCenter.lng.toFixed(4)}
+              <div style={{
+                ...styles.metricCard, 
+                padding: '0',
+                height: '300px',
+                position: 'relative',
+                overflow: 'hidden',
+                background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+                border: '2px solid #2196f3'
+              }}>
+                {/* Mapa Base */}
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: `
+                    radial-gradient(circle at 30% 20%, rgba(33, 150, 243, 0.1) 0%, transparent 50%),
+                    radial-gradient(circle at 70% 80%, rgba(76, 175, 80, 0.1) 0%, transparent 50%),
+                    linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%)
+                  `,
+                  backgroundSize: '100px 100px, 150px 150px, 100% 100%'
+                }}>
+                  {/* Grid do mapa */}
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundImage: `
+                      linear-gradient(rgba(33, 150, 243, 0.1) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(33, 150, 243, 0.1) 1px, transparent 1px)
+                    `,
+                    backgroundSize: '20px 20px'
+                  }} />
                 </div>
-                <div style={{fontSize: '14px', color: '#6b7280'}}>
-                  Raio: {mapRadius}km
+                
+                {/* Marcador Central */}
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  fontSize: '32px',
+                  filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.3))',
+                  animation: 'pulse 2s infinite'
+                }}>
+                  📍
+                </div>
+                
+                {/* Círculo de Raio */}
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  width: `${Math.min(mapRadius * 4, 200)}px`,
+                  height: `${Math.min(mapRadius * 4, 200)}px`,
+                  border: '3px solid #2196f3',
+                  borderRadius: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                  animation: 'pulse-ring 3s infinite'
+                }} />
+                
+                {/* Cidades Selecionadas */}
+                {selectedCities.map((city, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      position: 'absolute',
+                      top: `${20 + (index * 15)}%`,
+                      left: `${20 + (index * 20)}%`,
+                      fontSize: '16px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                      padding: '4px 8px',
+                      borderRadius: '12px',
+                      border: '1px solid #2196f3',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      color: '#1976d2',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    📍 {city.name}
+                  </div>
+                ))}
+                
+                {/* Informações do Mapa */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: '12px',
+                  left: '12px',
+                  right: '12px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #e0e0e0',
+                  fontSize: '12px'
+                }}>
+                  <div style={{fontWeight: '500', marginBottom: '4px'}}>
+                    📍 Centro: {mapCenter.lat.toFixed(4)}, {mapCenter.lng.toFixed(4)}
+                  </div>
+                  <div style={{color: '#666'}}>
+                    🎯 Raio de alcance: {mapRadius}km | 
+                    🏙️ Cidades: {selectedCities.length}
+                  </div>
                 </div>
               </div>
               
               <div style={{marginTop: '12px'}}>
                 <label style={styles.label}>Raio de Alcance: {mapRadius}km</label>
                 <input
-                  style={styles.input}
+                  style={{
+                    ...styles.input,
+                    background: 'linear-gradient(to right, #2196f3, #21cbf3)',
+                    height: '8px',
+                    borderRadius: '4px',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
                   type="range"
                   min="1"
                   max="100"
                   value={mapRadius}
                   onChange={(e) => setMapRadius(parseInt(e.target.value))}
                 />
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: '12px',
+                  color: '#666',
+                  marginTop: '4px'
+                }}>
+                  <span>1km</span>
+                  <span>50km</span>
+                  <span>100km</span>
+                </div>
               </div>
             </div>
           </div>

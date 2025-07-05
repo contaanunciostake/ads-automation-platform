@@ -1058,6 +1058,8 @@ const AdGeneration = ({ selectedBM }) => {
       backgroundColor: '#1da1f2',
       color: 'white'
     },
+    
+    buttonLarge: {
       width: '100%',
       padding: '12px 24px',
       backgroundColor: 'linear-gradient(to right, #3b82f6, #8b5cf6)',

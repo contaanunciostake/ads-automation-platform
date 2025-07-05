@@ -1155,3 +1155,135 @@ else:
                 'error': f'Erro interno: {str(e)}'
             }
 
+
+    def get_page_posts(self, page_id: str, page_access_token: str, limit: int = 20) -> Dict[str, Any]:
+        """
+        Buscar publicações de uma página do Facebook usando Graph API v23.0
+        
+        Args:
+            page_id (str): ID da página do Facebook
+            page_access_token (str): Token de acesso da página
+            limit (int): Número máximo de publicações a retornar (padrão: 20)
+        
+        Returns:
+            Dict[str, Any]: Resposta estruturada com as publicações
+        """
+        try:
+            # URL da Graph API v23.0 para buscar posts da página
+            url = f"https://graph.facebook.com/v23.0/{page_id}/posts"
+            
+            # Parâmetros da requisição
+            params = {
+                'access_token': page_access_token,
+                'fields': 'message,created_time,full_picture,permalink_url,id',
+                'limit': limit
+            }
+            
+            # Log da requisição para debug
+            print(f"🔍 DEBUG: Buscando posts da página {page_id}")
+            print(f"🔍 DEBUG: URL: {url}")
+            print(f"🔍 DEBUG: Campos solicitados: {params['fields']}")
+            
+            # Fazer requisição para a Graph API
+            response = requests.get(url, params=params, timeout=30)
+            
+            # Log da resposta
+            print(f"📥 DEBUG: Status da resposta: {response.status_code}")
+            
+            # Verificar se a requisição foi bem-sucedida
+            response.raise_for_status()
+            
+            # Parsear resposta JSON
+            data = response.json()
+            
+            # Extrair posts da resposta
+            posts = data.get('data', [])
+            
+            print(f"📊 DEBUG: {len(posts)} posts encontrados")
+            
+            # Estruturar dados para o frontend
+            structured_posts = []
+            
+            for post in posts:
+                # Estruturar cada post
+                structured_post = {
+                    'id': post.get('id', ''),
+                    'message': post.get('message', ''),
+                    'created_time': post.get('created_time', ''),
+                    'full_picture': post.get('full_picture', ''),
+                    'permalink_url': post.get('permalink_url', ''),
+                    'platform': 'facebook',
+                    'platform_name': 'Facebook',
+                    'icon': '📘'
+                }
+                
+                # Adicionar à lista
+                structured_posts.append(structured_post)
+                
+                # Log do post para debug
+                print(f"  📘 Post {structured_post['id']}: {structured_post['message'][:50] if structured_post['message'] else 'Sem texto'}...")
+            
+            # Retornar resposta estruturada
+            return {
+                'success': True,
+                'posts': structured_posts,
+                'total': len(structured_posts),
+                'page_id': page_id,
+                'message': f'Encontradas {len(structured_posts)} publicações'
+            }
+            
+        except requests.exceptions.HTTPError as e:
+            # Erro HTTP (4xx, 5xx)
+            error_msg = f'Erro HTTP na Graph API: {e.response.status_code}'
+            print(f"❌ DEBUG: {error_msg}")
+            
+            try:
+                error_data = e.response.json()
+                if 'error' in error_data:
+                    error_msg += f" - {error_data['error'].get('message', 'Erro desconhecido')}"
+            except:
+                pass
+                
+            return {
+                'success': False,
+                'error': error_msg,
+                'posts': [],
+                'total': 0
+            }
+            
+        except requests.exceptions.Timeout:
+            # Timeout da requisição
+            error_msg = 'Timeout na requisição para Graph API'
+            print(f"⏰ DEBUG: {error_msg}")
+            
+            return {
+                'success': False,
+                'error': error_msg,
+                'posts': [],
+                'total': 0
+            }
+            
+        except requests.exceptions.RequestException as e:
+            # Outros erros de requisição
+            error_msg = f'Erro de conexão com Graph API: {str(e)}'
+            print(f"🌐 DEBUG: {error_msg}")
+            
+            return {
+                'success': False,
+                'error': error_msg,
+                'posts': [],
+                'total': 0
+            }
+            
+        except Exception as e:
+            # Erro geral
+            error_msg = f'Erro interno ao buscar posts: {str(e)}'
+            print(f"💥 DEBUG: {error_msg}")
+            
+            return {
+                'success': False,
+                'error': error_msg,
+                'posts': [],
+                'total': 0
+            }
+

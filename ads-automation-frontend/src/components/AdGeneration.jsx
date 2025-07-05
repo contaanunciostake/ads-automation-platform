@@ -56,6 +56,7 @@ const AdGeneration = ({ selectedBM }) => {
   const [isLoadingPosts, setIsLoadingPosts] = useState(false)
   const [selectedPost, setSelectedPost] = useState(null)
   const [postPlatformFilter, setPostPlatformFilter] = useState('all') // 'all', 'facebook', 'instagram'
+  const [postsError, setPostsError] = useState(null)
 
   // Posicionamentos disponíveis
   const availablePlacements = [
@@ -318,126 +319,174 @@ const AdGeneration = ({ selectedBM }) => {
     }
   }
 
-  // Função para buscar publicações existentes
+  // Função para buscar publicações existentes - VERSÃO CORRIGIDA
   const fetchExistingPosts = async () => {
     if (!formData.page_id) {
-      console.warn('⚠️ Página não selecionada')
+      console.warn('⚠️ Página não selecionada para buscar publicações')
+      setPostsError('Selecione uma página primeiro')
       return
     }
 
+    console.log('🔍 DEBUG: Iniciando busca de publicações para página:', formData.page_id)
     setIsLoadingPosts(true)
     setExistingPosts([]) // Limpar posts anteriores
+    setPostsError(null) // Limpar erros anteriores
     
     try {
-      console.log('🔍 DEBUG: Buscando publicações existentes para página:', formData.page_id)
-      
-      // Buscar publicações do Facebook
-      const facebookResponse = await fetch(`${API_BASE_URL}/facebook/posts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          page_id: formData.page_id,
-          limit: 20
-        })
-      })
-      
+      let allPosts = []
       let facebookPosts = []
-      if (facebookResponse.ok) {
-        const facebookData = await facebookResponse.json()
-        facebookPosts = facebookData.posts || []
-        console.log('📘 DEBUG: Posts do Facebook:', facebookPosts.length)
-      } else {
-        console.warn('⚠️ Erro ao buscar posts do Facebook:', facebookResponse.status)
-      }
-      
-      // Buscar publicações do Instagram (se a página tem Instagram conectado)
-      const instagramResponse = await fetch(`${API_BASE_URL}/facebook/instagram-posts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          page_id: formData.page_id,
-          limit: 20
-        })
-      })
-      
       let instagramPosts = []
-      if (instagramResponse.ok) {
-        const instagramData = await instagramResponse.json()
-        instagramPosts = instagramData.posts || []
-        console.log('📷 DEBUG: Posts do Instagram:', instagramPosts.length)
-      } else {
-        console.warn('⚠️ Erro ao buscar posts do Instagram:', instagramResponse.status)
+      
+      // 1. Buscar publicações do Facebook
+      console.log('📘 DEBUG: Buscando posts do Facebook...')
+      try {
+        const facebookResponse = await fetch(`${API_BASE_URL}/facebook/posts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            page_id: formData.page_id,
+            limit: 20
+          })
+        })
+        
+        console.log('📘 DEBUG: Status resposta Facebook:', facebookResponse.status)
+        
+        if (facebookResponse.ok) {
+          const facebookData = await facebookResponse.json()
+          console.log('📘 DEBUG: Dados Facebook recebidos:', facebookData)
+          
+          if (facebookData.success && facebookData.posts) {
+            facebookPosts = facebookData.posts.map(post => ({
+              ...post,
+              platform: 'facebook',
+              platform_name: 'Facebook',
+              icon: '📘'
+            }))
+            console.log('📘 DEBUG: Posts do Facebook processados:', facebookPosts.length)
+          } else {
+            console.warn('📘 DEBUG: Resposta Facebook sem sucesso:', facebookData.error || 'Erro desconhecido')
+          }
+        } else {
+          const errorText = await facebookResponse.text()
+          console.error('📘 DEBUG: Erro HTTP Facebook:', facebookResponse.status, errorText)
+        }
+      } catch (facebookError) {
+        console.error('📘 DEBUG: Erro ao buscar posts do Facebook:', facebookError)
       }
       
-      // Combinar e formatar posts
-      const allPosts = [
-        ...facebookPosts.map(post => ({
-          ...post,
-          platform: 'facebook',
-          platform_name: 'Facebook',
-          icon: '📘'
-        })),
-        ...instagramPosts.map(post => ({
-          ...post,
-          platform: 'instagram', 
-          platform_name: 'Instagram',
-          icon: '📷'
-        }))
-      ].sort((a, b) => new Date(b.created_time) - new Date(a.created_time)) // Mais recentes primeiro
+      // 2. Buscar publicações do Instagram
+      console.log('📷 DEBUG: Buscando posts do Instagram...')
+      try {
+        const instagramResponse = await fetch(`${API_BASE_URL}/facebook/instagram-posts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            page_id: formData.page_id,
+            limit: 20
+          })
+        })
+        
+        console.log('📷 DEBUG: Status resposta Instagram:', instagramResponse.status)
+        
+        if (instagramResponse.ok) {
+          const instagramData = await instagramResponse.json()
+          console.log('📷 DEBUG: Dados Instagram recebidos:', instagramData)
+          
+          if (instagramData.success && instagramData.posts) {
+            instagramPosts = instagramData.posts.map(post => ({
+              ...post,
+              platform: 'instagram', 
+              platform_name: 'Instagram',
+              icon: '📷'
+            }))
+            console.log('📷 DEBUG: Posts do Instagram processados:', instagramPosts.length)
+          } else {
+            console.warn('📷 DEBUG: Resposta Instagram sem sucesso:', instagramData.error || 'Erro desconhecido')
+          }
+        } else {
+          const errorText = await instagramResponse.text()
+          console.error('📷 DEBUG: Erro HTTP Instagram:', instagramResponse.status, errorText)
+        }
+      } catch (instagramError) {
+        console.error('📷 DEBUG: Erro ao buscar posts do Instagram:', instagramError)
+      }
+      
+      // 3. Combinar todos os posts
+      allPosts = [...facebookPosts, ...instagramPosts]
+      
+      // Ordenar por data (mais recentes primeiro)
+      allPosts.sort((a, b) => new Date(b.created_time) - new Date(a.created_time))
       
       console.log('📊 DEBUG: Total de publicações encontradas:', allPosts.length)
-      setExistingPosts(allPosts)
+      console.log('📊 DEBUG: Facebook:', facebookPosts.length, 'Instagram:', instagramPosts.length)
       
-      if (allPosts.length === 0) {
-        console.log('ℹ️ Nenhuma publicação encontrada para esta página')
+      if (allPosts.length > 0) {
+        setExistingPosts(allPosts)
+        console.log('✅ DEBUG: Publicações carregadas com sucesso!')
+        
+        // Log das primeiras publicações para debug
+        allPosts.slice(0, 3).forEach((post, index) => {
+          console.log(`  ${index + 1}. [${post.platform_name}] ${post.message?.substring(0, 50) || 'Sem texto'}...`)
+        })
+      } else {
+        console.log('ℹ️ DEBUG: Nenhuma publicação encontrada para esta página')
+        setPostsError('Nenhuma publicação encontrada para esta página')
+        
+        // Dados de exemplo para teste
+        const mockPosts = [
+          {
+            id: 'fb_mock_1',
+            platform: 'facebook',
+            platform_name: 'Facebook',
+            icon: '📘',
+            message: 'Esta é uma publicação de exemplo do Facebook para teste da interface.',
+            created_time: new Date().toISOString(),
+            engagement: { likes: 25, comments: 5, shares: 3 },
+            media: {
+              type: 'image',
+              url: 'https://via.placeholder.com/400x300/1877f2/white?text=Facebook+Post+Exemplo'
+            }
+          },
+          {
+            id: 'ig_mock_1',
+            platform: 'instagram',
+            platform_name: 'Instagram',
+            icon: '📷',
+            message: 'Post de exemplo do Instagram para demonstração! #exemplo #teste',
+            created_time: new Date(Date.now() - 86400000).toISOString(), // 1 dia atrás
+            engagement: { likes: 45, comments: 8, shares: 0 },
+            media: {
+              type: 'image',
+              url: 'https://via.placeholder.com/400x400/E4405F/white?text=Instagram+Post+Exemplo'
+            }
+          }
+        ]
+        
+        console.log('🧪 DEBUG: Usando dados de exemplo para demonstração')
+        setExistingPosts(mockPosts)
       }
       
     } catch (error) {
-      console.error('💥 DEBUG: Erro ao buscar publicações:', error)
+      console.error('💥 DEBUG: Erro geral ao buscar publicações:', error)
+      setPostsError(`Erro ao buscar publicações: ${error.message}`)
       
-      // Dados de exemplo para desenvolvimento/teste
+      // Dados de exemplo em caso de erro
       const mockPosts = [
         {
-          id: 'fb_123456789',
+          id: 'error_mock_1',
           platform: 'facebook',
           platform_name: 'Facebook',
           icon: '📘',
-          message: 'Confira nossa nova promoção! Descontos de até 50% em todos os produtos.',
-          created_time: '2024-01-15T10:30:00Z',
-          engagement: { likes: 45, comments: 12, shares: 8 },
+          message: 'Publicação de exemplo (erro na API) - Esta é uma demonstração.',
+          created_time: new Date().toISOString(),
+          engagement: { likes: 10, comments: 2, shares: 1 },
           media: {
             type: 'image',
-            url: 'https://via.placeholder.com/400x300/1877f2/white?text=Facebook+Post'
-          }
-        },
-        {
-          id: 'ig_987654321',
-          platform: 'instagram',
-          platform_name: 'Instagram', 
-          icon: '📷',
-          message: 'Momento especial capturado! ✨ #momentos #especiais',
-          created_time: '2024-01-14T15:45:00Z',
-          engagement: { likes: 128, comments: 23, shares: 15 },
-          media: {
-            type: 'image',
-            url: 'https://via.placeholder.com/400x400/E4405F/white?text=Instagram+Post'
-          }
-        },
-        {
-          id: 'fb_555666777',
-          platform: 'facebook',
-          platform_name: 'Facebook',
-          icon: '📘',
-          message: 'Novidades chegando em breve! Fique ligado nas nossas redes sociais.',
-          created_time: '2024-01-13T09:15:00Z',
-          engagement: { likes: 67, comments: 8, shares: 12 },
-          media: {
-            type: 'video',
-            url: 'https://via.placeholder.com/400x300/1877f2/white?text=Facebook+Video'
+            url: 'https://via.placeholder.com/400x300/dc2626/white?text=Erro+API'
           }
         }
       ]
@@ -447,6 +496,7 @@ const AdGeneration = ({ selectedBM }) => {
       
     } finally {
       setIsLoadingPosts(false)
+      console.log('🔍 DEBUG: Busca de publicações finalizada')
     }
   }
 
@@ -662,8 +712,12 @@ const AdGeneration = ({ selectedBM }) => {
   // ✅ CORREÇÃO: useEffect para buscar publicações quando página muda
   useEffect(() => {
     if (formData.page_id && creativeType === 'existing') {
-      console.log('🔄 DEBUG: Página mudou, buscando publicações automaticamente...')
+      console.log('🔄 DEBUG: Página mudou para:', formData.page_id, '- Buscando publicações automaticamente...')
       fetchExistingPosts()
+    } else if (!formData.page_id && creativeType === 'existing') {
+      console.log('🔄 DEBUG: Página desmarcada, limpando publicações')
+      setExistingPosts([])
+      setPostsError(null)
     }
   }, [formData.page_id, creativeType])
 
@@ -944,7 +998,8 @@ const AdGeneration = ({ selectedBM }) => {
       borderRadius: '8px',
       padding: '16px',
       cursor: 'pointer',
-      transition: 'all 0.2s'
+      transition: 'all 0.2s',
+      position: 'relative'
     },
     postCardSelected: {
       borderColor: '#3b82f6',
@@ -970,6 +1025,16 @@ const AdGeneration = ({ selectedBM }) => {
       justifyContent: 'center',
       padding: '32px',
       color: '#dc2626'
+    },
+    warning: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '32px',
+      color: '#92400e',
+      backgroundColor: '#fef3c7',
+      borderRadius: '8px',
+      marginBottom: '16px'
     },
     success: {
       display: 'flex',
@@ -1035,7 +1100,10 @@ const AdGeneration = ({ selectedBM }) => {
               <select 
                 style={styles.select}
                 value={formData.page_id} 
-                onChange={(e) => handleInputChange('page_id', e.target.value)}
+                onChange={(e) => {
+                  console.log('🔄 DEBUG: Página selecionada:', e.target.value)
+                  handleInputChange('page_id', e.target.value)
+                }}
               >
                 <option value="">{isLoadingPages ? "Carregando páginas..." : "Selecione uma página"}</option>
                 {pages.map((page) => (
@@ -1375,8 +1443,10 @@ const AdGeneration = ({ selectedBM }) => {
                   ...(creativeType === 'new' ? styles.toggleButtonActive : {})
                 }}
                 onClick={() => {
+                  console.log('🔄 DEBUG: Mudando para criar novo anúncio')
                   setCreativeType('new')
                   setSelectedPost(null)
+                  setPostsError(null)
                 }}
               >
                 ✨ Criar Novo Anúncio
@@ -1387,8 +1457,10 @@ const AdGeneration = ({ selectedBM }) => {
                   ...(creativeType === 'existing' ? styles.toggleButtonActive : {})
                 }}
                 onClick={() => {
+                  console.log('🔄 DEBUG: Mudando para usar publicação existente')
                   setCreativeType('existing')
                   if (formData.page_id && existingPosts.length === 0) {
+                    console.log('🔄 DEBUG: Página já selecionada, buscando publicações...')
                     fetchExistingPosts()
                   }
                 }}
@@ -1400,50 +1472,64 @@ const AdGeneration = ({ selectedBM }) => {
             {/* Conteúdo baseado no tipo selecionado */}
             {creativeType === 'existing' && (
               <div>
-                {/* Filtros de Plataforma */}
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Filtrar por Plataforma</label>
-                  <div style={styles.gridCols3}>
-                    <button
-                      style={{
-                        ...styles.toggleButton,
-                        ...(postPlatformFilter === 'all' ? styles.toggleButtonActive : {})
-                      }}
-                      onClick={() => setPostPlatformFilter('all')}
-                    >
-                      🌐 Todas
-                    </button>
-                    <button
-                      style={{
-                        ...styles.toggleButton,
-                        ...(postPlatformFilter === 'facebook' ? styles.toggleButtonActive : {})
-                      }}
-                      onClick={() => setPostPlatformFilter('facebook')}
-                    >
-                      📘 Facebook
-                    </button>
-                    <button
-                      style={{
-                        ...styles.toggleButton,
-                        ...(postPlatformFilter === 'instagram' ? styles.toggleButtonActive : {})
-                      }}
-                      onClick={() => setPostPlatformFilter('instagram')}
-                    >
-                      📷 Instagram
-                    </button>
+                {/* Status da página */}
+                {!formData.page_id && (
+                  <div style={styles.warning}>
+                    ⚠️ Selecione uma página primeiro para ver as publicações
                   </div>
-                </div>
+                )}
+
+                {/* Filtros de Plataforma */}
+                {formData.page_id && (
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Filtrar por Plataforma</label>
+                    <div style={styles.gridCols3}>
+                      <button
+                        style={{
+                          ...styles.toggleButton,
+                          ...(postPlatformFilter === 'all' ? styles.toggleButtonActive : {})
+                        }}
+                        onClick={() => setPostPlatformFilter('all')}
+                      >
+                        🌐 Todas
+                      </button>
+                      <button
+                        style={{
+                          ...styles.toggleButton,
+                          ...(postPlatformFilter === 'facebook' ? styles.toggleButtonActive : {})
+                        }}
+                        onClick={() => setPostPlatformFilter('facebook')}
+                      >
+                        📘 Facebook
+                      </button>
+                      <button
+                        style={{
+                          ...styles.toggleButton,
+                          ...(postPlatformFilter === 'instagram' ? styles.toggleButtonActive : {})
+                        }}
+                        onClick={() => setPostPlatformFilter('instagram')}
+                      >
+                        📷 Instagram
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Botão para recarregar publicações */}
-                <div style={{marginBottom: '16px'}}>
-                  <button
-                    style={styles.buttonSecondary}
-                    onClick={fetchExistingPosts}
-                    disabled={isLoadingPosts || !formData.page_id}
-                  >
-                    {isLoadingPosts ? '⏳' : '🔄'} Recarregar Publicações
-                  </button>
-                </div>
+                {formData.page_id && (
+                  <div style={{marginBottom: '16px'}}>
+                    <button
+                      style={styles.buttonSecondary}
+                      onClick={() => {
+                        console.log('🔄 DEBUG: Recarregando publicações manualmente')
+                        fetchExistingPosts()
+                      }}
+                      disabled={isLoadingPosts}
+                    >
+                      {isLoadingPosts ? '⏳' : '🔄'} Recarregar Publicações
+                    </button>
+                  </div>
+                )}
 
                 {/* Lista de Publicações */}
                 {isLoadingPosts ? (
@@ -1452,24 +1538,25 @@ const AdGeneration = ({ selectedBM }) => {
                   </div>
                 ) : (
                   <>
-                    {!isLoadingPosts && existingPosts.length === 0 && formData.page_id && (
-                      <div style={{...styles.error, backgroundColor: '#fef3c7', color: '#92400e'}}>
-                        ⚠️ Nenhuma publicação encontrada para esta página
-                      </div>
-                    )}
-                    
-                    {!formData.page_id && (
-                      <div style={{...styles.error, backgroundColor: '#fef3c7', color: '#92400e'}}>
-                        ⚠️ Selecione uma página primeiro
+                    {/* Erro específico */}
+                    {postsError && formData.page_id && (
+                      <div style={styles.warning}>
+                        ⚠️ {postsError}
                       </div>
                     )}
 
+                    {/* Publicações encontradas */}
                     {getFilteredPosts().length > 0 && (
                       <div>
                         <div style={{marginBottom: '16px'}}>
                           <span style={styles.badge}>
                             {getFilteredPosts().length} publicação(ões) encontrada(s)
                           </span>
+                          {existingPosts.some(p => p.id.includes('mock') || p.id.includes('error')) && (
+                            <span style={{...styles.badge, backgroundColor: '#fbbf24', color: '#92400e'}}>
+                              Dados de Exemplo
+                            </span>
+                          )}
                         </div>
                         
                         <div style={styles.postGrid}>
@@ -1480,7 +1567,10 @@ const AdGeneration = ({ selectedBM }) => {
                                 ...styles.postCard,
                                 ...(selectedPost?.id === post.id ? styles.postCardSelected : {})
                               }}
-                              onClick={() => setSelectedPost(post)}
+                              onClick={() => {
+                                console.log('📱 DEBUG: Post selecionado:', post.id, post.platform_name)
+                                setSelectedPost(post)
+                              }}
                             >
                               {/* Header do Post */}
                               <div style={{display: 'flex', alignItems: 'center', marginBottom: '12px'}}>

@@ -1156,7 +1156,7 @@ else:
             }
 
 
-    def get_page_posts(self, page_id: str, page_access_token: str, limit: int = 20) -> Dict[str, Any]:
+    def get_page_posts(self, page_id: str, page_access_token: str = None, limit: int = 20) -> Dict[str, Any]:
         """
         Buscar publicações de uma página do Facebook usando Graph API v23.0
         
@@ -1169,12 +1169,15 @@ else:
             Dict[str, Any]: Resposta estruturada com as publicações
         """
         try:
+            # Usar token da página se fornecido, senão usar token principal
+            token_to_use = page_access_token if page_access_token else self.access_token
+            
             # URL da Graph API v23.0 para buscar posts da página
             url = f"https://graph.facebook.com/v23.0/{page_id}/posts"
             
             # Parâmetros da requisição
             params = {
-                'access_token': page_access_token,
+                'access_token': token_to_use,
                 'fields': 'message,created_time,full_picture,permalink_url,id',
                 'limit': limit
             }

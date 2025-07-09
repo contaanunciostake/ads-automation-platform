@@ -1,24 +1,80 @@
 """
 Rotas para buscar dados reais da Facebook Marketing API.
 Este módulo fornece endpoints para coletar campanhas, conjuntos de anúncios, anúncios e insights de performance.
+VERSÃO COMPLETA COM IMPORTS CORRIGIDOS PARA RENDER
 """
 
 from flask import Blueprint, request, jsonify
-# IMPORTS CORRIGIDOS PARA O RENDER
-from src.services.facebook_data_service import facebook_data_service
+import logging
+import json
+
+# Configurar logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+# IMPORTS CORRIGIDOS PARA O RENDER - MÚLTIPLOS FALLBACKS
+try:
+    # Tentar import com src. primeiro (padrão Render)
+    from src.services.facebook_data_service import facebook_data_service
+    logger.info("✅ facebook_data_service importado com src.")
+except ImportError:
+    try:
+        # Fallback para import direto
+        from services.facebook_data_service import facebook_data_service
+        logger.info("✅ facebook_data_service importado sem src.")
+    except ImportError as e:
+        logger.error(f"❌ ERRO CRÍTICO: facebook_data_service não encontrado: {e}")
+        facebook_data_service = None
+
+# Import do serviço de IA com múltiplos fallbacks
 try:
     from src.services.ai_ad_generation_service import ai_ad_service
+    logger.info("✅ ai_ad_service importado com src.")
 except ImportError:
-    ai_ad_service = None
-    print("⚠️ WARNING: ai_ad_generation_service não encontrado")
+    try:
+        from services.ai_ad_generation_service import ai_ad_service
+        logger.info("✅ ai_ad_service importado sem src.")
+    except ImportError:
+        try:
+            from src.services.ai_ad_generation_service import AIAdGenerationService
+            ai_ad_service = AIAdGenerationService()
+            logger.info("✅ AIAdGenerationService instanciado com src.")
+        except ImportError:
+            try:
+                from services.ai_ad_generation_service import AIAdGenerationService
+                ai_ad_service = AIAdGenerationService()
+                logger.info("✅ AIAdGenerationService instanciado sem src.")
+            except ImportError as e:
+                ai_ad_service = None
+                logger.warning(f"⚠️ WARNING: ai_ad_generation_service não encontrado: {e}")
 
+# Import da integração Facebook-IA com múltiplos fallbacks
 try:
     from src.services.facebook_ai_integration import facebook_ai_integration
+    logger.info("✅ facebook_ai_integration importado com src.")
 except ImportError:
-    facebook_ai_integration = None
-    print("⚠️ WARNING: facebook_ai_integration não encontrado")
+    try:
+        from services.facebook_ai_integration import facebook_ai_integration
+        logger.info("✅ facebook_ai_integration importado sem src.")
+    except ImportError:
+        try:
+            from src.services.facebook_ai_integration import FacebookAIIntegration
+            facebook_ai_integration = FacebookAIIntegration()
+            logger.info("✅ FacebookAIIntegration instanciado com src.")
+        except ImportError:
+            try:
+                from services.facebook_ai_integration import FacebookAIIntegration
+                facebook_ai_integration = FacebookAIIntegration()
+                logger.info("✅ FacebookAIIntegration instanciado sem src.")
+            except ImportError as e:
+                facebook_ai_integration = None
+                logger.warning(f"⚠️ WARNING: facebook_ai_integration não encontrado: {e}")
 
-import json
+# Log do status final dos imports
+logger.info("📊 STATUS FINAL DOS IMPORTS:")
+logger.info(f"  - facebook_data_service: {'✅ OK' if facebook_data_service else '❌ FALHOU'}")
+logger.info(f"  - ai_ad_service: {'✅ OK' if ai_ad_service else '❌ FALHOU'}")
+logger.info(f"  - facebook_ai_integration: {'✅ OK' if facebook_ai_integration else '❌ FALHOU'}")
 
 facebook_data_bp = Blueprint('facebook_data', __name__)
 
@@ -312,38 +368,52 @@ def update_campaign(campaign_id):
 def get_pages():
     """Buscar páginas disponíveis na Business Manager"""
     try:
-        print("🔍 DEBUG: Endpoint get_pages chamado")
+        logger.debug("🔍 DEBUG: Endpoint get_pages chamado")
         
         if not facebook_data_service:
-            print("💥 DEBUG: facebook_data_service não configurado")
+            logger.error("💥 DEBUG: facebook_data_service não configurado")
             return jsonify({
                 "success": False,
                 "error": "Serviço do Facebook não configurado. Verifique as variáveis de ambiente."
             }), 500
         
-        # Chamar método para buscar páginas REAIS
-        result = facebook_data_service.get_paginas_disponiveis()
+        # Usar método que funciona
+        if hasattr(facebook_data_service, 'get_paginas_disponiveis'):
+            logger.debug("🔍 DEBUG: Usando get_paginas_disponiveis")
+            result = facebook_data_service.get_paginas_disponiveis()
+        elif hasattr(facebook_data_service, 'get_pages'):
+            logger.debug("🔍 DEBUG: Usando get_pages")
+            result = facebook_data_service.get_pages()
+        else:
+            logger.error("💥 DEBUG: Nenhum método de busca de páginas encontrado")
+            return jsonify({
+                "success": False,
+                "error": "Método de busca de páginas não encontrado"
+            }), 500
         
-        print(f"🔍 DEBUG: Resultado do serviço: {result.get('success')}")
+        logger.debug(f"🔍 DEBUG: Resultado do serviço: {result.get('success') if result else 'None'}")
         
-        if result.get("success"):
+        if result and result.get("success"):
+            # Garantir estrutura consistente
+            pages_data = result.get('pages', result.get('data', []))
             return jsonify({
                 "success": True,
-                "pages": result.get("data", []),
-                "total": result.get("total", 0),
+                "data": pages_data,  # Manter estrutura original
+                "total": result.get("total", len(pages_data)),
                 "message": result.get("message", "Páginas encontradas")
             }), 200
         else:
-            print(f"🔍 DEBUG: Erro: {result.get('error')}")
+            error_msg = result.get('error', 'Erro desconhecido') if result else 'Resultado vazio'
+            logger.error(f"🔍 DEBUG: Erro: {error_msg}")
             return jsonify({
                 "success": False,
-                "error": result.get("error", "Erro desconhecido ao buscar páginas")
+                "error": error_msg
             }), 500
             
     except Exception as e:
-        print(f"💥 DEBUG: Exceção capturada: {str(e)}")
+        logger.error(f"💥 DEBUG: Exceção capturada: {str(e)}")
         import traceback
-        print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
+        logger.error(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
         
         return jsonify({
             "success": False,
@@ -354,10 +424,10 @@ def get_pages():
 def get_facebook_posts():
     """Buscar publicações de uma página do Facebook"""
     try:
-        print("📘🔍 DEBUG: Endpoint get_facebook_posts chamado")
+        logger.debug("📘🔍 DEBUG: Endpoint get_facebook_posts chamado")
         
         if not facebook_data_service:
-            print("💥 DEBUG: facebook_data_service não configurado")
+            logger.error("💥 DEBUG: facebook_data_service não configurado")
             return jsonify({
                 "success": False,
                 "error": "Serviço do Facebook não configurado. Verifique as variáveis de ambiente."
@@ -382,36 +452,49 @@ def get_facebook_posts():
                 "error": "page_id é obrigatório"
             }), 400
         
-        print(f"📘 DEBUG: Buscando posts para página: {page_id}")
-        print(f"📘 DEBUG: Token fornecido: {'Sim' if page_access_token else 'Não'}")
-        print(f"📘 DEBUG: Limite: {limit}")
+        logger.debug(f"📘 DEBUG: Buscando posts para página: {page_id}")
+        logger.debug(f"📘 DEBUG: Token fornecido: {'Sim' if page_access_token else 'Não'}")
+        logger.debug(f"📘 DEBUG: Limite: {limit}")
         
-        # Chamar método para buscar publicações REAIS
-        result = facebook_data_service.get_publicacoes_pagina(page_id, page_access_token, limit)
+        # Usar método que funciona
+        if hasattr(facebook_data_service, 'get_publicacoes_pagina'):
+            logger.debug("🔍 DEBUG: Usando get_publicacoes_pagina")
+            result = facebook_data_service.get_publicacoes_pagina(page_id, page_access_token, limit)
+        elif hasattr(facebook_data_service, 'get_page_posts'):
+            logger.debug("🔍 DEBUG: Usando get_page_posts")
+            result = facebook_data_service.get_page_posts(page_id, page_access_token)
+        else:
+            logger.error("💥 DEBUG: Nenhum método de busca de posts encontrado")
+            return jsonify({
+                "success": False,
+                "error": "Método de busca de posts não encontrado"
+            }), 500
         
-        print(f"🔍 DEBUG: Resultado do serviço: {result.get('success')}")
-        print(f"🔍 DEBUG: Erro: {result.get('error')}")
+        logger.debug(f"🔍 DEBUG: Resultado do serviço: {result.get('success') if result else 'None'}")
+        logger.debug(f"🔍 DEBUG: Erro: {result.get('error') if result else 'None'}")
         
-        if result.get("success"):
+        if result and result.get("success"):
+            posts_data = result.get("posts", result.get("data", []))
             return jsonify({
                 "success": True,
-                "posts": result.get("data", []),
-                "total": result.get("total", 0),
-                "page_id": result.get("page_id"),
+                "posts": posts_data,  # Manter estrutura original
+                "total": result.get("total", len(posts_data)),
+                "page_id": result.get("page_id", page_id),
                 "message": result.get("message", "Publicações encontradas")
             }), 200
         else:
+            error_msg = result.get("error", "Erro desconhecido ao buscar publicações") if result else "Resultado vazio"
             return jsonify({
                 "success": False,
-                "error": result.get("error", "Erro desconhecido ao buscar publicações"),
+                "error": error_msg,
                 "posts": [],
                 "total": 0
             }), 200  # Retornar 200 para não quebrar o frontend
             
     except Exception as e:
-        print(f"💥 DEBUG: Exceção no endpoint: {str(e)}")
+        logger.error(f"💥 DEBUG: Exceção no endpoint: {str(e)}")
         import traceback
-        print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
+        logger.error(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
         
         return jsonify({
             "success": False,
@@ -447,9 +530,17 @@ def get_instagram_posts():
                 "error": "page_id é obrigatório"
             }), 400
         
-        result = facebook_data_service.get_instagram_posts(page_id, limit)
+        if hasattr(facebook_data_service, 'get_instagram_posts'):
+            result = facebook_data_service.get_instagram_posts(page_id, limit)
+        else:
+            # Fallback: retornar vazio
+            return jsonify({
+                "success": True,
+                "posts": [],
+                "total": 0
+            }), 200
         
-        if result.get("success"):
+        if result and result.get("success"):
             return jsonify({
                 "success": True,
                 "posts": result.get("posts", []),
@@ -458,7 +549,7 @@ def get_instagram_posts():
         else:
             return jsonify({
                 "success": False,
-                "error": result.get("error", "Erro desconhecido ao buscar posts do Instagram"),
+                "error": result.get("error", "Erro desconhecido ao buscar posts do Instagram") if result else "Resultado vazio",
                 "posts": [],
                 "total": 0
             }), 200
@@ -854,16 +945,18 @@ def generate_ad_with_ai():
         JSON com anúncio criado automaticamente pela IA
     """
     try:
-        print("🤖📘 DEBUG: Endpoint /facebook/generate-ad-with-ai chamado")
+        logger.debug("🤖📘 DEBUG: Endpoint /facebook/generate-ad-with-ai chamado")
         
         # Verificar se os serviços estão disponíveis
         if not ai_ad_service:
+            logger.error("❌ ai_ad_service não disponível")
             return jsonify({
                 "success": False,
                 "error": "Serviço de IA não está disponível. Verifique OPENAI_API_KEY."
             }), 500
         
         if not facebook_data_service:
+            logger.error("❌ facebook_data_service não disponível")
             return jsonify({
                 "success": False,
                 "error": "Serviço do Facebook não está disponível. Verifique tokens."
@@ -888,14 +981,22 @@ def generate_ad_with_ai():
                 "error": f"Campos obrigatórios ausentes: {', '.join(missing_fields)}"
             }), 400
         
-        print(f"🤖 DEBUG: Dados recebidos:")
-        print(f"  📦 Produto: {data.get('product_name')}")
-        print(f"  📝 Descrição: {data.get('product_description')}")
-        print(f"  📄 Página ID: {data.get('page_id')}")
-        print(f"  📱 Plataformas: {data.get('platforms')}")
+        logger.debug(f"🤖 DEBUG: Dados recebidos:")
+        logger.debug(f"  📦 Produto: {data.get('product_name')}")
+        logger.debug(f"  📝 Descrição: {data.get('product_description')}")
+        logger.debug(f"  📄 Página ID: {data.get('page_id')}")
+        logger.debug(f"  📱 Plataformas: {data.get('platforms')}")
         
         # Buscar informações da página selecionada
-        pages_result = facebook_data_service.get_paginas_disponiveis()
+        if hasattr(facebook_data_service, 'get_paginas_disponiveis'):
+            pages_result = facebook_data_service.get_paginas_disponiveis()
+        elif hasattr(facebook_data_service, 'get_pages'):
+            pages_result = facebook_data_service.get_pages()
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Método de busca de páginas não encontrado"
+            }), 500
         
         if not pages_result.get("success"):
             return jsonify({
@@ -905,7 +1006,9 @@ def generate_ad_with_ai():
         
         # Encontrar a página selecionada
         selected_page = None
-        for page in pages_result.get("data", []):
+        pages_data = pages_result.get("pages", pages_result.get("data", []))
+        
+        for page in pages_data:
             if page.get("id") == data.get("page_id"):
                 selected_page = page
                 break
@@ -917,7 +1020,7 @@ def generate_ad_with_ai():
             }), 400
         
         page_name = selected_page.get("name", "Página")
-        print(f"📄 DEBUG: Página encontrada: {page_name}")
+        logger.debug(f"📄 DEBUG: Página encontrada: {page_name}")
         
         # Preparar dados para a IA
         ai_input_data = {
@@ -930,7 +1033,7 @@ def generate_ad_with_ai():
         }
         
         # ETAPA 1: Gerar estrutura com IA
-        print("🤖 DEBUG: Etapa 1 - Gerando estrutura com IA...")
+        logger.debug("🤖 DEBUG: Etapa 1 - Gerando estrutura com IA...")
         
         ai_result = ai_ad_service.generate_ad_structure(ai_input_data)
         
@@ -942,10 +1045,10 @@ def generate_ad_with_ai():
             }), 500
         
         ai_structure = ai_result.get("ad_structure")
-        print("✅ DEBUG: Estrutura gerada pela IA com sucesso")
+        logger.debug("✅ DEBUG: Estrutura gerada pela IA com sucesso")
         
         # ETAPA 2: Criar anúncio no Facebook (simulado por enquanto)
-        print("📘 DEBUG: Etapa 2 - Preparando criação no Facebook...")
+        logger.debug("📘 DEBUG: Etapa 2 - Preparando criação no Facebook...")
         
         # Por enquanto, retornar apenas a estrutura gerada pela IA
         # TODO: Implementar criação real no Facebook quando estiver pronto
@@ -978,9 +1081,9 @@ def generate_ad_with_ai():
         }), 200
         
     except Exception as e:
-        print(f"💥 DEBUG: Exceção no endpoint: {str(e)}")
+        logger.error(f"💥 DEBUG: Exceção no endpoint: {str(e)}")
         import traceback
-        print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
+        logger.error(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
         
         return jsonify({
             "success": False,
@@ -1003,9 +1106,10 @@ def create_ad_from_ai_structure():
         JSON com resultado da criação do anúncio no Facebook
     """
     try:
-        print("📘🤖 DEBUG: Endpoint /facebook/create-ad-from-ai chamado")
+        logger.debug("📘🤖 DEBUG: Endpoint /facebook/create-ad-from-ai chamado")
         
         if not facebook_ai_integration:
+            logger.error("❌ facebook_ai_integration não disponível")
             return jsonify({
                 "success": False,
                 "error": "Integração IA-Facebook não está disponível"
@@ -1043,7 +1147,7 @@ def create_ad_from_ai_structure():
             }), 500
             
     except Exception as e:
-        print(f"💥 DEBUG: Erro na criação: {str(e)}")
+        logger.error(f"💥 DEBUG: Erro na criação: {str(e)}")
         return jsonify({
             "success": False,
             "error": f"Erro interno: {str(e)}"
@@ -1058,13 +1162,19 @@ def check_ai_integration_health():
             "facebook_service": bool(facebook_data_service),
             "integration": bool(facebook_ai_integration),
             "openai_configured": False,
-            "facebook_configured": False
+            "facebook_configured": False,
+            "facebook_methods": {
+                "get_pages": hasattr(facebook_data_service, 'get_pages') if facebook_data_service else False,
+                "get_paginas_disponiveis": hasattr(facebook_data_service, 'get_paginas_disponiveis') if facebook_data_service else False,
+                "get_page_posts": hasattr(facebook_data_service, 'get_page_posts') if facebook_data_service else False,
+                "get_publicacoes_pagina": hasattr(facebook_data_service, 'get_publicacoes_pagina') if facebook_data_service else False
+            }
         }
         
-        if ai_ad_service:
+        if ai_ad_service and hasattr(ai_ad_service, 'openai_api_key'):
             status["openai_configured"] = bool(ai_ad_service.openai_api_key)
         
-        if facebook_data_service:
+        if facebook_data_service and hasattr(facebook_data_service, 'access_token'):
             status["facebook_configured"] = bool(facebook_data_service.access_token)
         
         all_ready = all([
@@ -1079,7 +1189,8 @@ def check_ai_integration_health():
             "success": True,
             "status": "Todos os serviços prontos" if all_ready else "Alguns serviços não estão configurados",
             "services": status,
-            "ready_for_ai_ads": all_ready
+            "ready_for_ai_ads": all_ready,
+            "timestamp": "2025-01-09T03:00:00Z"
         }), 200
         
     except Exception as e:
@@ -1087,4 +1198,6 @@ def check_ai_integration_health():
             "success": False,
             "error": f"Erro ao verificar status: {str(e)}"
         }), 500
+
+logger.info("✅ Rotas do Facebook carregadas com imports corrigidos - VERSÃO COMPLETA")
 

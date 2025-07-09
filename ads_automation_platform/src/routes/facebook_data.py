@@ -814,13 +814,369 @@ def generate_ad_with_ai():
             "error": f"Erro interno do servidor: {str(e)}"
         }), 500
 
-# ===== NOVOS ENDPOINTS ULTRA-SIMPLIFICADOS PARA SALVAR RASCUNHO E PUBLICAR ANÚNCIO =====
+# ===== ENDPOINT PRINCIPAL: PUBLICAR ANÚNCIO COM CRIAÇÃO REAL =====
+
+@facebook_data_bp.route('/facebook/publish-ad', methods=['POST'])
+def publish_ad():
+    """
+    Publicar anúncio no Facebook - VERSÃO COM CRIAÇÃO REAL ATIVADA
+    
+    Esta versão:
+    1. Cria campanha real no Facebook
+    2. Cria adset real com targeting
+    3. Cria criativo real
+    4. Cria anúncio real
+    5. Retorna IDs reais do Facebook
+    """
+    try:
+        print("🚀 DEBUG: Endpoint publish-ad chamado (CRIAÇÃO REAL ATIVADA)")
+        
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'Dados não fornecidos'
+            }), 400
+        
+        print(f"🚀 DEBUG: Dados recebidos: {data}")
+        
+        ai_structure = data.get('ai_structure')
+        page_id = data.get('page_id')
+        selected_post = data.get('selected_post')
+        
+        if not ai_structure:
+            return jsonify({
+                'success': False,
+                'error': 'Estrutura do anúncio é obrigatória'
+            }), 400
+        
+        if not page_id:
+            return jsonify({
+                'success': False,
+                'error': 'ID da página é obrigatório'
+            }), 400
+        
+        if not facebook_data_service:
+            return jsonify({
+                'success': False,
+                'error': 'Serviço do Facebook não configurado'
+            }), 500
+        
+        # EXTRAIR DADOS DA ESTRUTURA DA IA
+        campaign_data = ai_structure.get("campaign", {})
+        adset_data = ai_structure.get("adset", {})
+        creative_data = ai_structure.get("creative", {})
+        
+        print(f"📊 DEBUG: Dados extraídos:")
+        print(f"  📈 Campanha: {campaign_data.get('name', 'N/A')}")
+        print(f"  🎯 AdSet: {adset_data.get('name', 'N/A')}")
+        print(f"  🎨 Criativo: {creative_data.get('name', 'N/A')}")
+        
+        # DETECTAR TIPO DE PUBLICAÇÃO
+        is_existing_post = bool(selected_post and selected_post.get('id'))
+        print(f"📝 DEBUG: Tipo de publicação: {'Existente' if is_existing_post else 'Nova'}")
+        
+        # ETAPA 1: CRIAR CAMPANHA REAL
+        print("📈 DEBUG: ETAPA 1 - Criando campanha real no Facebook...")
+        
+        campaign_create_data = {
+            "name": campaign_data.get("name", f"Campanha IA - {datetime.now().strftime('%d/%m/%Y %H:%M')}"),
+            "objective": "LINK_CLICKS",  # Usar LINK_CLICKS como padrão mais simples
+            "status": "PAUSED",  # Sempre criar pausada para revisão
+            "special_ad_categories": campaign_data.get("special_ad_categories", [])
+        }
+        
+        print(f"📈 DEBUG: Dados da campanha: {campaign_create_data}")
+        
+        try:
+            campaign_result = facebook_data_service.create_campaign(campaign_create_data)
+            print(f"📈 DEBUG: Resultado da campanha: {campaign_result}")
+            
+            if not campaign_result.get("success"):
+                return jsonify({
+                    'success': False,
+                    'error': f'Erro ao criar campanha: {campaign_result.get("error")}',
+                    'stage': 'campaign_creation',
+                    'details': campaign_result
+                }), 500
+            
+            campaign_id = campaign_result.get("campaign_id")
+            print(f"✅ DEBUG: Campanha criada com sucesso! ID: {campaign_id}")
+            
+        except Exception as e:
+            print(f"💥 DEBUG: Erro na criação da campanha: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Erro na criação da campanha: {str(e)}',
+                'stage': 'campaign_creation'
+            }), 500
+        
+        # ETAPA 2: CRIAR ADSET REAL
+        print("🎯 DEBUG: ETAPA 2 - Criando adset real no Facebook...")
+        
+        # Preparar targeting (simplificar se necessário)
+        targeting = adset_data.get("targeting", {})
+        
+        # Simplificar targeting para evitar erros
+        simplified_targeting = {
+            "age_min": targeting.get("age_min", 18),
+            "age_max": targeting.get("age_max", 65),
+            "genders": targeting.get("genders", [1, 2]),  # 1=masculino, 2=feminino, 0=todos
+            "geo_locations": targeting.get("geo_locations", {
+                "countries": ["BR"],
+                "location_types": ["home", "recent"]
+            })
+        }
+        
+        # Adicionar interesses apenas se existirem
+        if targeting.get("interests"):
+            simplified_targeting["interests"] = targeting.get("interests")[:3]  # Máximo 3 interesses
+        
+        # Adicionar comportamentos apenas se existirem
+        if targeting.get("behaviors"):
+            simplified_targeting["behaviors"] = targeting.get("behaviors")[:2]  # Máximo 2 comportamentos
+        
+        adset_create_data = {
+            "name": adset_data.get("name", f"AdSet - {datetime.now().strftime('%d/%m/%Y')}"),
+            "campaign_id": campaign_id,
+            "daily_budget": min(adset_data.get("daily_budget", 5000), 10000),  # Máximo R$ 100/dia
+            "billing_event": "IMPRESSIONS",
+            "optimization_goal": "LINK_CLICKS",  # Simplificar para LINK_CLICKS
+            "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
+            "targeting": simplified_targeting,
+            "status": "PAUSED"
+        }
+        
+        print(f"🎯 DEBUG: Dados do adset: {adset_create_data}")
+        
+        try:
+            adset_result = facebook_data_service.create_adset(adset_create_data)
+            print(f"🎯 DEBUG: Resultado do adset: {adset_result}")
+            
+            if not adset_result.get("success"):
+                return jsonify({
+                    'success': False,
+                    'error': f'Erro ao criar adset: {adset_result.get("error")}',
+                    'stage': 'adset_creation',
+                    'campaign_id': campaign_id,
+                    'details': adset_result
+                }), 500
+            
+            adset_id = adset_result.get("adset_id")
+            print(f"✅ DEBUG: AdSet criado com sucesso! ID: {adset_id}")
+            
+        except Exception as e:
+            print(f"💥 DEBUG: Erro na criação do adset: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Erro na criação do adset: {str(e)}',
+                'stage': 'adset_creation',
+                'campaign_id': campaign_id
+            }), 500
+        
+        # ETAPA 3: CRIAR CRIATIVO REAL
+        print("🎨 DEBUG: ETAPA 3 - Criando criativo real no Facebook...")
+        
+        # Preparar dados do criativo
+        object_story_spec = creative_data.get("object_story_spec", {})
+        link_data = object_story_spec.get("link_data", {})
+        
+        if is_existing_post:
+            print("📄 DEBUG: Usando publicação existente como criativo")
+            
+            # Para publicação existente, usar dados da publicação original
+            creative_create_data = {
+                "name": creative_data.get("name", f"Criativo - Post Existente - {datetime.now().strftime('%d/%m/%Y')}"),
+                "object_story_spec": {
+                    "page_id": page_id,
+                    "instagram_actor_id": page_id,  # Opcional
+                    "link_data": {
+                        "message": selected_post.get("message", ""),
+                        "name": link_data.get("name", selected_post.get("message", "")[:25] + "..."),
+                        "description": link_data.get("description", "Promover publicação existente"),
+                        "link": link_data.get("link", selected_post.get("permalink_url", "https://facebook.com")),
+                        "call_to_action": {
+                            "type": link_data.get("call_to_action", {}).get("type", "LEARN_MORE")
+                        }
+                    }
+                }
+            }
+        else:
+            print("🆕 DEBUG: Criando nova publicação como criativo")
+            
+            # Para publicação nova, usar dados gerados pela IA
+            creative_create_data = {
+                "name": creative_data.get("name", f"Criativo - IA - {datetime.now().strftime('%d/%m/%Y')}"),
+                "object_story_spec": {
+                    "page_id": page_id,
+                    "instagram_actor_id": page_id,  # Opcional
+                    "link_data": {
+                        "message": link_data.get("message", ""),
+                        "name": link_data.get("name", ""),
+                        "description": link_data.get("description", ""),
+                        "link": link_data.get("link", "https://facebook.com"),
+                        "call_to_action": {
+                            "type": link_data.get("call_to_action", {}).get("type", "LEARN_MORE")
+                        }
+                    }
+                }
+            }
+        
+        print(f"🎨 DEBUG: Dados do criativo: {creative_create_data}")
+        
+        try:
+            creative_result = facebook_data_service.create_ad_creative(creative_create_data)
+            print(f"🎨 DEBUG: Resultado do criativo: {creative_result}")
+            
+            if not creative_result.get("success"):
+                return jsonify({
+                    'success': False,
+                    'error': f'Erro ao criar criativo: {creative_result.get("error")}',
+                    'stage': 'creative_creation',
+                    'campaign_id': campaign_id,
+                    'adset_id': adset_id,
+                    'details': creative_result
+                }), 500
+            
+            creative_id = creative_result.get("creative_id")
+            print(f"✅ DEBUG: Criativo criado com sucesso! ID: {creative_id}")
+            
+        except Exception as e:
+            print(f"💥 DEBUG: Erro na criação do criativo: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Erro na criação do criativo: {str(e)}',
+                'stage': 'creative_creation',
+                'campaign_id': campaign_id,
+                'adset_id': adset_id
+            }), 500
+        
+        # ETAPA 4: CRIAR ANÚNCIO REAL
+        print("📢 DEBUG: ETAPA 4 - Criando anúncio real no Facebook...")
+        
+        ad_create_data = {
+            "name": f"Anúncio - {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+            "adset_id": adset_id,
+            "creative": {
+                "creative_id": creative_id
+            },
+            "status": "PAUSED"
+        }
+        
+        print(f"📢 DEBUG: Dados do anúncio: {ad_create_data}")
+        
+        try:
+            ad_result = facebook_data_service.create_ad(ad_create_data)
+            print(f"📢 DEBUG: Resultado do anúncio: {ad_result}")
+            
+            if not ad_result.get("success"):
+                return jsonify({
+                    'success': False,
+                    'error': f'Erro ao criar anúncio: {ad_result.get("error")}',
+                    'stage': 'ad_creation',
+                    'campaign_id': campaign_id,
+                    'adset_id': adset_id,
+                    'creative_id': creative_id,
+                    'details': ad_result
+                }), 500
+            
+            ad_id = ad_result.get("ad_id")
+            print(f"✅ DEBUG: Anúncio criado com sucesso! ID: {ad_id}")
+            
+        except Exception as e:
+            print(f"💥 DEBUG: Erro na criação do anúncio: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Erro na criação do anúncio: {str(e)}',
+                'stage': 'ad_creation',
+                'campaign_id': campaign_id,
+                'adset_id': adset_id,
+                'creative_id': creative_id
+            }), 500
+        
+        # SUCESSO! ANÚNCIO CRIADO COMPLETAMENTE
+        print(f"🎉 DEBUG: ANÚNCIO CRIADO COM SUCESSO!")
+        print(f"  📈 Campanha ID: {campaign_id}")
+        print(f"  🎯 AdSet ID: {adset_id}")
+        print(f"  🎨 Criativo ID: {creative_id}")
+        print(f"  📢 Anúncio ID: {ad_id}")
+        
+        # PREPARAR RESPOSTA DETALHADA
+        response_data = {
+            "success": True,
+            "message": "🎉 Anúncio criado com sucesso no Facebook!",
+            "mode": "real_creation",
+            "post_type": "existing" if is_existing_post else "new",
+            "campaign_id": campaign_id,
+            "adset_id": adset_id,
+            "creative_id": creative_id,
+            "ad_id": ad_id,
+            "created_at": datetime.now().isoformat(),
+            "campaign_details": {
+                "name": campaign_create_data["name"],
+                "objective": campaign_create_data["objective"],
+                "daily_budget": adset_create_data["daily_budget"] / 100,  # Converter centavos para reais
+                "status": "PAUSED"
+            },
+            "facebook_urls": {
+                "campaign_url": f"https://business.facebook.com/adsmanager/manage/campaigns/detail?act={facebook_data_service.ad_account_id}&campaign_id={campaign_id}",
+                "adset_url": f"https://business.facebook.com/adsmanager/manage/adsets/detail?act={facebook_data_service.ad_account_id}&adset_id={adset_id}",
+                "ad_url": f"https://business.facebook.com/adsmanager/manage/ads/detail?act={facebook_data_service.ad_account_id}&ad_id={ad_id}"
+            },
+            "targeting_summary": {
+                "age_range": f"{simplified_targeting['age_min']}-{simplified_targeting['age_max']} anos",
+                "location": "Brasil",
+                "interests": len(targeting.get("interests", [])),
+                "behaviors": len(targeting.get("behaviors", []))
+            }
+        }
+        
+        # ADICIONAR INFORMAÇÕES ESPECÍFICAS PARA PUBLICAÇÃO EXISTENTE
+        if is_existing_post:
+            response_data["original_post"] = {
+                "id": selected_post.get('id'),
+                "message": selected_post.get('message', ''),
+                "created_time": selected_post.get('created_time', ''),
+                "permalink": selected_post.get('permalink_url', '')
+            }
+            response_data["note"] = "✅ Anúncio criado baseado na publicação existente."
+        else:
+            response_data["note"] = "✅ Anúncio criado com conteúdo gerado pela IA."
+        
+        response_data["next_steps"] = [
+            "✅ Anúncio criado e pausado para revisão",
+            "🔍 Revise as configurações no Gerenciador de Anúncios",
+            "▶️ Ative o anúncio quando estiver satisfeito",
+            "📊 Monitore a performance regularmente"
+        ]
+        
+        response_data["important_notes"] = [
+            "⚠️ Anúncio criado em status PAUSADO",
+            "💰 Orçamento diário configurado",
+            "🎯 Segmentação aplicada conforme IA",
+            "📱 Compatível com Facebook e Instagram"
+        ]
+        
+        return jsonify(response_data)
+            
+    except Exception as e:
+        print(f"💥 DEBUG: Erro geral no endpoint: {str(e)}")
+        import traceback
+        print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
+        return jsonify({
+            'success': False,
+            'error': f'Erro interno: {str(e)}',
+            'stage': 'general_error'
+        }), 500
+
+# ===== ENDPOINT PARA SALVAR RASCUNHO =====
 
 @facebook_data_bp.route('/facebook/save-ad-draft', methods=['POST'])
 def save_ad_draft():
-    """Salvar anúncio como rascunho - VERSÃO ULTRA-SIMPLIFICADA"""
+    """Salvar anúncio como rascunho"""
     try:
-        print("💾 DEBUG: Endpoint save-ad-draft chamado (ULTRA-SIMPLIFICADO)")
+        print("💾 DEBUG: Endpoint save-ad-draft chamado")
         
         data = request.get_json()
         
@@ -832,7 +1188,7 @@ def save_ad_draft():
         
         print(f"💾 DEBUG: Dados recebidos: {data}")
         
-        # VERSÃO ULTRA-SIMPLIFICADA: Apenas simular o salvamento
+        # Simular salvamento de rascunho
         draft_id = f"draft_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
         return jsonify({
@@ -857,11 +1213,13 @@ def save_ad_draft():
             'error': f'Erro interno: {str(e)}'
         }), 500
 
-@facebook_data_bp.route('/facebook/publish-ad', methods=['POST'])
-def publish_ad():
-    """Publicar anúncio no Facebook - VERSÃO ULTRA-SIMPLIFICADA (SEM ERRO 500)"""
+# ===== ENDPOINTS ADICIONAIS =====
+
+@facebook_data_bp.route('/facebook/toggle-ad-status', methods=['POST'])
+def toggle_ad_status():
+    """Ativar ou pausar um anúncio específico"""
     try:
-        print("🚀 DEBUG: Endpoint publish-ad chamado (VERSÃO ULTRA-SIMPLIFICADA)")
+        print("🔄 DEBUG: Endpoint toggle-ad-status chamado")
         
         data = request.get_json()
         
@@ -871,72 +1229,46 @@ def publish_ad():
                 'error': 'Dados não fornecidos'
             }), 400
         
-        print(f"🚀 DEBUG: Dados recebidos: {data}")
+        ad_id = data.get('ad_id')
+        current_status = data.get('current_status', 'PAUSED')
         
-        ai_structure = data.get('ai_structure')
-        if not ai_structure:
+        if not ad_id:
             return jsonify({
                 'success': False,
-                'error': 'Estrutura do anúncio é obrigatória'
+                'error': 'ID do anúncio é obrigatório'
             }), 400
         
-        # VERSÃO ULTRA-SIMPLIFICADA: Simular criação de campanha
-        print("🎯 DEBUG: MODO SIMULAÇÃO - Não tentando criar campanha real no Facebook")
+        if not facebook_data_service:
+            return jsonify({
+                'success': False,
+                'error': 'Serviço do Facebook não configurado'
+            }), 500
         
-        # Extrair dados da estrutura da IA para mostrar na resposta
-        campaign_data = ai_structure.get("campaign", {})
-        adset_data = ai_structure.get("adset", {})
-        creative_data = ai_structure.get("creative", {})
+        # Determinar novo status
+        new_status = "ACTIVE" if current_status.upper() == "PAUSED" else "PAUSED"
         
-        # Simular IDs de campanha
-        simulated_campaign_id = f"sim_camp_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        simulated_adset_id = f"sim_adset_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        simulated_creative_id = f"sim_creative_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        simulated_ad_id = f"sim_ad_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        print(f"🔄 DEBUG: Alterando status do anúncio {ad_id} de {current_status} para {new_status}")
         
-        print(f"✅ DEBUG: Simulação concluída com sucesso!")
-        print(f"  📈 Campanha simulada: {simulated_campaign_id}")
-        print(f"  🎯 AdSet simulado: {simulated_adset_id}")
-        print(f"  🎨 Criativo simulado: {simulated_creative_id}")
-        print(f"  📢 Anúncio simulado: {simulated_ad_id}")
+        # Chamar serviço para alterar status
+        result = facebook_data_service.update_ad_status(ad_id, new_status)
         
-        return jsonify({
-            "success": True,
-            "message": "🎉 Anúncio criado com sucesso! (Modo Simulação)",
-            "mode": "simulation",
-            "campaign_id": simulated_campaign_id,
-            "adset_id": simulated_adset_id,
-            "creative_id": simulated_creative_id,
-            "ad_id": simulated_ad_id,
-            "published_at": datetime.now().isoformat(),
-            "campaign_details": {
-                "name": campaign_data.get("name", "Campanha IA"),
-                "objective": campaign_data.get("objective", "LINK_CLICKS"),
-                "daily_budget": adset_data.get("daily_budget", 50),
-                "status": "PAUSED"
-            },
-            "creative_preview": {
-                "headline": creative_data.get("object_story_spec", {}).get("link_data", {}).get("name", ""),
-                "primary_text": creative_data.get("object_story_spec", {}).get("link_data", {}).get("message", ""),
-                "cta": creative_data.get("object_story_spec", {}).get("link_data", {}).get("call_to_action", {}).get("type", "LEARN_MORE")
-            },
-            "note": "⚠️ MODO SIMULAÇÃO ATIVO - Nenhuma campanha real foi criada no Facebook. Para ativar criação real, configure as permissões adequadas.",
-            "next_steps": [
-                "✅ Estrutura validada com sucesso",
-                "⚠️ Campanha criada em modo simulação",
-                "🔧 Configure permissões para criação real",
-                "📊 Monitore performance quando ativo"
-            ],
-            "real_creation_requirements": [
-                "Token com permissões 'ads_management'",
-                "Conta de anúncios ativa e sem restrições",
-                "Limites de gastos configurados",
-                "Business Manager com acesso adequado"
-            ]
-        })
+        if result.get("success"):
+            return jsonify({
+                'success': True,
+                'message': f'Anúncio {"ativado" if new_status == "ACTIVE" else "pausado"} com sucesso',
+                'ad_id': ad_id,
+                'old_status': current_status.upper(),
+                'new_status': new_status,
+                'updated_at': datetime.now().isoformat()
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get("error", "Erro ao alterar status do anúncio")
+            }), 500
             
     except Exception as e:
-        print(f"💥 DEBUG: Erro ao publicar anúncio: {str(e)}")
+        print(f"💥 DEBUG: Erro ao alterar status: {str(e)}")
         import traceback
         print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
         return jsonify({
@@ -944,35 +1276,49 @@ def publish_ad():
             'error': f'Erro interno: {str(e)}'
         }), 500
 
-@facebook_data_bp.route('/facebook/ai-health', methods=['GET'])
-def check_ai_integration_health():
-    """Verificar status da integração com IA"""
+@facebook_data_bp.route('/facebook/check-creation-status', methods=['GET'])
+def check_creation_status():
+    """Verificar se o sistema está pronto para criar anúncios reais"""
     try:
+        print("🔍 DEBUG: Verificando status de criação real")
+        
         status = {
-            "ai_service": bool(ai_ad_service),
             "facebook_service": bool(facebook_data_service),
+            "ai_service": bool(ai_ad_service),
             "integration": bool(facebook_ai_integration),
-            "openai_configured": False,
-            "facebook_configured": False,
-            "simulation_mode": True  # Sempre em modo simulação por enquanto
+            "real_creation_enabled": True,  # Agora habilitado
+            "simulation_mode": False  # Modo simulação desabilitado
         }
         
-        if ai_ad_service and hasattr(ai_ad_service, 'openai_api_key'):
-            status["openai_configured"] = bool(ai_ad_service.openai_api_key)
+        # Verificar permissões do token
+        permissions_check = None
+        if facebook_data_service:
+            try:
+                account_info = facebook_data_service.get_ad_account_info()
+                if account_info and not account_info.get("error"):
+                    permissions_check = "OK"
+                else:
+                    permissions_check = account_info.get("error", "Erro desconhecido")
+            except Exception as e:
+                permissions_check = f"Erro: {str(e)}"
         
-        if facebook_data_service and hasattr(facebook_data_service, 'access_token'):
-            status["facebook_configured"] = bool(facebook_data_service.access_token)
+        status["permissions_check"] = permissions_check
+        status["account_access"] = permissions_check == "OK"
         
-        ai_ready = status["ai_service"] and status["openai_configured"]
+        # Verificar se pode criar campanhas
+        can_create = (
+            status["facebook_service"] and 
+            status["ai_service"] and 
+            status["account_access"]
+        )
         
         return jsonify({
             "success": True,
-            "status": "IA pronta, Facebook em modo simulação" if ai_ready else "Configuração incompleta",
+            "status": "Pronto para criação real" if can_create else "Configuração incompleta",
             "services": status,
-            "ready_for_ai_ads": ai_ready,
-            "integration_available": bool(facebook_ai_integration),
-            "mode": "simulation",
-            "note": "Sistema funcionando em modo simulação para evitar erros 500"
+            "ready_for_real_creation": can_create,
+            "mode": "real_creation",
+            "note": "Sistema configurado para criar anúncios reais no Facebook"
         }), 200
         
     except Exception as e:

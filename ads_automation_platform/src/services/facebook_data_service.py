@@ -526,7 +526,7 @@ else:
         Permissões necessárias: pages_show_list, pages_read_engagement
         
         Returns:
-            Dict com lista de páginas e seus access_tokens
+            Dict com lista de páginas REAIS e seus access_tokens
         """
         try:
             print("🔍 DEBUG: Iniciando busca de páginas disponíveis...")
@@ -537,7 +537,7 @@ else:
             # Parâmetros da requisição
             params = {
                 "access_token": self.access_token,  # Token de usuário
-                "fields": "id,name,access_token,category,picture"
+                "fields": "id,name,access_token,category,category_list,tasks"
             }
             
             print(f"🔍 DEBUG: URL: {url}")
@@ -556,21 +556,31 @@ else:
             data = response.json()
             pages = data.get('data', [])
             
-            print(f"📊 DEBUG: {len(pages)} páginas encontradas")
+            print(f"📊 DEBUG: {len(pages)} páginas REAIS encontradas")
             
             # Log das páginas encontradas
             for i, page in enumerate(pages, 1):
                 page_name = page.get('name', 'Sem nome')
                 page_id = page.get('id', 'Sem ID')
+                category = page.get('category', 'Sem categoria')
                 has_token = 'Sim' if page.get('access_token') else 'Não'
-                print(f"  📄 Página {i}: {page_name} (ID: {page_id}) - Token: {has_token}")
+                print(f"  📄 Página REAL {i}: {page_name} (ID: {page_id}) - Categoria: {category} - Token: {has_token}")
             
-            # Retornar resposta estruturada
+            # Verificar se encontrou páginas reais
+            if not pages:
+                return {
+                    "success": False,
+                    "error": "Nenhuma página encontrada na Business Manager. Verifique se o token tem as permissões corretas.",
+                    "data": [],
+                    "total": 0
+                }
+            
+            # Retornar APENAS páginas reais
             return {
                 "success": True,
                 "data": pages,
                 "total": len(pages),
-                "message": f"Encontradas {len(pages)} páginas disponíveis"
+                "message": f"Encontradas {len(pages)} páginas reais da Business Manager"
             }
             
         except requests.exceptions.HTTPError as e:

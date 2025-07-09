@@ -1,413 +1,252 @@
 import React, { useState, useEffect } from 'react';
+import AdEditor from './AdEditor';
 
 const AdGeneration = () => {
-  // ==========================================
-  // ESTADOS (MANTIDOS EXATAMENTE COMO ORIGINAL)
-  // ==========================================
-  
+  // Estados principais
   const [formData, setFormData] = useState({
     page_id: '',
     product_name: '',
     product_description: '',
-    budget: '',
-    start_date: '',
-    end_date: '',
-    min_age: 18,
-    max_age: 65,
-    gender: 'all',
     platforms: {
       facebook: true,
       instagram: false
     }
   });
 
+  // Estados para dados externos
   const [pages, setPages] = useState([]);
-  const [loadingPages, setLoadingPages] = useState(false);
-  const [creativeType, setCreativeType] = useState('new');
   const [existingPosts, setExistingPosts] = useState([]);
+  
+  // Estados de controle
+  const [loadingPages, setLoadingPages] = useState(false);
   const [loadingPosts, setLoadingPosts] = useState(false);
-  const [selectedPost, setSelectedPost] = useState(null);
+  const [generatingAd, setGeneratingAd] = useState(false);
+  
+  // Estados de UI
+  const [creativeType, setCreativeType] = useState('existing');
   const [platformFilter, setPlatformFilter] = useState('all');
-  const [generating, setGenerating] = useState(false);
+  const [selectedPost, setSelectedPost] = useState(null);
+  
+  // Estados para IA e Editor
+  const [aiResult, setAiResult] = useState(null);
+  const [showAiPreview, setShowAiPreview] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
 
-  // ==========================================
-  // FUNÇÕES AUXILIARES (SEGURAS)
-  // ==========================================
-
-  const safeGet = (obj, path, defaultValue = null) => {
+  // Função para acesso seguro a propriedades
+  const safeGet = (obj, path, defaultValue = '') => {
     try {
-      if (!obj || typeof obj !== 'object') return defaultValue;
-      
-      const keys = path.split('.');
-      let result = obj;
-      
-      for (const key of keys) {
-        if (result && typeof result === 'object' && key in result) {
-          result = result[key];
-        } else {
-          return defaultValue;
-        }
-      }
-      
-      return result !== null && result !== undefined ? result : defaultValue;
-    } catch (error) {
-      console.error('Erro em safeGet:', error);
+      return path.split('.').reduce((current, key) => {
+        return current && current[key] !== undefined ? current[key] : defaultValue;
+      }, obj);
+    } catch {
       return defaultValue;
     }
   };
 
-  const isValidArray = (arr) => {
-    return Array.isArray(arr) && arr.length > 0;
-  };
-
-  // ==========================================
-  // BUSCA DE PÁGINAS (MANTIDA COMO ORIGINAL)
-  // ==========================================
-
+  // Buscar páginas disponíveis
   const fetchPages = async () => {
-    console.log('🔍 DEBUG Frontend: Iniciando fetchPages...');
     setLoadingPages(true);
-    
     try {
-      const url = `${process.env.REACT_APP_API_URL || 'https://ads-automation-backend-otpl.onrender.com'}/api/facebook/pages`;
-      console.log('🔍 DEBUG Frontend: URL da requisição:', url);
+      console.log('🔄 DEBUG: Buscando páginas...');
+      const response = await fetch('/api/facebook/pages');
+      const result = await response.json();
       
-      const response = await fetch(url);
-      console.log('🔍 DEBUG Frontend: Status da resposta:', response.status);
+      console.log('📄 DEBUG: Resultado das páginas:', result);
       
-      if (response.ok) {
-        const data = await response.json();
-        console.log('🔍 DEBUG Frontend: Dados recebidos:', data);
-        
-        // ESTRUTURA ORIGINAL MANTIDA
-        if (safeGet(data, 'success') && safeGet(data, 'data')) {
-          const pagesData = safeGet(data, 'data', []);
-          
-          if (isValidArray(pagesData)) {
-            const realPages = pagesData.map(page => ({
-              id: safeGet(page, 'id', ''),
-              name: safeGet(page, 'name', 'Página sem nome'),
-              category: safeGet(page, 'category', 'Categoria não informada'),
-              access_token: safeGet(page, 'access_token', '')
-            }));
-            
-            console.log('🔍 DEBUG Frontend: Páginas extraídas:', realPages);
-            console.log('🔍 DEBUG Frontend: Número de páginas:', realPages.length);
-            
-            setPages(realPages);
-            
-            console.log('✅ DEBUG Frontend: Páginas carregadas com sucesso!');
-            realPages.forEach((page, index) => {
-              console.log(`  ${index + 1}. ${page.name} (ID: ${page.id})`);
-            });
-          } else {
-            console.log('⚠️ DEBUG Frontend: Array de páginas inválido');
-            setPages([]);
-          }
-        } else {
-          console.log('⚠️ DEBUG Frontend: Resposta sem páginas válidas');
-          console.log('🔍 DEBUG Frontend: Estrutura recebida:', Object.keys(data || {}));
-          setPages([]);
-        }
+      if (result.success && Array.isArray(result.data)) {
+        setPages(result.data);
+        console.log(`✅ DEBUG: ${result.data.length} páginas carregadas`);
       } else {
-        console.log('❌ DEBUG Frontend: Erro na resposta:', response.status);
+        console.error('❌ DEBUG: Erro ao buscar páginas:', result.error);
         setPages([]);
       }
     } catch (error) {
-      console.log('💥 DEBUG Frontend: Erro ao buscar páginas:', error);
+      console.error('💥 DEBUG: Erro na requisição de páginas:', error);
       setPages([]);
     } finally {
       setLoadingPages(false);
-      console.log('🔍 DEBUG Frontend: fetchPages finalizado');
     }
   };
 
-  // ==========================================
-  // BUSCA DE PUBLICAÇÕES (MANTIDA COMO ORIGINAL)
-  // ==========================================
-
+  // Buscar publicações existentes
   const fetchExistingPosts = async (pageId) => {
     if (!pageId) {
-      console.log('⚠️ DEBUG: Nenhuma página selecionada para buscar publicações');
+      setExistingPosts([]);
       return;
     }
 
-    console.log('🔍 DEBUG: Iniciando busca de publicações para página:', pageId);
     setLoadingPosts(true);
-    setExistingPosts([]);
-
     try {
-      // Buscar posts do Facebook (ESTRUTURA ORIGINAL)
-      console.log('📘 DEBUG: Buscando posts do Facebook...');
-      const facebookResponse = await fetch(`${process.env.REACT_APP_API_URL || 'https://ads-automation-backend-otpl.onrender.com'}/api/facebook/posts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ page_id: pageId })
-      });
-
-      console.log('📘 DEBUG: Status resposta Facebook:', facebookResponse.status);
-
-      let facebookPosts = [];
-      if (facebookResponse.ok) {
-        const facebookData = await facebookResponse.json();
-        console.log('📘 DEBUG: Dados Facebook recebidos:', facebookData);
-        
-        // ESTRUTURA ORIGINAL MANTIDA
-        if (safeGet(facebookData, 'success') && safeGet(facebookData, 'posts')) {
-          const postsData = safeGet(facebookData, 'posts', []);
-          
-          if (isValidArray(postsData)) {
-            facebookPosts = postsData.map(post => ({
-              id: safeGet(post, 'id', ''),
-              message: safeGet(post, 'message', 'Publicação sem texto'),
-              created_time: safeGet(post, 'created_time', ''),
-              full_picture: safeGet(post, 'full_picture', ''),
-              permalink_url: safeGet(post, 'permalink_url', ''),
-              likes: safeGet(post, 'likes', 0),
-              comments: safeGet(post, 'comments', 0),
-              shares: safeGet(post, 'shares', 0),
-              platform: 'facebook'
-            }));
-            console.log('📘 DEBUG: Posts Facebook processados:', facebookPosts.length);
-          }
-        }
-      } else {
-        console.log('📘 DEBUG: Erro na API Facebook:', facebookResponse.status);
-      }
-
-      // Buscar posts do Instagram (ESTRUTURA ORIGINAL)
-      console.log('📷 DEBUG: Buscando posts do Instagram...');
-      const instagramResponse = await fetch(`${process.env.REACT_APP_API_URL || 'https://ads-automation-backend-otpl.onrender.com'}/api/facebook/instagram-posts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ page_id: pageId })
-      });
-
-      console.log('📷 DEBUG: Status resposta Instagram:', instagramResponse.status);
-
-      let instagramPosts = [];
-      if (instagramResponse.ok) {
-        const instagramData = await instagramResponse.json();
-        console.log('📷 DEBUG: Dados Instagram recebidos:', instagramData);
-        
-        // ESTRUTURA ORIGINAL MANTIDA
-        if (safeGet(instagramData, 'success') && safeGet(instagramData, 'posts')) {
-          const postsData = safeGet(instagramData, 'posts', []);
-          
-          if (isValidArray(postsData)) {
-            instagramPosts = postsData.map(post => ({
-              id: safeGet(post, 'id', ''),
-              message: safeGet(post, 'message', 'Publicação sem texto'),
-              created_time: safeGet(post, 'created_time', ''),
-              full_picture: safeGet(post, 'full_picture', ''),
-              permalink_url: safeGet(post, 'permalink_url', ''),
-              likes: safeGet(post, 'likes', 0),
-              comments: safeGet(post, 'comments', 0),
-              shares: safeGet(post, 'shares', 0),
-              platform: 'instagram'
-            }));
-            console.log('📷 DEBUG: Posts Instagram processados:', instagramPosts.length);
-          }
-        }
-      } else {
-        console.log('📷 DEBUG: Erro na API Instagram:', instagramResponse.status);
-      }
-
-      // Combinar posts
-      const allPosts = [...facebookPosts, ...instagramPosts];
-      console.log('📊 DEBUG: Total de posts encontrados:', allPosts.length);
-
-      if (allPosts.length > 0) {
-        setExistingPosts(allPosts);
-        console.log('✅ DEBUG: Posts carregados com sucesso!');
-        allPosts.forEach((post, index) => {
-          console.log(`  ${index + 1}. [${post.platform.toUpperCase()}] ${post.message?.substring(0, 50)}...`);
-        });
-      } else {
-        console.log('⚠️ DEBUG: Nenhuma publicação encontrada para esta página');
-        
-        // Criar dados de exemplo baseados na página real selecionada
-        const selectedPage = pages.find(p => p.id === pageId);
-        const examplePosts = createExamplePostsForPage(selectedPage);
-        setExistingPosts(examplePosts);
-        console.log('🧪 DEBUG: Usando dados de exemplo para demonstração');
-      }
-
-    } catch (error) {
-      console.log('💥 DEBUG: Erro ao buscar publicações:', error);
+      console.log(`🔄 DEBUG: Buscando publicações da página ${pageId}...`);
       
-      // Fallback para dados de exemplo
-      const selectedPage = pages.find(p => p.id === pageId);
-      const examplePosts = createExamplePostsForPage(selectedPage);
-      setExistingPosts(examplePosts);
-      console.log('🧪 DEBUG: Usando dados de exemplo devido ao erro');
+      const response = await fetch('/api/facebook/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          page_id: pageId,
+          limit: 20
+        })
+      });
+
+      const result = await response.json();
+      console.log('📱 DEBUG: Resultado das publicações:', result);
+
+      if (result.success && Array.isArray(result.posts)) {
+        setExistingPosts(result.posts);
+        console.log(`✅ DEBUG: ${result.posts.length} publicações carregadas`);
+      } else {
+        console.error('❌ DEBUG: Erro ao buscar publicações:', result.error);
+        setExistingPosts([]);
+      }
+    } catch (error) {
+      console.error('💥 DEBUG: Erro na requisição de publicações:', error);
+      setExistingPosts([]);
     } finally {
       setLoadingPosts(false);
     }
   };
 
-  // ==========================================
-  // DADOS DE EXEMPLO (MANTIDOS COMO ORIGINAL)
-  // ==========================================
-
-  const createExamplePostsForPage = (page) => {
-    if (!page) return [];
-
-    const pageName = safeGet(page, 'name', '').toLowerCase();
-    let posts = [];
-
-    if (pageName.includes('monte castelo') || pageName.includes('comercio')) {
-      posts = [
-        {
-          id: `${page.id}_post1`,
-          message: 'Carnes frescas e de qualidade! Venha conferir nossos cortes especiais. #CarnesFrescas #QualidadeGarantida',
-          created_time: '2025-01-07T10:00:00+0000',
-          full_picture: '/api/placeholder/400/300',
-          permalink_url: `https://facebook.com/${page.id}/posts/post1`,
-          platform: 'facebook',
-          likes: 45,
-          comments: 12,
-          shares: 8
-        },
-        {
-          id: `${page.id}_post2`,
-          message: 'Promoção especial em produtos de mercearia! Não perca essa oportunidade. #Promocao #Mercearia',
-          created_time: '2025-01-06T15:30:00+0000',
-          full_picture: '/api/placeholder/400/300',
-          permalink_url: `https://facebook.com/${page.id}/posts/post2`,
-          platform: 'facebook',
-          likes: 32,
-          comments: 7,
-          shares: 5
-        }
-      ];
-    } else {
-      // Posts genéricos para outras páginas
-      posts = [
-        {
-          id: `${page.id}_post1`,
-          message: `Confira as novidades da ${page.name}! Estamos sempre inovando para você. #Novidades #Qualidade`,
-          created_time: '2025-01-07T12:00:00+0000',
-          full_picture: '/api/placeholder/400/300',
-          permalink_url: `https://facebook.com/${page.id}/posts/post1`,
-          platform: 'facebook',
-          likes: 56,
-          comments: 14,
-          shares: 9
-        },
-        {
-          id: `${page.id}_post2`,
-          message: `Excelência em atendimento é o nosso compromisso. ${page.name} - sempre ao seu lado! #Atendimento #Compromisso`,
-          created_time: '2025-01-06T13:15:00+0000',
-          full_picture: '/api/placeholder/400/300',
-          permalink_url: `https://instagram.com/p/post2`,
-          platform: 'instagram',
-          likes: 73,
-          comments: 11,
-          shares: 6
-        }
-      ];
-    }
-
-    return posts;
-  };
-
-  // ==========================================
-  // NOVA FUNCIONALIDADE: IA (OPCIONAL)
-  // ==========================================
-
-  const handleGenerateWithAI = async () => {
+  // Gerar anúncio com IA
+  const generateAdWithAI = async () => {
+    // Validações
     if (!formData.page_id) {
-      alert('Por favor, selecione uma página primeiro.');
-      return;
-    }
-
-    if (creativeType === 'existing' && !selectedPost) {
-      alert('Por favor, selecione uma publicação existente.');
+      alert('Por favor, selecione uma página');
       return;
     }
 
     if (!formData.product_name || !formData.product_description) {
-      alert('Por favor, preencha o nome e descrição do produto/serviço.');
+      alert('Por favor, preencha o nome e descrição do produto');
       return;
     }
 
-    const selectedPlatforms = Object.keys(formData.platforms).filter(
-      platform => formData.platforms[platform]
-    );
-
-    if (selectedPlatforms.length === 0) {
-      alert('Por favor, selecione pelo menos uma plataforma.');
+    if (creativeType === 'existing' && !selectedPost) {
+      alert('Por favor, selecione uma publicação existente');
       return;
     }
 
-    setGenerating(true);
+    setGeneratingAd(true);
+    setAiResult(null);
+    setShowAiPreview(false);
 
     try {
       console.log('🤖 DEBUG: Iniciando geração com IA...');
       
+      // Preparar dados para envio
       const requestData = {
         product_name: formData.product_name,
         product_description: formData.product_description,
         page_id: formData.page_id,
-        platforms: selectedPlatforms,
+        platforms: Object.keys(formData.platforms).filter(platform => formData.platforms[platform]),
         selected_post: creativeType === 'existing' ? selectedPost : null
       };
 
-      console.log('🤖 DEBUG: Dados da requisição:', requestData);
+      console.log('🤖 DEBUG: Dados enviados:', requestData);
 
-      const apiUrl = process.env.REACT_APP_API_URL || 'https://ads-automation-backend-otpl.onrender.com';
-      const response = await fetch(`${apiUrl}/api/facebook/generate-ad-with-ai`, {
+      const response = await fetch('/api/facebook/generate-ad-with-ai', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(requestData)
       });
 
-      console.log('🤖 DEBUG: Status da resposta IA:', response.status);
+      const result = await response.json();
+      console.log('🤖 DEBUG: Resultado da IA:', result);
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log('🤖 DEBUG: Resultado da IA:', result);
-        
-        if (safeGet(result, 'success')) {
-          const campaignName = safeGet(result, 'preview.campaign_name', 'Nome não disponível');
-          const dailyBudget = safeGet(result, 'preview.daily_budget', 'Orçamento não disponível');
-          
-          alert(`✅ Anúncio gerado com sucesso!\n\nCampanha: ${campaignName}\nOrçamento: ${dailyBudget}`);
-        } else {
-          const errorMsg = safeGet(result, 'error', 'Erro desconhecido');
-          alert(`❌ Erro na geração: ${errorMsg}`);
-        }
+      if (result.success) {
+        setAiResult(result);
+        setShowAiPreview(true);
+        console.log('✅ DEBUG: Anúncio gerado com sucesso pela IA');
       } else {
-        const errorText = await response.text();
-        console.log('🤖 DEBUG: Erro da API:', errorText);
-        
-        if (response.status === 503) {
-          alert('⚠️ Funcionalidade de IA temporariamente indisponível. Tente novamente mais tarde.');
-        } else {
-          alert(`❌ Erro na API: ${response.status} - ${errorText}`);
-        }
+        console.error('❌ DEBUG: Erro na geração com IA:', result.error);
+        alert(`Erro ao gerar anúncio com IA: ${result.error}`);
       }
-    } catch (err) {
-      console.error('💥 DEBUG: Erro na geração:', err);
-      alert(`💥 Erro na requisição: ${err.message}`);
+
+    } catch (error) {
+      console.error('💥 DEBUG: Erro na requisição de IA:', error);
+      alert(`Erro na comunicação com a IA: ${error.message}`);
     } finally {
-      setGenerating(false);
+      setGeneratingAd(false);
     }
   };
 
-  // ==========================================
-  // FILTROS E HANDLERS (MANTIDOS COMO ORIGINAL)
-  // ==========================================
+  // Abrir editor para edição detalhada
+  const openEditor = () => {
+    setShowEditor(true);
+  };
 
+  // Salvar anúncio editado
+  const handleSaveAd = async (editedAd) => {
+    try {
+      console.log('💾 DEBUG: Salvando anúncio editado:', editedAd);
+      
+      // Aqui você pode implementar a lógica para salvar o anúncio
+      // Por exemplo, enviar para o backend para criar no Facebook
+      
+      const response = await fetch('/api/facebook/create-ad-from-ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ai_structure: editedAd,
+          page_id: formData.page_id,
+          selected_post: creativeType === 'existing' ? selectedPost : null
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        alert('Anúncio criado com sucesso no Facebook!');
+        setShowEditor(false);
+        setShowAiPreview(false);
+        setAiResult(null);
+        
+        // Reset form
+        setFormData({
+          page_id: '',
+          product_name: '',
+          product_description: '',
+          platforms: { facebook: true, instagram: false }
+        });
+        setSelectedPost(null);
+        
+      } else {
+        alert(`Erro ao criar anúncio: ${result.error}`);
+      }
+      
+    } catch (error) {
+      console.error('💥 DEBUG: Erro ao salvar:', error);
+      alert(`Erro ao salvar anúncio: ${error.message}`);
+    }
+  };
+
+  // Cancelar edição
+  const handleCancelEdit = () => {
+    setShowEditor(false);
+  };
+
+  // Filtrar publicações por plataforma
   const filteredPosts = existingPosts.filter(post => {
     if (platformFilter === 'all') return true;
     return safeGet(post, 'platform') === platformFilter;
   });
+
+  // useEffect para buscar páginas na inicialização
+  useEffect(() => {
+    fetchPages();
+  }, []);
+
+  // useEffect para buscar publicações quando página muda
+  useEffect(() => {
+    if (formData.page_id && creativeType === 'existing') {
+      console.log('🔄 DEBUG: Página mudou para:', formData.page_id, '- Buscando publicações automaticamente...');
+      fetchExistingPosts(formData.page_id);
+    }
+  }, [formData.page_id, creativeType]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -416,6 +255,7 @@ const AdGeneration = () => {
       [name]: value
     }));
 
+    // Se mudou a página, buscar publicações automaticamente
     if (name === 'page_id' && creativeType === 'existing') {
       console.log('🔄 DEBUG: Página selecionada:', value);
       if (value) {
@@ -431,6 +271,9 @@ const AdGeneration = () => {
     console.log('🔄 DEBUG: Mudando para', type === 'new' ? 'criar novo anúncio' : 'usar publicação existente');
     setCreativeType(type);
     setSelectedPost(null);
+    setAiResult(null);
+    setShowAiPreview(false);
+    setShowEditor(false);
     
     if (type === 'existing' && formData.page_id) {
       console.log('🔄 DEBUG: Página já selecionada, buscando publicações...');
@@ -452,24 +295,16 @@ const AdGeneration = () => {
     }
   };
 
-  // ==========================================
-  // EFFECTS (MANTIDOS COMO ORIGINAL)
-  // ==========================================
-
-  useEffect(() => {
-    fetchPages();
-  }, []);
-
-  useEffect(() => {
-    if (formData.page_id && creativeType === 'existing') {
-      console.log('🔄 DEBUG: Página mudou para:', formData.page_id, '- Buscando publicações automaticamente...');
-      fetchExistingPosts(formData.page_id);
-    }
-  }, [formData.page_id, creativeType, pages]); // Adicionado 'pages' como dependência
-
-  // ==========================================
-  // RENDER (MANTIDO EXATAMENTE COMO ORIGINAL)
-  // ==========================================
+  // Se o editor estiver aberto, mostrar apenas o editor
+  if (showEditor) {
+    return (
+      <AdEditor
+        aiResult={aiResult}
+        onSave={handleSaveAd}
+        onCancel={handleCancelEdit}
+      />
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white">
@@ -496,13 +331,13 @@ const AdGeneration = () => {
               <option value="">
                 {loadingPages ? 'Carregando páginas...' : 'Selecione uma página'}
               </option>
-              {isValidArray(pages) && pages.map((page) => (
+              {pages.map((page) => (
                 <option key={safeGet(page, 'id')} value={safeGet(page, 'id')}>
-                  {safeGet(page, 'name', 'Página sem nome')}
+                  {safeGet(page, 'name')}
                 </option>
               ))}
             </select>
-            {isValidArray(pages) && (
+            {pages.length > 0 && (
               <p className="text-xs text-gray-500 mt-1">
                 {pages.length} página(s) encontrada(s) na Business Manager
               </p>
@@ -672,7 +507,7 @@ const AdGeneration = () => {
                   <span className="text-blue-800">Carregando publicações...</span>
                 </div>
               </div>
-            ) : !isValidArray(filteredPosts) ? (
+            ) : filteredPosts.length === 0 ? (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <div className="flex items-center">
                   <span className="text-yellow-500 text-xl mr-2">⚠️</span>
@@ -709,39 +544,33 @@ const AdGeneration = () => {
                             {safeGet(post, 'platform') === 'facebook' ? '📘' : '📷'}
                           </span>
                           <span className="font-medium text-gray-800 capitalize">
-                            {safeGet(post, 'platform', 'unknown')}
+                            {safeGet(post, 'platform')}
                           </span>
                           {safeGet(selectedPost, 'id') === safeGet(post, 'id') && (
                             <span className="ml-2 text-blue-500">✓</span>
                           )}
                         </div>
                         <span className="text-xs text-gray-500">
-                          {safeGet(post, 'created_time') ? 
-                            new Date(post.created_time).toLocaleDateString('pt-BR') : 
-                            'Data não disponível'
-                          }
+                          {safeGet(post, 'created_time') ? new Date(safeGet(post, 'created_time')).toLocaleDateString('pt-BR') : ''}
                         </span>
                       </div>
 
                       {safeGet(post, 'full_picture') && (
                         <img
-                          src={post.full_picture}
+                          src={safeGet(post, 'full_picture')}
                           alt="Post"
                           className="w-full h-32 object-cover rounded mb-2"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                          }}
                         />
                       )}
 
                       <p className="text-gray-700 text-sm mb-2 line-clamp-3">
-                        {safeGet(post, 'message', 'Publicação sem texto')}
+                        {safeGet(post, 'message') || 'Publicação sem texto'}
                       </p>
 
                       <div className="flex items-center text-xs text-gray-500 space-x-4">
-                        <span>👍 {safeGet(post, 'likes', 0)}</span>
-                        <span>💬 {safeGet(post, 'comments', 0)}</span>
-                        <span>🔄 {safeGet(post, 'shares', 0)}</span>
+                        <span>👍 {safeGet(post, 'likes') || 0}</span>
+                        <span>💬 {safeGet(post, 'comments') || 0}</span>
+                        <span>🔄 {safeGet(post, 'shares') || 0}</span>
                       </div>
                     </div>
                   ))}
@@ -752,22 +581,160 @@ const AdGeneration = () => {
         )}
       </div>
 
-      {/* Botão de Gerar com IA */}
-      <div className="flex justify-end">
-        <button
-          onClick={handleGenerateWithAI}
-          className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
-          disabled={
-            generating ||
-            !formData.page_id || 
-            (creativeType === 'existing' && !selectedPost) || 
-            !formData.product_name || 
-            !formData.product_description
-          }
-        >
-          {generating ? '⏳ Gerando...' : '🤖 Gerar com IA'}
-        </button>
-      </div>
+      {/* Preview da IA */}
+      {showAiPreview && aiResult && (
+        <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-lg mb-6 border border-purple-200">
+          <div className="flex items-center mb-4">
+            <span className="text-purple-500 text-xl mr-2">🤖</span>
+            <h3 className="text-lg font-semibold text-gray-800">Anúncio Gerado pela IA</h3>
+            <span className="ml-2 px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">
+              Inteligência Artificial
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Preview do Anúncio */}
+            <div className="bg-white p-4 rounded-lg border">
+              <h4 className="font-medium text-gray-800 mb-3">📱 Preview do Anúncio</h4>
+              
+              <div className="space-y-3">
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Título Principal</span>
+                  <p className="font-medium text-gray-800">
+                    {safeGet(aiResult, 'preview.ad_copy.headline') || 'Título gerado pela IA'}
+                  </p>
+                </div>
+                
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Texto Principal</span>
+                  <p className="text-gray-700 text-sm">
+                    {safeGet(aiResult, 'preview.ad_copy.primary_text') || 'Texto principal gerado pela IA'}
+                  </p>
+                </div>
+                
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Call-to-Action</span>
+                  <span className="inline-block px-3 py-1 bg-blue-500 text-white text-sm rounded">
+                    {safeGet(aiResult, 'preview.ad_copy.cta') || 'SAIBA_MAIS'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Configurações da Campanha */}
+            <div className="bg-white p-4 rounded-lg border">
+              <h4 className="font-medium text-gray-800 mb-3">⚙️ Configurações</h4>
+              
+              <div className="space-y-3">
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Nome da Campanha</span>
+                  <p className="text-gray-800">
+                    {safeGet(aiResult, 'preview.campaign_name') || 'Campanha gerada pela IA'}
+                  </p>
+                </div>
+                
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Orçamento Diário</span>
+                  <p className="text-gray-800 font-medium">
+                    {safeGet(aiResult, 'preview.daily_budget') || 'R$ 50,00'}
+                  </p>
+                </div>
+                
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Público-Alvo</span>
+                  <p className="text-gray-700 text-sm">
+                    {safeGet(aiResult, 'preview.target_audience') || 'Público definido pela IA'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Análise da IA */}
+          {safeGet(aiResult, 'ai_analysis') && (
+            <div className="mt-4 bg-white p-4 rounded-lg border">
+              <h4 className="font-medium text-gray-800 mb-3">🧠 Análise da IA</h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Segmentação</span>
+                  <p className="text-gray-700">
+                    {safeGet(aiResult, 'ai_analysis.target_audience_reasoning') || 'Análise de público'}
+                  </p>
+                </div>
+                
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Orçamento</span>
+                  <p className="text-gray-700">
+                    {safeGet(aiResult, 'ai_analysis.budget_reasoning') || 'Análise de orçamento'}
+                  </p>
+                </div>
+                
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Criativo</span>
+                  <p className="text-gray-700">
+                    {safeGet(aiResult, 'ai_analysis.creative_reasoning') || 'Análise do criativo'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Próximos Passos */}
+          <div className="mt-4 bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h4 className="font-medium text-blue-800 mb-2">📋 Próximos Passos</h4>
+            <ul className="text-sm text-blue-700 space-y-1">
+              {safeGet(aiResult, 'next_steps', []).map((step, index) => (
+                <li key={index} className="flex items-center">
+                  <span className="mr-2">•</span>
+                  {step}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Botões de Ação */}
+          <div className="mt-6 flex gap-3 justify-end">
+            <button
+              onClick={() => {
+                setShowAiPreview(false);
+                setAiResult(null);
+              }}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            >
+              🔄 Gerar Novamente
+            </button>
+            <button
+              onClick={openEditor}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
+            >
+              ✏️ Editar Detalhes
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Botão de Ação Principal */}
+      {!showAiPreview && (
+        <div className="flex justify-end">
+          <button
+            onClick={generateAdWithAI}
+            disabled={!formData.page_id || (creativeType === 'existing' && !selectedPost) || generatingAd}
+            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center"
+          >
+            {generatingAd ? (
+              <>
+                <span className="animate-spin mr-2">🔄</span>
+                Gerando com IA...
+              </>
+            ) : (
+              <>
+                🤖 Gerar com IA
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

@@ -1018,7 +1018,7 @@ def get_objectives():
 
 @facebook_data_bp.route('/facebook/posts', methods=['POST'])
 def get_facebook_posts():
-    """Buscar publicações do Facebook de uma página específica"""
+    """Buscar publicações do Facebook de uma página específica usando o fluxo correto da Graph API"""
     if not facebook_data_service:
         return jsonify({
             'success': False, 
@@ -1028,7 +1028,13 @@ def get_facebook_posts():
     try:
         data = request.get_json()
         page_id = data.get('page_id')
+        page_access_token = data.get('page_access_token')  # Opcional
         limit = data.get('limit', 20)
+        
+        print(f"🔍 DEBUG: Rota /facebook/posts chamada")
+        print(f"🔍 DEBUG: page_id: {page_id}")
+        print(f"🔍 DEBUG: page_access_token fornecido: {'Sim' if page_access_token else 'Não'}")
+        print(f"🔍 DEBUG: limit: {limit}")
         
         if not page_id:
             return jsonify({
@@ -1036,10 +1042,21 @@ def get_facebook_posts():
                 'error': 'page_id é obrigatório'
             }), 400
         
-        result = facebook_data_service.get_page_posts(page_id, limit)
+        # Usar o novo método que implementa o fluxo correto
+        result = facebook_data_service.get_page_posts(page_id, page_access_token, limit)
+        
+        print(f"🔍 DEBUG: Resultado do serviço: {result.get('success', False)}")
+        if result.get('success'):
+            print(f"🔍 DEBUG: {len(result.get('posts', []))} posts retornados")
+        else:
+            print(f"🔍 DEBUG: Erro: {result.get('error', 'Erro desconhecido')}")
+        
         return jsonify(result)
         
     except Exception as e:
+        print(f"💥 DEBUG: Exceção na rota: {str(e)}")
+        import traceback
+        print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @facebook_data_bp.route('/facebook/instagram-posts', methods=['POST'])

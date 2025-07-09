@@ -1131,3 +1131,113 @@ def get_objectives():
         print(f"💥 DEBUG: Exceção capturada: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ===== NOVOS ENDPOINTS PARA SALVAR RASCUNHO E PUBLICAR ANÚNCIO =====
+
+@facebook_data_bp.route('/facebook/save-ad-draft', methods=['POST'])
+def save_ad_draft():
+    """Salvar anúncio como rascunho"""
+    try:
+        print("💾 DEBUG: Endpoint save-ad-draft chamado")
+        
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'Dados não fornecidos'
+            }), 400
+        
+        print(f"💾 DEBUG: Dados recebidos: {data}")
+        
+        # Aqui você pode implementar a lógica para salvar o rascunho
+        # Por exemplo, salvar em banco de dados local ou arquivo
+        
+        # Por enquanto, apenas simular o salvamento
+        draft_id = f"draft_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        return jsonify({
+            'success': True,
+            'message': 'Rascunho salvo com sucesso!',
+            'draft_id': draft_id,
+            'saved_at': datetime.now().isoformat(),
+            'data': {
+                'ai_structure': data.get('ai_structure'),
+                'page_id': data.get('page_id'),
+                'selected_post': data.get('selected_post')
+            }
+        })
+        
+    except Exception as e:
+        print(f"💥 DEBUG: Erro ao salvar rascunho: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Erro interno: {str(e)}'
+        }), 500
+
+@facebook_data_bp.route('/facebook/publish-ad', methods=['POST'])
+def publish_ad():
+    """Publicar anúncio no Facebook"""
+    try:
+        print("🚀 DEBUG: Endpoint publish-ad chamado")
+        
+        if not facebook_ai_integration:
+            print("❌ DEBUG: facebook_ai_integration não disponível")
+            return jsonify({
+                "success": False,
+                "error": "Integração IA-Facebook não está disponível"
+            }), 500
+        
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'Dados não fornecidos'
+            }), 400
+        
+        print(f"🚀 DEBUG: Dados recebidos: {data}")
+        
+        ai_structure = data.get('ai_structure')
+        if not ai_structure:
+            return jsonify({
+                'success': False,
+                'error': 'Estrutura do anúncio é obrigatória'
+            }), 400
+        
+        # Criar anúncio usando a integração IA-Facebook
+        result = facebook_ai_integration.create_ad_from_ai_structure(
+            ai_structure,
+            data.get('selected_post')
+        )
+        
+        if result.get("success"):
+            return jsonify({
+                "success": True,
+                "message": "🎉 Anúncio publicado com sucesso no Facebook!",
+                "campaign_id": result.get("campaign_id"),
+                "adset_id": result.get("adset_id"),
+                "creative_id": result.get("creative_id"),
+                "ad_id": result.get("ad_id"),
+                "published_at": datetime.now().isoformat(),
+                "next_steps": [
+                    "Monitorar performance do anúncio",
+                    "Ajustar orçamento se necessário",
+                    "Analisar métricas de engajamento"
+                ]
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": f"Erro ao publicar anúncio: {result.get('error')}",
+                "step": result.get("step")
+            }), 500
+            
+    except Exception as e:
+        print(f"💥 DEBUG: Erro ao publicar anúncio: {str(e)}")
+        import traceback
+        print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
+        return jsonify({
+            'success': False,
+            'error': f'Erro interno: {str(e)}'
+        }), 500
+

@@ -4,9 +4,20 @@ Este módulo fornece endpoints para coletar campanhas, conjuntos de anúncios, a
 """
 
 from flask import Blueprint, request, jsonify
-from services.facebook_data_service import facebook_data_service
-from services.ai_ad_generation_service import ai_ad_service
-from services.facebook_ai_integration import facebook_ai_integration
+# IMPORTS CORRIGIDOS PARA O RENDER
+from src.services.facebook_data_service import facebook_data_service
+try:
+    from src.services.ai_ad_generation_service import ai_ad_service
+except ImportError:
+    ai_ad_service = None
+    print("⚠️ WARNING: ai_ad_generation_service não encontrado")
+
+try:
+    from src.services.facebook_ai_integration import facebook_ai_integration
+except ImportError:
+    facebook_ai_integration = None
+    print("⚠️ WARNING: facebook_ai_integration não encontrado")
+
 import json
 
 facebook_data_bp = Blueprint('facebook_data', __name__)

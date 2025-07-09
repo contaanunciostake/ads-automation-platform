@@ -48,7 +48,7 @@ const AdGeneration = () => {
     setLoadingPages(true);
     try {
       console.log('🔄 DEBUG: Buscando páginas...');
-      const response = await fetch('/api/facebook/pages');
+      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/pages' );
       const result = await response.json();
       
       console.log('📄 DEBUG: Resultado das páginas:', result);

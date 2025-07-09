@@ -485,7 +485,7 @@ def get_campaign_details(campaign_id):
 
 @facebook_data_bp.route('/facebook/pages', methods=['GET'])
 def get_pages():
-    """Buscar páginas vinculadas à Business Manager"""
+    """Buscar páginas disponíveis do usuário usando o fluxo correto da Graph API"""
     print("🔍 DEBUG: Endpoint get_pages chamado")
     
     if not facebook_data_service:
@@ -495,14 +495,16 @@ def get_pages():
         }), 500
     
     try:
-        # Chamar serviço para buscar páginas
-        result = facebook_data_service.get_pages()
+        # Usar o novo método que implementa o fluxo correto
+        result = facebook_data_service.get_paginas_disponiveis()
         print(f"🔍 DEBUG: Resultado do service: {result}")
         
         if result.get("success"):
             return jsonify({
                 'success': True,
-                'data': result.get("pages", [])
+                'data': result.get("data", []),
+                'total': result.get("total", 0),
+                'message': result.get("message", "")
             })
         else:
             print(f"❌ DEBUG: Erro do service: {result.get('error')}")
@@ -1043,15 +1045,25 @@ def get_facebook_posts():
             }), 400
         
         # Usar o novo método que implementa o fluxo correto
-        result = facebook_data_service.get_page_posts(page_id, page_access_token, limit)
+        result = facebook_data_service.get_publicacoes_pagina(page_id, page_access_token, limit)
         
         print(f"🔍 DEBUG: Resultado do serviço: {result.get('success', False)}")
         if result.get('success'):
-            print(f"🔍 DEBUG: {len(result.get('posts', []))} posts retornados")
+            print(f"🔍 DEBUG: {len(result.get('data', []))} posts retornados")
         else:
             print(f"🔍 DEBUG: Erro: {result.get('error', 'Erro desconhecido')}")
         
-        return jsonify(result)
+        # Ajustar formato de resposta para compatibilidade com frontend
+        if result.get('success'):
+            return jsonify({
+                'success': True,
+                'posts': result.get('data', []),
+                'total': result.get('total', 0),
+                'page_id': result.get('page_id', page_id),
+                'message': result.get('message', '')
+            })
+        else:
+            return jsonify(result)
         
     except Exception as e:
         print(f"💥 DEBUG: Exceção na rota: {str(e)}")

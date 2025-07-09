@@ -498,7 +498,7 @@ def get_campaign_details(campaign_id):
 
 # ===== NOVOS ENDPOINTS PARA MELHORIAS =====
 
-@facebook_data_bp.route('/facebook/pages', methods=['GET'])
+@facebook_data_bp.route('/pages', methods=['GET'])
 def get_pages():
     """Buscar páginas disponíveis do usuário usando o fluxo correto da Graph API"""
     print("🔍 DEBUG: Endpoint get_pages chamado")

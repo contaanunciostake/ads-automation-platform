@@ -1158,34 +1158,75 @@ else:
 
     def get_page_posts(self, page_id: str, page_access_token: str = None, limit: int = 20) -> Dict[str, Any]:
         """
-        Buscar publicações de uma página do Facebook usando Graph API v23.0
+        Buscar publicações de uma página do Facebook usando o fluxo correto da Graph API
+        
+        FLUXO CORRETO:
+        1. Se page_access_token não fornecido, busca via /me/accounts para obter token da página
+        2. Usa o page_access_token específico para buscar publicações
         
         Args:
             page_id (str): ID da página do Facebook
-            page_access_token (str): Token de acesso da página
+            page_access_token (str): Token de acesso da página (opcional)
             limit (int): Número máximo de publicações a retornar (padrão: 20)
         
         Returns:
             Dict[str, Any]: Resposta estruturada com as publicações
         """
         try:
-            # Usar token da página se fornecido, senão usar token principal
-            token_to_use = page_access_token if page_access_token else self.access_token
+            print(f"🔍 DEBUG: Iniciando busca de posts para página {page_id}")
+            
+            # PASSO 1: Obter token da página se não fornecido
+            if not page_access_token:
+                print("🔍 DEBUG: Token da página não fornecido, buscando via /me/accounts...")
+                
+                # Buscar páginas do usuário para obter access_token da página
+                pages_response = self.get_pages()
+                
+                if not pages_response.get('success'):
+                    return {
+                        "success": False,
+                        "error": f"Erro ao buscar páginas: {pages_response.get('error')}"
+                    }
+                
+                # Encontrar a página específica
+                target_page = None
+                for page in pages_response.get('pages', []):
+                    if page.get('id') == page_id:
+                        target_page = page
+                        break
+                
+                if not target_page:
+                    return {
+                        "success": False,
+                        "error": f"Página {page_id} não encontrada nas páginas do usuário"
+                    }
+                
+                page_access_token = target_page.get('access_token')
+                if not page_access_token:
+                    return {
+                        "success": False,
+                        "error": f"Token de acesso não encontrado para a página {page_id}"
+                    }
+                
+                print(f"✅ DEBUG: Token da página obtido com sucesso")
+            
+            # PASSO 2: Buscar publicações usando o token da página
+            print(f"📘 DEBUG: Buscando posts usando token da página...")
             
             # URL da Graph API v23.0 para buscar posts da página
             url = f"https://graph.facebook.com/v23.0/{page_id}/posts"
             
-            # Parâmetros da requisição
+            # Parâmetros da requisição - USAR TOKEN DA PÁGINA
             params = {
-                'access_token': token_to_use,
-                'fields': 'message,created_time,full_picture,permalink_url,id',
+                'access_token': page_access_token,  # 🎯 SACADA: Token específico da página
+                'fields': 'message,created_time,full_picture,permalink_url,id,story,type',
                 'limit': limit
             }
             
             # Log da requisição para debug
-            print(f"🔍 DEBUG: Buscando posts da página {page_id}")
             print(f"🔍 DEBUG: URL: {url}")
             print(f"🔍 DEBUG: Campos solicitados: {params['fields']}")
+            print(f"🔍 DEBUG: Usando token da página: {page_access_token[:20]}...")
             
             # Fazer requisição para a Graph API
             response = requests.get(url, params=params, timeout=30)

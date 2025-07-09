@@ -42,12 +42,29 @@ const AdGeneration = () => {
         const data = await response.json();
         console.log('🔍 DEBUG Frontend: Dados recebidos:', data);
         
-        if (data.success && data.data) {
-          const realPages = data.data.map(page => ({
-            id: page.id,
-            name: page.name,
-            category: page.category,
-            access_token: page.access_token
+        // CORREÇÃO: Verificar múltiplas estruturas possíveis de resposta
+        let pagesData = [];
+        
+        if (data.success && data.pages) {
+          // Nova estrutura: { success: true, pages: [...] }
+          pagesData = data.pages;
+        } else if (data.success && data.data) {
+          // Estrutura alternativa: { success: true, data: [...] }
+          pagesData = data.data;
+        } else if (Array.isArray(data)) {
+          // Estrutura direta: [...]
+          pagesData = data;
+        } else if (data.data && Array.isArray(data.data)) {
+          // Estrutura aninhada: { data: [...] }
+          pagesData = data.data;
+        }
+        
+        if (Array.isArray(pagesData) && pagesData.length > 0) {
+          const realPages = pagesData.map(page => ({
+            id: page.id || page.page_id || '',
+            name: page.name || page.page_name || 'Página sem nome',
+            category: page.category || page.category_list?.[0]?.name || 'Categoria não informada',
+            access_token: page.access_token || page.page_access_token || ''
           }));
           
           console.log('🔍 DEBUG Frontend: Páginas extraídas:', realPages);
@@ -105,10 +122,34 @@ const AdGeneration = () => {
         const facebookData = await facebookResponse.json();
         console.log('📘 DEBUG: Dados Facebook recebidos:', facebookData);
         
+        // CORREÇÃO: Verificar múltiplas estruturas possíveis de resposta
+        let postsData = [];
+        
         if (facebookData.success && facebookData.posts) {
-          facebookPosts = facebookData.posts.map(post => ({
-            ...post,
-            platform: 'facebook'
+          // Nova estrutura: { success: true, posts: [...] }
+          postsData = facebookData.posts;
+        } else if (facebookData.success && facebookData.data) {
+          // Estrutura alternativa: { success: true, data: [...] }
+          postsData = facebookData.data;
+        } else if (Array.isArray(facebookData)) {
+          // Estrutura direta: [...]
+          postsData = facebookData;
+        } else if (facebookData.data && Array.isArray(facebookData.data)) {
+          // Estrutura aninhada: { data: [...] }
+          postsData = facebookData.data;
+        }
+        
+        if (Array.isArray(postsData)) {
+          facebookPosts = postsData.map(post => ({
+            id: post.id || `fb_${Date.now()}_${Math.random()}`,
+            message: post.message || post.text || post.content || 'Publicação sem texto',
+            created_time: post.created_time || post.timestamp || new Date().toISOString(),
+            full_picture: post.full_picture || post.image || post.picture || null,
+            permalink_url: post.permalink_url || post.url || post.link || '#',
+            platform: 'facebook',
+            likes: post.likes || post.like_count || 0,
+            comments: post.comments || post.comment_count || 0,
+            shares: post.shares || post.share_count || 0
           }));
           console.log('📘 DEBUG: Posts Facebook processados:', facebookPosts.length);
         }
@@ -133,10 +174,34 @@ const AdGeneration = () => {
         const instagramData = await instagramResponse.json();
         console.log('📷 DEBUG: Dados Instagram recebidos:', instagramData);
         
+        // CORREÇÃO: Verificar múltiplas estruturas possíveis de resposta
+        let postsData = [];
+        
         if (instagramData.success && instagramData.posts) {
-          instagramPosts = instagramData.posts.map(post => ({
-            ...post,
-            platform: 'instagram'
+          // Nova estrutura: { success: true, posts: [...] }
+          postsData = instagramData.posts;
+        } else if (instagramData.success && instagramData.data) {
+          // Estrutura alternativa: { success: true, data: [...] }
+          postsData = instagramData.data;
+        } else if (Array.isArray(instagramData)) {
+          // Estrutura direta: [...]
+          postsData = instagramData;
+        } else if (instagramData.data && Array.isArray(instagramData.data)) {
+          // Estrutura aninhada: { data: [...] }
+          postsData = instagramData.data;
+        }
+        
+        if (Array.isArray(postsData)) {
+          instagramPosts = postsData.map(post => ({
+            id: post.id || `ig_${Date.now()}_${Math.random()}`,
+            message: post.message || post.caption || post.text || post.content || 'Publicação sem texto',
+            created_time: post.created_time || post.timestamp || new Date().toISOString(),
+            full_picture: post.full_picture || post.media_url || post.image || post.picture || null,
+            permalink_url: post.permalink_url || post.url || post.link || '#',
+            platform: 'instagram',
+            likes: post.likes || post.like_count || 0,
+            comments: post.comments || post.comment_count || 0,
+            shares: post.shares || post.share_count || 0
           }));
           console.log('📷 DEBUG: Posts Instagram processados:', instagramPosts.length);
         }
@@ -181,10 +246,10 @@ const AdGeneration = () => {
   const createExamplePostsForPage = (page) => {
     if (!page) return [];
 
-    const pageName = page.name.toLowerCase();
+    const pageName = (page.name || '').toLowerCase();
     let posts = [];
 
-    if (pageName.includes('monte castelo') || pageName.includes('comercio')) {
+    if (pageName.includes('monte castelo') || pageName.includes('comercio') || pageName.includes('carne') || pageName.includes('mercearia')) {
       posts = [
         {
           id: `${page.id}_post1`,
@@ -209,7 +274,7 @@ const AdGeneration = () => {
           shares: 5
         }
       ];
-    } else if (pageName.includes('tech') || pageName.includes('solutions')) {
+    } else if (pageName.includes('tech') || pageName.includes('solutions') || pageName.includes('rodrigo') || pageName.includes('acabamentos')) {
       posts = [
         {
           id: `${page.id}_post1`,
@@ -234,7 +299,7 @@ const AdGeneration = () => {
           shares: 18
         }
       ];
-    } else if (pageName.includes('marketing') || pageName.includes('digital')) {
+    } else if (pageName.includes('marketing') || pageName.includes('digital') || pageName.includes('cergrand')) {
       posts = [
         {
           id: `${page.id}_post1`,
@@ -257,6 +322,31 @@ const AdGeneration = () => {
           likes: 98,
           comments: 19,
           shares: 15
+        }
+      ];
+    } else if (pageName.includes('arts') || pageName.includes('massas') || pageName.includes('padaria')) {
+      posts = [
+        {
+          id: `${page.id}_post1`,
+          message: 'Massas artesanais feitas com amor e ingredientes selecionados! #MassasArtesanais #Qualidade',
+          created_time: '2025-01-07T08:00:00+0000',
+          full_picture: '/api/placeholder/400/300',
+          permalink_url: `https://facebook.com/${page.id}/posts/post1`,
+          platform: 'facebook',
+          likes: 78,
+          comments: 21,
+          shares: 14
+        },
+        {
+          id: `${page.id}_post2`,
+          message: 'Pães fresquinhos saindo do forno! Venha experimentar nossos sabores únicos. #PaesFrescos #Padaria',
+          created_time: '2025-01-06T17:00:00+0000',
+          full_picture: '/api/placeholder/400/300',
+          permalink_url: `https://instagram.com/p/post2`,
+          platform: 'instagram',
+          likes: 65,
+          comments: 18,
+          shares: 11
         }
       ];
     } else {
@@ -307,7 +397,7 @@ const AdGeneration = () => {
       console.log('🔄 DEBUG: Página mudou para:', formData.page_id, '- Buscando publicações automaticamente...');
       fetchExistingPosts(formData.page_id);
     }
-  }, [formData.page_id, creativeType]);
+  }, [formData.page_id, creativeType, pages]); // Adicionado 'pages' como dependência
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -350,6 +440,75 @@ const AdGeneration = () => {
     if (formData.page_id) {
       console.log('🔄 DEBUG: Recarregando publicações manualmente...');
       fetchExistingPosts(formData.page_id);
+    }
+  };
+
+  // NOVA FUNÇÃO: Gerar anúncio com IA
+  const handleGenerateWithAI = async () => {
+    if (!formData.page_id) {
+      alert('Por favor, selecione uma página primeiro.');
+      return;
+    }
+
+    if (creativeType === 'existing' && !selectedPost) {
+      alert('Por favor, selecione uma publicação existente.');
+      return;
+    }
+
+    if (!formData.product_name || !formData.product_description) {
+      alert('Por favor, preencha o nome e descrição do produto/serviço.');
+      return;
+    }
+
+    const selectedPlatforms = Object.keys(formData.platforms).filter(
+      platform => formData.platforms[platform]
+    );
+
+    if (selectedPlatforms.length === 0) {
+      alert('Por favor, selecione pelo menos uma plataforma.');
+      return;
+    }
+
+    try {
+      console.log('🤖 DEBUG: Iniciando geração com IA...');
+      
+      const requestData = {
+        product_name: formData.product_name,
+        product_description: formData.product_description,
+        page_id: formData.page_id,
+        platforms: selectedPlatforms,
+        selected_post: creativeType === 'existing' ? selectedPost : null
+      };
+
+      console.log('🤖 DEBUG: Dados da requisição:', requestData);
+
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://ads-automation-backend-otpl.onrender.com'}/api/facebook/generate-ad-with-ai`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+      });
+
+      console.log('🤖 DEBUG: Status da resposta:', response.status);
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('🤖 DEBUG: Resultado da IA:', result);
+        
+        if (result.success) {
+          alert(`✅ Anúncio gerado com sucesso!\n\nCampanha: ${result.preview?.campaign_name}\nOrçamento: ${result.preview?.daily_budget}\n\nVerifique o console para mais detalhes.`);
+        } else {
+          alert(`❌ Erro na geração: ${result.error}`);
+        }
+      } else {
+        const errorData = await response.json();
+        console.log('🤖 DEBUG: Erro da API:', errorData);
+        alert(`❌ Erro na API: ${errorData.error || 'Erro desconhecido'}`);
+      }
+    } catch (error) {
+      console.log('💥 DEBUG: Erro na requisição:', error);
+      alert(`💥 Erro na requisição: ${error.message}`);
     }
   };
 
@@ -565,7 +724,7 @@ const AdGeneration = () => {
               <div>
                 <p className="text-sm text-gray-600 mb-4">
                   {filteredPosts.length} publicação(ões) encontrada(s)
-                  {existingPosts.some(post => post.id.includes('_post')) && (
+                  {existingPosts.some(post => post.id && post.id.includes('_post')) && (
                     <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded">
                       Dados de Exemplo
                     </span>
@@ -598,7 +757,7 @@ const AdGeneration = () => {
                           )}
                         </div>
                         <span className="text-xs text-gray-500">
-                          {new Date(post.created_time).toLocaleDateString('pt-BR')}
+                          {post.created_time ? new Date(post.created_time).toLocaleDateString('pt-BR') : 'Data não disponível'}
                         </span>
                       </div>
 
@@ -607,6 +766,9 @@ const AdGeneration = () => {
                           src={post.full_picture}
                           alt="Post"
                           className="w-full h-32 object-cover rounded mb-2"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
                         />
                       )}
 
@@ -628,13 +790,14 @@ const AdGeneration = () => {
         )}
       </div>
 
-      {/* Resto do componente permanece igual... */}
+      {/* Botão de Gerar com IA */}
       <div className="flex justify-end">
         <button
-          className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
-          disabled={!formData.page_id || (creativeType === 'existing' && !selectedPost)}
+          onClick={handleGenerateWithAI}
+          className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+          disabled={!formData.page_id || (creativeType === 'existing' && !selectedPost) || !formData.product_name || !formData.product_description}
         >
-          🚀 Gerar com IA
+          🤖 Gerar com IA
         </button>
       </div>
     </div>

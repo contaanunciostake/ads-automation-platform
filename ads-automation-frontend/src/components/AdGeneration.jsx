@@ -144,7 +144,7 @@ const AdGeneration = () => {
 
       console.log('🤖 DEBUG: Dados enviados:', requestData);
 
-      const response = await fetch('/api/facebook/generate-ad-with-ai', {
+      const response = await fetch("https://ads-automation-backend-otpl.onrender.com/api/facebook/generate-ad-with-ai", {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

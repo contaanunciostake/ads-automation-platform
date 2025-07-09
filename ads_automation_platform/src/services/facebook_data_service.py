@@ -697,7 +697,7 @@ class FacebookDataService:
             # Parâmetros da requisição - USAR TOKEN DA PÁGINA
             params = {
                 'access_token': token_pagina,  # 🎯 SACADA: Token específico da página
-                'fields': 'id,message,created_time,permalink_url,story,type',
+                'fields': 'id,message,created_time',
                 'limit': limit
             }
             

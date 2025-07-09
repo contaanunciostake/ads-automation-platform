@@ -814,22 +814,23 @@ def generate_ad_with_ai():
             "error": f"Erro interno do servidor: {str(e)}"
         }), 500
 
-# ===== ENDPOINT PRINCIPAL: PUBLICAR ANÚNCIO COM CRIAÇÃO REAL =====
+# ===== ENDPOINT PRINCIPAL: PUBLICAR ANÚNCIO COM CRIAÇÃO REAL + CORREÇÃO special_ad_categories =====
 
 @facebook_data_bp.route('/facebook/publish-ad', methods=['POST'])
 def publish_ad():
     """
-    Publicar anúncio no Facebook - VERSÃO COM CRIAÇÃO REAL ATIVADA
+    Publicar anúncio no Facebook - VERSÃO COM CRIAÇÃO REAL + CORREÇÃO special_ad_categories
     
     Esta versão:
     1. Cria campanha real no Facebook
-    2. Cria adset real com targeting
-    3. Cria criativo real
-    4. Cria anúncio real
-    5. Retorna IDs reais do Facebook
+    2. CORREÇÃO: Remove special_ad_categories quando vazio
+    3. Cria adset real com targeting
+    4. Cria criativo real
+    5. Cria anúncio real
+    6. Retorna IDs reais do Facebook
     """
     try:
-        print("🚀 DEBUG: Endpoint publish-ad chamado (CRIAÇÃO REAL ATIVADA)")
+        print("🚀 DEBUG: Endpoint publish-ad chamado (CRIAÇÃO REAL + CORREÇÃO special_ad_categories)")
         
         data = request.get_json()
         
@@ -877,17 +878,25 @@ def publish_ad():
         is_existing_post = bool(selected_post and selected_post.get('id'))
         print(f"📝 DEBUG: Tipo de publicação: {'Existente' if is_existing_post else 'Nova'}")
         
-        # ETAPA 1: CRIAR CAMPANHA REAL
+        # ETAPA 1: CRIAR CAMPANHA REAL - COM CORREÇÃO PARA special_ad_categories
         print("📈 DEBUG: ETAPA 1 - Criando campanha real no Facebook...")
         
+        # CORREÇÃO: Preparar dados da campanha SEM special_ad_categories vazio
         campaign_create_data = {
             "name": campaign_data.get("name", f"Campanha IA - {datetime.now().strftime('%d/%m/%Y %H:%M')}"),
             "objective": "LINK_CLICKS",  # Usar LINK_CLICKS como padrão mais simples
-            "status": "PAUSED",  # Sempre criar pausada para revisão
-            "special_ad_categories": campaign_data.get("special_ad_categories", [])
+            "status": "PAUSED"  # Sempre criar pausada para revisão
         }
         
-        print(f"📈 DEBUG: Dados da campanha: {campaign_create_data}")
+        # CORREÇÃO CRÍTICA: Só adicionar special_ad_categories se não estiver vazio
+        special_ad_categories = campaign_data.get("special_ad_categories", [])
+        if special_ad_categories and len(special_ad_categories) > 0:
+            campaign_create_data["special_ad_categories"] = special_ad_categories
+            print(f"📈 DEBUG: special_ad_categories adicionado: {special_ad_categories}")
+        else:
+            print("📈 DEBUG: special_ad_categories omitido (estava vazio)")
+        
+        print(f"📈 DEBUG: Dados da campanha (CORRIGIDOS): {campaign_create_data}")
         
         try:
             campaign_result = facebook_data_service.create_campaign(campaign_create_data)
@@ -1287,7 +1296,8 @@ def check_creation_status():
             "ai_service": bool(ai_ad_service),
             "integration": bool(facebook_ai_integration),
             "real_creation_enabled": True,  # Agora habilitado
-            "simulation_mode": False  # Modo simulação desabilitado
+            "simulation_mode": False,  # Modo simulação desabilitado
+            "special_ad_categories_fix": True  # Correção aplicada
         }
         
         # Verificar permissões do token
@@ -1318,7 +1328,7 @@ def check_creation_status():
             "services": status,
             "ready_for_real_creation": can_create,
             "mode": "real_creation",
-            "note": "Sistema configurado para criar anúncios reais no Facebook"
+            "note": "Sistema configurado para criar anúncios reais no Facebook com correção special_ad_categories"
         }), 200
         
     except Exception as e:

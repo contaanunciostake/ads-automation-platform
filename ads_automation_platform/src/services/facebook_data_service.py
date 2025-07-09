@@ -505,7 +505,7 @@ class FacebookDataService:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    # ===== NOVOS MÉTODOS PARA MELHORIAS =====
+    # ===== MÉTODOS PARA PÁGINAS E PUBLICAÇÕES =====
     
     def get_paginas_disponiveis(self) -> Dict[str, Any]:
         """
@@ -861,6 +861,8 @@ class FacebookDataService:
                 'data': [],
                 'total': 0
             }
+
+    # ===== MÉTODOS PARA CRIAÇÃO DE ANÚNCIOS =====
     
     def get_business_managers(self) -> Dict[str, Any]:
         """Buscar Business Managers do usuário"""

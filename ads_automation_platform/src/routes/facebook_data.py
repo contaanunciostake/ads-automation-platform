@@ -508,62 +508,26 @@ def get_pages():
             })
         else:
             print(f"❌ DEBUG: Erro do service: {result.get('error')}")
-            # Retornar páginas de exemplo em caso de erro
-            example_pages = [
-                {
-                    'id': '123456789012345',
-                    'name': 'MONTE CASTELO COMERCIO LTDA',
-                    'category': 'Empresa Local',
-                    'access_token': 'example_token_1'
-                },
-                {
-                    'id': '234567890123456',
-                    'name': 'TechSolutions Brasil',
-                    'category': 'Tecnologia',
-                    'access_token': 'example_token_2'
-                },
-                {
-                    'id': '345678901234567',
-                    'name': 'Marketing Digital Pro',
-                    'category': 'Serviços de Marketing',
-                    'access_token': 'example_token_3'
-                }
-            ]
+            # NÃO RETORNAR PÁGINAS FAKE - Retornar erro real
             return jsonify({
-                'success': True,
-                'data': example_pages
-            })
+                'success': False,
+                'error': result.get('error', 'Erro ao buscar páginas'),
+                'data': [],
+                'total': 0
+            }), 500
             
     except Exception as e:
         print(f"💥 DEBUG: Exceção capturada: {str(e)}")
         import traceback
         print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
         
-        # Retornar páginas de exemplo em caso de exceção
-        example_pages = [
-            {
-                'id': '123456789012345',
-                'name': 'MONTE CASTELO COMERCIO LTDA',
-                'category': 'Empresa Local',
-                'access_token': 'example_token_1'
-            },
-            {
-                'id': '234567890123456',
-                'name': 'TechSolutions Brasil',
-                'category': 'Tecnologia',
-                'access_token': 'example_token_2'
-            },
-            {
-                'id': '345678901234567',
-                'name': 'Marketing Digital Pro',
-                'category': 'Serviços de Marketing',
-                'access_token': 'example_token_3'
-            }
-        ]
+        # NÃO RETORNAR PÁGINAS FAKE - Retornar erro real
         return jsonify({
-            'success': True,
-            'data': example_pages
-        })
+            'success': False,
+            'error': f'Erro interno: {str(e)}',
+            'data': [],
+            'total': 0
+        }), 500
 
 @facebook_data_bp.route('/facebook/generate-audience', methods=['POST'])
 def generate_audience():

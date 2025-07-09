@@ -526,7 +526,7 @@ class FacebookDataService:
             # Parâmetros da requisição
             params = {
                 "access_token": self.access_token,
-                "fields": "id,name"  # Campos mínimos para teste
+                "fields": "id,name,access_token,category,category_list,tasks"
             }
             
             print(f"🔍 DEBUG: URL: {url}")

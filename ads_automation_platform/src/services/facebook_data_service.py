@@ -735,6 +735,40 @@ class FacebookDataService:
                     'platform_name': 'Facebook',
                     'icon': '📘'
                 }
+
+
+                # 🖼️ BUSCAR THUMBNAIL DA IMAGEM (adicionar após structured_post)
+try:
+    # Tentar buscar object_id (para fotos)
+    object_url = f"{self.base_url}/{post_id}"
+    object_params = {
+        'access_token': token_pagina,
+        'fields': 'object_id'
+    }
+    
+    object_response = requests.get(object_url, params=object_params, timeout=5)
+    
+    if object_response.status_code == 200:
+        object_data = object_response.json()
+        object_id = object_data.get('object_id')
+        
+        if object_id:
+            # Se tem object_id, é uma foto - construir URL da thumbnail
+            thumbnail_url = f"https://graph.facebook.com/v23.0/{object_id}/picture?access_token={token_pagina}&type=normal"
+            structured_post['full_picture'] = thumbnail_url
+        else:
+            # Tentar buscar via endpoint de picture do post
+            picture_url = f"https://graph.facebook.com/v23.0/{post_id}/picture?access_token={token_pagina}&redirect=false"
+            
+            picture_response = requests.get(picture_url, timeout=5)
+            if picture_response.status_code == 200:
+                picture_data = picture_response.json()
+                if picture_data.get('data', {}).get('url'):
+                    structured_post['full_picture'] = picture_data['data']['url']
+                    
+except Exception:
+    # Se falhar, continuar sem imagem
+    pass
                 
                 # Adicionar à lista
                 structured_posts.append(structured_post)

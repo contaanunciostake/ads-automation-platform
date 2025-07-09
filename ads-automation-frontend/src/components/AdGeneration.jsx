@@ -79,7 +79,7 @@ const AdGeneration = () => {
     try {
       console.log(`🔄 DEBUG: Buscando publicações da página ${pageId}...`);
       
-      const response = await fetch('/api/facebook/posts', {
+      const response = await fetch("https://ads-automation-backend-otpl.onrender.com/api/facebook/posts", {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

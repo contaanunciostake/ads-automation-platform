@@ -643,7 +643,7 @@ class FacebookDataService:
             limit (int): Número máximo de publicações a retornar
         
         Returns:
-            Dict com lista de publicações da página
+            Dict com lista de publicações da página COM THUMBNAILS
         """
         try:
             print(f"🔍 DEBUG: Iniciando busca de publicações para página {pagina_id}")
@@ -697,7 +697,7 @@ class FacebookDataService:
             # Parâmetros da requisição - USAR TOKEN DA PÁGINA
             params = {
                 'access_token': token_pagina,  # 🎯 SACADA: Token específico da página
-                'fields': 'id,message,created_time',
+                'fields': 'id,message,created_time',  # Campos básicos que funcionam
                 'limit': limit
             }
             
@@ -723,52 +723,64 @@ class FacebookDataService:
             structured_posts = []
             
             for i, post in enumerate(posts, 1):
-                # Estruturar cada post
+                post_id = post.get('id', '')
+                
+                # Estruturar cada post com dados básicos
                 structured_post = {
-                    'id': post.get('id', ''),
-                    'message': post.get('message', post.get('story', '')),  # Usar story se message não existir
+                    'id': post_id,
+                    'message': post.get('message', ''),
                     'created_time': post.get('created_time', ''),
-                    'full_picture': post.get('full_picture', ''),
-                    'permalink_url': post.get('permalink_url', ''),
-                    'type': post.get('type', ''),
+                    'full_picture': '',  # Será preenchido abaixo
+                    'permalink_url': f"https://www.facebook.com/{post_id}",  # URL construída
+                    'type': 'status',  # Tipo padrão
                     'platform': 'facebook',
                     'platform_name': 'Facebook',
                     'icon': '📘'
                 }
-
-
-                # 🖼️ BUSCAR THUMBNAIL DA IMAGEM (adicionar após structured_post)
-try:
-    # Tentar buscar object_id (para fotos)
-    object_url = f"{self.base_url}/{post_id}"
-    object_params = {
-        'access_token': token_pagina,
-        'fields': 'object_id'
-    }
-    
-    object_response = requests.get(object_url, params=object_params, timeout=5)
-    
-    if object_response.status_code == 200:
-        object_data = object_response.json()
-        object_id = object_data.get('object_id')
-        
-        if object_id:
-            # Se tem object_id, é uma foto - construir URL da thumbnail
-            thumbnail_url = f"https://graph.facebook.com/v23.0/{object_id}/picture?access_token={token_pagina}&type=normal"
-            structured_post['full_picture'] = thumbnail_url
-        else:
-            # Tentar buscar via endpoint de picture do post
-            picture_url = f"https://graph.facebook.com/v23.0/{post_id}/picture?access_token={token_pagina}&redirect=false"
-            
-            picture_response = requests.get(picture_url, timeout=5)
-            if picture_response.status_code == 200:
-                picture_data = picture_response.json()
-                if picture_data.get('data', {}).get('url'):
-                    structured_post['full_picture'] = picture_data['data']['url']
+                
+                # 🖼️ BUSCAR THUMBNAIL DA IMAGEM (método seguro)
+                print(f"🖼️ DEBUG: Buscando thumbnail para post {i}...")
+                
+                try:
+                    # Método 1: Tentar buscar object_id (para fotos)
+                    object_url = f"{self.base_url}/{post_id}"
+                    object_params = {
+                        'access_token': token_pagina,
+                        'fields': 'object_id'
+                    }
                     
-except Exception:
-    # Se falhar, continuar sem imagem
-    pass
+                    object_response = requests.get(object_url, params=object_params, timeout=5)
+                    
+                    if object_response.status_code == 200:
+                        object_data = object_response.json()
+                        object_id = object_data.get('object_id')
+                        
+                        if object_id:
+                            # Se tem object_id, é uma foto - construir URL da thumbnail
+                            thumbnail_url = f"https://graph.facebook.com/v23.0/{object_id}/picture?access_token={token_pagina}&type=normal"
+                            structured_post['full_picture'] = thumbnail_url
+                            print(f"  ✅ Thumbnail encontrada via object_id: {object_id}")
+                        else:
+                            # Método 2: Tentar buscar via endpoint de picture do post
+                            picture_url = f"https://graph.facebook.com/v23.0/{post_id}/picture?access_token={token_pagina}&redirect=false"
+                            
+                            picture_response = requests.get(picture_url, timeout=5)
+                            if picture_response.status_code == 200:
+                                picture_data = picture_response.json()
+                                if picture_data.get('data', {}).get('url'):
+                                    structured_post['full_picture'] = picture_data['data']['url']
+                                    print(f"  ✅ Thumbnail encontrada via picture endpoint")
+                                else:
+                                    print(f"  ℹ️ Post sem imagem")
+                            else:
+                                print(f"  ℹ️ Post sem imagem (picture endpoint)")
+                    else:
+                        print(f"  ℹ️ Post sem object_id")
+                        
+                except Exception as img_error:
+                    # Se falhar na busca de imagem, continuar sem imagem (não é crítico)
+                    print(f"  ⚠️ Erro ao buscar imagem: {str(img_error)}")
+                    pass
                 
                 # Adicionar à lista
                 structured_posts.append(structured_post)
@@ -776,12 +788,12 @@ except Exception:
                 # Log do post para debug
                 message_preview = structured_post['message'][:50] if structured_post['message'] else 'Sem texto'
                 created_date = structured_post['created_time'][:10] if structured_post['created_time'] else 'Data desconhecida'
+                has_image = "✅ Sim" if structured_post['full_picture'] else "❌ Não"
                 
                 print(f"  📝 Post {i}: {message_preview}...")
                 print(f"     📅 Data: {created_date}")
-                print(f"     🔗 Link: {structured_post['permalink_url']}")
-                if structured_post['full_picture']:
-                    print(f"     🖼️ Imagem: Sim")
+                print(f"     🆔 ID: {post_id}")
+                print(f"     🖼️ Imagem: {has_image}")
             
             # Retornar resposta estruturada
             return {

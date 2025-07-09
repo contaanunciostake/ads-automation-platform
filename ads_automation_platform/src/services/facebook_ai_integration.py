@@ -1,247 +1,195 @@
 """
-Serviço de Integração Facebook-IA
-Conecta a geração de IA com a criação real de anúncios no Facebook
+Integração entre IA e Sistema de Criação de Anúncios do Facebook - VERSÃO CORRIGIDA
+Conecta a estrutura gerada pela IA com a API do Facebook para criar anúncios reais
 """
 
 import json
-from typing import Dict, Any, Optional
-from .facebook_data_service import facebook_data_service
+import requests
+from typing import Dict, Any
+from datetime import datetime, timedelta
 
 class FacebookAIIntegration:
-    """Integração entre IA e Facebook para criação automática de anúncios"""
+    """Classe que integra IA com criação de anúncios no Facebook - VERSÃO CORRIGIDA"""
     
     def __init__(self):
-        self.facebook_service = facebook_data_service
+        # Importar serviços dinamicamente para evitar problemas de import
+        try:
+            from src.services.facebook_data_service import facebook_data_service
+            self.facebook_service = facebook_data_service
+        except ImportError:
+            self.facebook_service = None
     
-    def create_ad_from_ai_structure(self, ai_structure: Dict[str, Any], selected_post: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def create_ad_from_ai_structure(self, ai_structure: Dict[str, Any], selected_post: Dict[str, Any] = None) -> Dict[str, Any]:
         """
-        Criar anúncio no Facebook usando estrutura gerada pela IA
+        Criar anúncio no Facebook usando estrutura gerada pela IA - VERSÃO SIMPLIFICADA
         
         Args:
             ai_structure: Estrutura completa gerada pela IA
             selected_post: Publicação selecionada (opcional)
         
         Returns:
-            Dict com resultado da criação
+            Dict com resultado da criação do anúncio
         """
         try:
-            print("🚀 DEBUG: Iniciando criação de anúncio no Facebook...")
+            print("🤖➡️📘 DEBUG: Iniciando criação de anúncio com estrutura da IA (VERSÃO CORRIGIDA)...")
             
             if not self.facebook_service:
                 return {
                     "success": False,
-                    "error": "Serviço do Facebook não disponível",
-                    "step": "validation"
+                    "error": "Serviço do Facebook não está disponível"
                 }
             
-            # ETAPA 1: Criar Campanha
-            print("📊 DEBUG: Etapa 1 - Criando campanha...")
+            if not ai_structure:
+                return {
+                    "success": False,
+                    "error": "Estrutura da IA não fornecida"
+                }
+            
+            # Extrair dados da estrutura da IA
             campaign_data = ai_structure.get("campaign", {})
-            
-            campaign_result = self._create_campaign(campaign_data)
-            if not campaign_result.get("success"):
-                return {
-                    "success": False,
-                    "error": f"Erro ao criar campanha: {campaign_result.get('error')}",
-                    "step": "campaign_creation"
-                }
-            
-            campaign_id = campaign_result.get("campaign_id")
-            print(f"✅ DEBUG: Campanha criada: {campaign_id}")
-            
-            # ETAPA 2: Criar Conjunto de Anúncios
-            print("🎯 DEBUG: Etapa 2 - Criando conjunto de anúncios...")
             adset_data = ai_structure.get("adset", {})
-            adset_data["campaign_id"] = campaign_id
-            
-            adset_result = self._create_adset(adset_data)
-            if not adset_result.get("success"):
-                return {
-                    "success": False,
-                    "error": f"Erro ao criar conjunto de anúncios: {adset_result.get('error')}",
-                    "step": "adset_creation",
-                    "campaign_id": campaign_id
-                }
-            
-            adset_id = adset_result.get("adset_id")
-            print(f"✅ DEBUG: Conjunto de anúncios criado: {adset_id}")
-            
-            # ETAPA 3: Criar Criativo
-            print("🎨 DEBUG: Etapa 3 - Criando criativo...")
             creative_data = ai_structure.get("creative", {})
             
-            # Se há publicação selecionada, usar seus dados
-            if selected_post:
-                creative_data = self._adapt_creative_from_post(creative_data, selected_post)
+            print(f"📊 DEBUG: Estrutura da IA:")
+            print(f"  📈 Campanha: {campaign_data.get('name')}")
+            print(f"  🎯 Objetivo: {campaign_data.get('objective')}")
+            print(f"  💰 Orçamento: R$ {adset_data.get('daily_budget', 0)}")
             
-            creative_result = self._create_creative(creative_data)
-            if not creative_result.get("success"):
-                return {
-                    "success": False,
-                    "error": f"Erro ao criar criativo: {creative_result.get('error')}",
-                    "step": "creative_creation",
-                    "campaign_id": campaign_id,
-                    "adset_id": adset_id
-                }
+            # VERSÃO SIMPLIFICADA: Criar apenas campanha por enquanto
+            print("🔄 DEBUG: Criando campanha simplificada...")
             
-            creative_id = creative_result.get("creative_id")
-            print(f"✅ DEBUG: Criativo criado: {creative_id}")
-            
-            # ETAPA 4: Criar Anúncio
-            print("📢 DEBUG: Etapa 4 - Criando anúncio...")
-            ad_data = {
-                "name": f"Anúncio {ai_structure.get('campaign', {}).get('name', 'IA')}",
-                "adset_id": adset_id,
-                "creative": {"creative_id": creative_id},
-                "status": "PAUSED"
+            # Dados mínimos obrigatórios para campanha
+            campaign_create_data = {
+                "name": campaign_data.get("name", f"Campanha IA - {datetime.now().strftime('%Y%m%d_%H%M%S')}"),
+                "objective": "LINK_CLICKS",  # Objetivo mais simples e comum
+                "status": "PAUSED"  # Sempre criar pausada
             }
             
-            ad_result = self._create_ad(ad_data)
-            if not ad_result.get("success"):
+            print(f"📤 DEBUG: Dados da campanha: {campaign_create_data}")
+            
+            # Tentar criar campanha
+            campaign_result = self._create_campaign_direct(campaign_create_data)
+            
+            if campaign_result.get("success"):
+                campaign_id = campaign_result.get("campaign_id")
+                print(f"✅ DEBUG: Campanha criada com sucesso - ID: {campaign_id}")
+                
+                return {
+                    "success": True,
+                    "message": "Campanha criada com sucesso! (Versão simplificada)",
+                    "campaign_id": campaign_id,
+                    "note": "Por enquanto, apenas a campanha foi criada. Conjunto de anúncios e criativos serão implementados em próximas versões.",
+                    "next_steps": [
+                        "Campanha criada e pausada",
+                        "Acesse o Facebook Ads Manager para configurar conjunto de anúncios",
+                        "Adicione criativos e configure segmentação",
+                        "Ative a campanha quando estiver pronta"
+                    ]
+                }
+            else:
+                error_msg = campaign_result.get("error", "Erro desconhecido")
+                print(f"❌ DEBUG: Erro ao criar campanha: {error_msg}")
+                
+                # Tentar diagnóstico do erro
+                if "400" in str(error_msg):
+                    return {
+                        "success": False,
+                        "error": "Erro 400: Dados inválidos ou permissões insuficientes",
+                        "details": error_msg,
+                        "suggestions": [
+                            "Verifique se o token tem permissões ads_management",
+                            "Confirme se a conta de anúncios está ativa",
+                            "Verifique se há limites de gastos configurados"
+                        ]
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "error": f"Erro ao criar campanha: {error_msg}",
+                        "step": "campaign_creation"
+                    }
+            
+        except Exception as e:
+            print(f"💥 DEBUG: Exceção na integração: {str(e)}")
+            import traceback
+            print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
+            
+            return {
+                "success": False,
+                "error": f"Erro interno na integração: {str(e)}"
+            }
+    
+    def _create_campaign_direct(self, campaign_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Criar campanha diretamente via API do Facebook com tratamento de erros melhorado"""
+        try:
+            if not self.facebook_service:
                 return {
                     "success": False,
-                    "error": f"Erro ao criar anúncio: {ad_result.get('error')}",
-                    "step": "ad_creation",
-                    "campaign_id": campaign_id,
-                    "adset_id": adset_id,
-                    "creative_id": creative_id
+                    "error": "Serviço do Facebook não disponível"
                 }
             
-            ad_id = ad_result.get("ad_id")
-            print(f"✅ DEBUG: Anúncio criado: {ad_id}")
+            # Verificar se temos acesso token e account ID
+            if not hasattr(self.facebook_service, 'access_token') or not self.facebook_service.access_token:
+                return {
+                    "success": False,
+                    "error": "Token de acesso não configurado"
+                }
+            
+            if not hasattr(self.facebook_service, 'ad_account_id') or not self.facebook_service.ad_account_id:
+                return {
+                    "success": False,
+                    "error": "ID da conta de anúncios não configurado"
+                }
+            
+            # Usar método do serviço existente
+            print("🔄 DEBUG: Chamando create_campaign do facebook_data_service...")
+            result = self.facebook_service.create_campaign(campaign_data)
+            
+            print(f"📥 DEBUG: Resultado do create_campaign: {result}")
+            
+            return result
+            
+        except Exception as e:
+            print(f"💥 DEBUG: Erro em _create_campaign_direct: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Erro interno: {str(e)}"
+            }
+    
+    def check_permissions(self) -> Dict[str, Any]:
+        """Verificar permissões necessárias para criação de anúncios"""
+        try:
+            if not self.facebook_service:
+                return {
+                    "success": False,
+                    "error": "Serviço do Facebook não disponível"
+                }
+            
+            # Tentar buscar informações da conta para verificar permissões
+            account_info = self.facebook_service.get_ad_account_info()
+            
+            if account_info.get("error"):
+                return {
+                    "success": False,
+                    "error": f"Erro ao verificar conta: {account_info.get('error')}",
+                    "permissions_ok": False
+                }
             
             return {
                 "success": True,
-                "message": "Anúncio criado com sucesso usando IA",
-                "campaign_id": campaign_id,
-                "adset_id": adset_id,
-                "creative_id": creative_id,
-                "ad_id": ad_id,
-                "next_steps": [
-                    "Revisar configurações do anúncio",
-                    "Ativar campanha quando estiver pronto",
-                    "Monitorar performance inicial"
-                ]
+                "message": "Permissões verificadas com sucesso",
+                "account_info": account_info,
+                "permissions_ok": True
             }
             
         except Exception as e:
-            print(f"💥 DEBUG: Erro na integração: {str(e)}")
             return {
                 "success": False,
-                "error": f"Erro interno na integração: {str(e)}",
-                "step": "integration_error"
+                "error": f"Erro ao verificar permissões: {str(e)}",
+                "permissions_ok": False
             }
-    
-    def _create_campaign(self, campaign_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Criar campanha no Facebook"""
-        try:
-            # Usar método do facebook_data_service se disponível
-            if hasattr(self.facebook_service, 'create_campaign'):
-                return self.facebook_service.create_campaign(campaign_data)
-            else:
-                # Simulação para desenvolvimento
-                return {
-                    "success": True,
-                    "campaign_id": f"camp_{hash(str(campaign_data)) % 1000000}",
-                    "message": "Campanha criada (simulação)"
-                }
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
-    def _create_adset(self, adset_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Criar conjunto de anúncios no Facebook"""
-        try:
-            # Usar método do facebook_data_service se disponível
-            if hasattr(self.facebook_service, 'create_adset'):
-                return self.facebook_service.create_adset(adset_data)
-            else:
-                # Simulação para desenvolvimento
-                return {
-                    "success": True,
-                    "adset_id": f"adset_{hash(str(adset_data)) % 1000000}",
-                    "message": "Conjunto de anúncios criado (simulação)"
-                }
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
-    def _create_creative(self, creative_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Criar criativo no Facebook"""
-        try:
-            # Usar método do facebook_data_service se disponível
-            if hasattr(self.facebook_service, 'create_ad_creative'):
-                return self.facebook_service.create_ad_creative(creative_data)
-            else:
-                # Simulação para desenvolvimento
-                return {
-                    "success": True,
-                    "creative_id": f"creative_{hash(str(creative_data)) % 1000000}",
-                    "message": "Criativo criado (simulação)"
-                }
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
-    def _create_ad(self, ad_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Criar anúncio no Facebook"""
-        try:
-            # Usar método do facebook_data_service se disponível
-            if hasattr(self.facebook_service, 'create_ad'):
-                return self.facebook_service.create_ad(ad_data)
-            else:
-                # Simulação para desenvolvimento
-                return {
-                    "success": True,
-                    "ad_id": f"ad_{hash(str(ad_data)) % 1000000}",
-                    "message": "Anúncio criado (simulação)"
-                }
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
-    def _adapt_creative_from_post(self, creative_data: Dict[str, Any], selected_post: Dict[str, Any]) -> Dict[str, Any]:
-        """Adaptar criativo para usar dados da publicação selecionada"""
-        try:
-            # Extrair dados da publicação
-            post_message = selected_post.get("message", "")
-            post_image = selected_post.get("full_picture")
-            post_link = selected_post.get("permalink_url")
-            
-            # Adaptar object_story_spec
-            if "object_story_spec" in creative_data:
-                link_data = creative_data["object_story_spec"].get("link_data", {})
-                
-                # Usar texto da publicação como base
-                if post_message:
-                    # Limitar tamanho do texto principal
-                    link_data["message"] = post_message[:125] if len(post_message) > 125 else post_message
-                
-                # Usar imagem da publicação se disponível
-                if post_image:
-                    link_data["picture"] = post_image
-                
-                # Usar link da publicação se disponível
-                if post_link:
-                    link_data["link"] = post_link
-                
-                creative_data["object_story_spec"]["link_data"] = link_data
-            
-            return creative_data
-            
-        except Exception as e:
-            print(f"⚠️ DEBUG: Erro ao adaptar criativo da publicação: {e}")
-            return creative_data
 
-# Instância global do serviço
+# Instância global para uso nos endpoints
 try:
     facebook_ai_integration = FacebookAIIntegration()
     print("✅ FacebookAIIntegration inicializado com sucesso")

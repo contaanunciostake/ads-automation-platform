@@ -177,52 +177,65 @@ const AdGeneration = () => {
     setShowEditor(true);
   };
 
-  // Salvar anúncio editado
-  const handleSaveAd = async (editedAd) => {
-    try {
-      console.log('💾 DEBUG: Salvando anúncio editado:', editedAd);
-      
-      // Aqui você pode implementar a lógica para salvar o anúncio
-      // Por exemplo, enviar para o backend para criar no Facebook
-      
-      const response = await fetch('/api/facebook/create-ad-from-ai', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ai_structure: editedAd,
-          page_id: formData.page_id,
-          selected_post: creativeType === 'existing' ? selectedPost : null
-        })
-      });
+  // Salvar rascunho
+const handleSaveDraft = async (editedAd) => {
+  try {
+    console.log('💾 DEBUG: Salvando rascunho:', editedAd);
+    
+    const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/save-ad-draft', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ai_structure: editedAd,
+        page_id: formData.page_id,
+        selected_post: creativeType === 'existing' ? selectedPost : null
+      } )
+    });
 
-      const result = await response.json();
-      
-      if (result.success) {
-        alert('Anúncio criado com sucesso no Facebook!');
-        setShowEditor(false);
-        setShowAiPreview(false);
-        setAiResult(null);
-        
-        // Reset form
-        setFormData({
-          page_id: '',
-          product_name: '',
-          product_description: '',
-          platforms: { facebook: true, instagram: false }
-        });
-        setSelectedPost(null);
-        
-      } else {
-        alert(`Erro ao criar anúncio: ${result.error}`);
-      }
-      
-    } catch (error) {
-      console.error('💥 DEBUG: Erro ao salvar:', error);
-      alert(`Erro ao salvar anúncio: ${error.message}`);
+    const result = await response.json();
+    
+    if (result.success) {
+      alert('✅ Rascunho salvo com sucesso!');
+    } else {
+      alert('❌ Erro ao salvar rascunho: ' + result.error);
     }
-  };
+  } catch (error) {
+    console.error('💥 DEBUG: Erro ao salvar rascunho:', error);
+    alert('❌ Erro ao salvar rascunho: ' + error.message);
+  }
+};
+
+// Publicar anúncio
+const handlePublishAd = async (editedAd) => {
+  try {
+    console.log('🚀 DEBUG: Publicando anúncio:', editedAd);
+    
+    const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/publish-ad', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ai_structure: editedAd,
+        page_id: formData.page_id,
+        selected_post: creativeType === 'existing' ? selectedPost : null
+      } )
+    });
+
+    const result = await response.json();
+    
+    if (result.success) {
+      alert('🎉 Anúncio publicado com sucesso no Facebook!');
+    } else {
+      alert('❌ Erro ao publicar: ' + result.error);
+    }
+  } catch (error) {
+    console.error('💥 DEBUG: Erro ao publicar:', error);
+    alert('❌ Erro ao publicar: ' + error.message);
+  }
+};
 
   // Cancelar edição
   const handleCancelEdit = () => {

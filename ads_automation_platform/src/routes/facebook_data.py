@@ -4,7 +4,8 @@ from datetime import datetime, timedelta
 
 # Imports dos serviços de IA com fallback
 try:
-    from src.services.ai_ad_generation_service import ai_ad_service
+    from src.services.ai_ad_generation_service import AIAdGenerationService
+    ai_ad_service = AIAdGenerationService()
     print("✅ ai_ad_service importado com sucesso")
 except ImportError as e:
     print(f"⚠️ WARNING: ai_ad_generation_service não encontrado: {e}")

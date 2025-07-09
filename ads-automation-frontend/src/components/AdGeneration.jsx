@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const AdGeneration = () => {
-  // Estados principais com inicialização segura
-  const [formData, setFormData] = useState(() => ({
+  // ==========================================
+  // ESTADOS (MANTIDOS EXATAMENTE COMO ORIGINAL)
+  // ==========================================
+  
+  const [formData, setFormData] = useState({
     page_id: '',
     product_name: '',
     product_description: '',
@@ -16,7 +19,7 @@ const AdGeneration = () => {
       facebook: true,
       instagram: false
     }
-  }));
+  });
 
   const [pages, setPages] = useState([]);
   const [loadingPages, setLoadingPages] = useState(false);
@@ -25,24 +28,16 @@ const AdGeneration = () => {
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
   const [platformFilter, setPlatformFilter] = useState('all');
-  const [error, setError] = useState(null);
   const [generating, setGenerating] = useState(false);
 
-  // Função auxiliar para verificação segura
-  const isValid = useCallback((value) => {
-    return value !== null && value !== undefined && value !== '';
-  }, []);
+  // ==========================================
+  // FUNÇÕES AUXILIARES (SEGURAS)
+  // ==========================================
 
-  // Função auxiliar para arrays
-  const isValidArray = useCallback((arr) => {
-    return Array.isArray(arr) && arr.length > 0;
-  }, []);
-
-  // Função para acesso seguro a propriedades
-  const safeGet = useCallback((obj, path, defaultValue = '') => {
-    if (!obj || typeof obj !== 'object') return defaultValue;
-    
+  const safeGet = (obj, path, defaultValue = null) => {
     try {
+      if (!obj || typeof obj !== 'object') return defaultValue;
+      
       const keys = path.split('.');
       let result = obj;
       
@@ -55,226 +50,278 @@ const AdGeneration = () => {
       }
       
       return result !== null && result !== undefined ? result : defaultValue;
-    } catch {
+    } catch (error) {
+      console.error('Erro em safeGet:', error);
       return defaultValue;
     }
-  }, []);
+  };
 
-  // Buscar páginas da API
-  const fetchPages = useCallback(async () => {
-    console.log('🔍 Iniciando busca de páginas...');
+  const isValidArray = (arr) => {
+    return Array.isArray(arr) && arr.length > 0;
+  };
+
+  // ==========================================
+  // BUSCA DE PÁGINAS (MANTIDA COMO ORIGINAL)
+  // ==========================================
+
+  const fetchPages = async () => {
+    console.log('🔍 DEBUG Frontend: Iniciando fetchPages...');
     setLoadingPages(true);
-    setError(null);
     
     try {
-      const apiUrl = process.env.REACT_APP_API_URL || 'https://ads-automation-backend-otpl.onrender.com';
-      const response = await fetch(`${apiUrl}/api/facebook/pages`);
+      const url = `${process.env.REACT_APP_API_URL || 'https://ads-automation-backend-otpl.onrender.com'}/api/facebook/pages`;
+      console.log('🔍 DEBUG Frontend: URL da requisição:', url);
       
-      console.log('📡 Status da resposta:', response.status);
+      const response = await fetch(url);
+      console.log('🔍 DEBUG Frontend: Status da resposta:', response.status);
       
-      if (!response.ok) {
-        throw new Error(`Erro ${response.status}: Falha ao carregar páginas`);
-      }
-      
-      const data = await response.json();
-      console.log('📊 Dados recebidos:', data);
-      
-      // Extrair páginas de forma segura
-      let pagesData = [];
-      
-      if (safeGet(data, 'success') && isValidArray(safeGet(data, 'pages'))) {
-        pagesData = data.pages;
-      } else if (safeGet(data, 'success') && isValidArray(safeGet(data, 'data'))) {
-        pagesData = data.data;
-      } else if (isValidArray(data)) {
-        pagesData = data;
-      } else if (isValidArray(safeGet(data, 'data'))) {
-        pagesData = data.data;
-      }
-      
-      if (isValidArray(pagesData)) {
-        const processedPages = pagesData.map((page, index) => ({
-          id: safeGet(page, 'id') || safeGet(page, 'page_id') || `page_${index}`,
-          name: safeGet(page, 'name') || safeGet(page, 'page_name') || `Página ${index + 1}`,
-          category: safeGet(page, 'category') || safeGet(page, 'category_list.0.name') || 'Categoria não informada',
-          access_token: safeGet(page, 'access_token') || safeGet(page, 'page_access_token') || ''
-        })).filter(page => isValid(page.id));
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🔍 DEBUG Frontend: Dados recebidos:', data);
         
-        setPages(processedPages);
-        console.log(`✅ ${processedPages.length} páginas carregadas`);
+        // ESTRUTURA ORIGINAL MANTIDA
+        if (safeGet(data, 'success') && safeGet(data, 'data')) {
+          const pagesData = safeGet(data, 'data', []);
+          
+          if (isValidArray(pagesData)) {
+            const realPages = pagesData.map(page => ({
+              id: safeGet(page, 'id', ''),
+              name: safeGet(page, 'name', 'Página sem nome'),
+              category: safeGet(page, 'category', 'Categoria não informada'),
+              access_token: safeGet(page, 'access_token', '')
+            }));
+            
+            console.log('🔍 DEBUG Frontend: Páginas extraídas:', realPages);
+            console.log('🔍 DEBUG Frontend: Número de páginas:', realPages.length);
+            
+            setPages(realPages);
+            
+            console.log('✅ DEBUG Frontend: Páginas carregadas com sucesso!');
+            realPages.forEach((page, index) => {
+              console.log(`  ${index + 1}. ${page.name} (ID: ${page.id})`);
+            });
+          } else {
+            console.log('⚠️ DEBUG Frontend: Array de páginas inválido');
+            setPages([]);
+          }
+        } else {
+          console.log('⚠️ DEBUG Frontend: Resposta sem páginas válidas');
+          console.log('🔍 DEBUG Frontend: Estrutura recebida:', Object.keys(data || {}));
+          setPages([]);
+        }
       } else {
-        console.log('⚠️ Nenhuma página encontrada');
+        console.log('❌ DEBUG Frontend: Erro na resposta:', response.status);
         setPages([]);
       }
-      
-    } catch (err) {
-      console.error('❌ Erro ao buscar páginas:', err);
-      setError(`Erro ao carregar páginas: ${err.message}`);
+    } catch (error) {
+      console.log('💥 DEBUG Frontend: Erro ao buscar páginas:', error);
       setPages([]);
     } finally {
       setLoadingPages(false);
+      console.log('🔍 DEBUG Frontend: fetchPages finalizado');
     }
-  }, [safeGet, isValid, isValidArray]);
+  };
 
-  // Buscar publicações da página
-  const fetchExistingPosts = useCallback(async (pageId) => {
-    if (!isValid(pageId)) {
-      console.log('⚠️ ID da página inválido');
+  // ==========================================
+  // BUSCA DE PUBLICAÇÕES (MANTIDA COMO ORIGINAL)
+  // ==========================================
+
+  const fetchExistingPosts = async (pageId) => {
+    if (!pageId) {
+      console.log('⚠️ DEBUG: Nenhuma página selecionada para buscar publicações');
       return;
     }
 
-    console.log('🔍 Buscando publicações para página:', pageId);
+    console.log('🔍 DEBUG: Iniciando busca de publicações para página:', pageId);
     setLoadingPosts(true);
     setExistingPosts([]);
 
     try {
-      const apiUrl = process.env.REACT_APP_API_URL || 'https://ads-automation-backend-otpl.onrender.com';
-      
-      // Buscar posts do Facebook
-      const facebookResponse = await fetch(`${apiUrl}/api/facebook/posts`, {
+      // Buscar posts do Facebook (ESTRUTURA ORIGINAL)
+      console.log('📘 DEBUG: Buscando posts do Facebook...');
+      const facebookResponse = await fetch(`${process.env.REACT_APP_API_URL || 'https://ads-automation-backend-otpl.onrender.com'}/api/facebook/posts`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ page_id: pageId })
       });
 
-      let allPosts = [];
+      console.log('📘 DEBUG: Status resposta Facebook:', facebookResponse.status);
 
+      let facebookPosts = [];
       if (facebookResponse.ok) {
         const facebookData = await facebookResponse.json();
-        console.log('📘 Dados Facebook:', facebookData);
+        console.log('📘 DEBUG: Dados Facebook recebidos:', facebookData);
         
-        let postsData = [];
-        if (safeGet(facebookData, 'success') && isValidArray(safeGet(facebookData, 'posts'))) {
-          postsData = facebookData.posts;
-        } else if (safeGet(facebookData, 'success') && isValidArray(safeGet(facebookData, 'data'))) {
-          postsData = facebookData.data;
-        } else if (isValidArray(facebookData)) {
-          postsData = facebookData;
-        }
-        
-        if (isValidArray(postsData)) {
-          const facebookPosts = postsData.map((post, index) => ({
-            id: safeGet(post, 'id') || `fb_${Date.now()}_${index}`,
-            message: safeGet(post, 'message') || safeGet(post, 'text') || 'Publicação sem texto',
-            created_time: safeGet(post, 'created_time') || new Date().toISOString(),
-            full_picture: safeGet(post, 'full_picture') || safeGet(post, 'image') || null,
-            permalink_url: safeGet(post, 'permalink_url') || '#',
-            platform: 'facebook',
-            likes: parseInt(safeGet(post, 'likes') || '0') || 0,
-            comments: parseInt(safeGet(post, 'comments') || '0') || 0,
-            shares: parseInt(safeGet(post, 'shares') || '0') || 0
-          }));
-          
-          allPosts = [...allPosts, ...facebookPosts];
-        }
-      }
-
-      // Buscar posts do Instagram
-      try {
-        const instagramResponse = await fetch(`${apiUrl}/api/facebook/instagram-posts`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ page_id: pageId })
-        });
-
-        if (instagramResponse.ok) {
-          const instagramData = await instagramResponse.json();
-          console.log('📷 Dados Instagram:', instagramData);
-          
-          let postsData = [];
-          if (safeGet(instagramData, 'success') && isValidArray(safeGet(instagramData, 'posts'))) {
-            postsData = instagramData.posts;
-          } else if (safeGet(instagramData, 'success') && isValidArray(safeGet(instagramData, 'data'))) {
-            postsData = instagramData.data;
-          } else if (isValidArray(instagramData)) {
-            postsData = instagramData;
-          }
+        // ESTRUTURA ORIGINAL MANTIDA
+        if (safeGet(facebookData, 'success') && safeGet(facebookData, 'posts')) {
+          const postsData = safeGet(facebookData, 'posts', []);
           
           if (isValidArray(postsData)) {
-            const instagramPosts = postsData.map((post, index) => ({
-              id: safeGet(post, 'id') || `ig_${Date.now()}_${index}`,
-              message: safeGet(post, 'message') || safeGet(post, 'caption') || 'Publicação sem texto',
-              created_time: safeGet(post, 'created_time') || new Date().toISOString(),
-              full_picture: safeGet(post, 'full_picture') || safeGet(post, 'media_url') || null,
-              permalink_url: safeGet(post, 'permalink_url') || '#',
-              platform: 'instagram',
-              likes: parseInt(safeGet(post, 'likes') || '0') || 0,
-              comments: parseInt(safeGet(post, 'comments') || '0') || 0,
-              shares: parseInt(safeGet(post, 'shares') || '0') || 0
+            facebookPosts = postsData.map(post => ({
+              id: safeGet(post, 'id', ''),
+              message: safeGet(post, 'message', 'Publicação sem texto'),
+              created_time: safeGet(post, 'created_time', ''),
+              full_picture: safeGet(post, 'full_picture', ''),
+              permalink_url: safeGet(post, 'permalink_url', ''),
+              likes: safeGet(post, 'likes', 0),
+              comments: safeGet(post, 'comments', 0),
+              shares: safeGet(post, 'shares', 0),
+              platform: 'facebook'
             }));
-            
-            allPosts = [...allPosts, ...instagramPosts];
+            console.log('📘 DEBUG: Posts Facebook processados:', facebookPosts.length);
           }
         }
-      } catch (instagramError) {
-        console.log('⚠️ Erro Instagram (não crítico):', instagramError.message);
+      } else {
+        console.log('📘 DEBUG: Erro na API Facebook:', facebookResponse.status);
       }
+
+      // Buscar posts do Instagram (ESTRUTURA ORIGINAL)
+      console.log('📷 DEBUG: Buscando posts do Instagram...');
+      const instagramResponse = await fetch(`${process.env.REACT_APP_API_URL || 'https://ads-automation-backend-otpl.onrender.com'}/api/facebook/instagram-posts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ page_id: pageId })
+      });
+
+      console.log('📷 DEBUG: Status resposta Instagram:', instagramResponse.status);
+
+      let instagramPosts = [];
+      if (instagramResponse.ok) {
+        const instagramData = await instagramResponse.json();
+        console.log('📷 DEBUG: Dados Instagram recebidos:', instagramData);
+        
+        // ESTRUTURA ORIGINAL MANTIDA
+        if (safeGet(instagramData, 'success') && safeGet(instagramData, 'posts')) {
+          const postsData = safeGet(instagramData, 'posts', []);
+          
+          if (isValidArray(postsData)) {
+            instagramPosts = postsData.map(post => ({
+              id: safeGet(post, 'id', ''),
+              message: safeGet(post, 'message', 'Publicação sem texto'),
+              created_time: safeGet(post, 'created_time', ''),
+              full_picture: safeGet(post, 'full_picture', ''),
+              permalink_url: safeGet(post, 'permalink_url', ''),
+              likes: safeGet(post, 'likes', 0),
+              comments: safeGet(post, 'comments', 0),
+              shares: safeGet(post, 'shares', 0),
+              platform: 'instagram'
+            }));
+            console.log('📷 DEBUG: Posts Instagram processados:', instagramPosts.length);
+          }
+        }
+      } else {
+        console.log('📷 DEBUG: Erro na API Instagram:', instagramResponse.status);
+      }
+
+      // Combinar posts
+      const allPosts = [...facebookPosts, ...instagramPosts];
+      console.log('📊 DEBUG: Total de posts encontrados:', allPosts.length);
 
       if (allPosts.length > 0) {
         setExistingPosts(allPosts);
-        console.log(`✅ ${allPosts.length} publicações carregadas`);
+        console.log('✅ DEBUG: Posts carregados com sucesso!');
+        allPosts.forEach((post, index) => {
+          console.log(`  ${index + 1}. [${post.platform.toUpperCase()}] ${post.message?.substring(0, 50)}...`);
+        });
       } else {
-        // Criar dados de exemplo
-        const selectedPage = pages.find(p => safeGet(p, 'id') === pageId);
-        const examplePosts = createExamplePosts(selectedPage);
+        console.log('⚠️ DEBUG: Nenhuma publicação encontrada para esta página');
+        
+        // Criar dados de exemplo baseados na página real selecionada
+        const selectedPage = pages.find(p => p.id === pageId);
+        const examplePosts = createExamplePostsForPage(selectedPage);
         setExistingPosts(examplePosts);
-        console.log('🧪 Usando dados de exemplo');
+        console.log('🧪 DEBUG: Usando dados de exemplo para demonstração');
       }
 
-    } catch (err) {
-      console.error('❌ Erro ao buscar publicações:', err);
-      const selectedPage = pages.find(p => safeGet(p, 'id') === pageId);
-      const examplePosts = createExamplePosts(selectedPage);
+    } catch (error) {
+      console.log('💥 DEBUG: Erro ao buscar publicações:', error);
+      
+      // Fallback para dados de exemplo
+      const selectedPage = pages.find(p => p.id === pageId);
+      const examplePosts = createExamplePostsForPage(selectedPage);
       setExistingPosts(examplePosts);
+      console.log('🧪 DEBUG: Usando dados de exemplo devido ao erro');
     } finally {
       setLoadingPosts(false);
     }
-  }, [isValid, isValidArray, safeGet, pages]);
+  };
 
-  // Criar posts de exemplo
-  const createExamplePosts = useCallback((page) => {
-    if (!page || !isValid(safeGet(page, 'id'))) return [];
+  // ==========================================
+  // DADOS DE EXEMPLO (MANTIDOS COMO ORIGINAL)
+  // ==========================================
 
-    const pageName = (safeGet(page, 'name') || '').toLowerCase();
-    const pageId = safeGet(page, 'id');
+  const createExamplePostsForPage = (page) => {
+    if (!page) return [];
 
-    const basePosts = [
-      {
-        id: `${pageId}_example_1`,
-        message: `Confira as novidades da ${safeGet(page, 'name')}! Estamos sempre inovando para você. #Novidades #Qualidade`,
-        created_time: '2025-01-07T12:00:00+0000',
-        full_picture: null,
-        permalink_url: '#',
-        platform: 'facebook',
-        likes: 45,
-        comments: 12,
-        shares: 8
-      },
-      {
-        id: `${pageId}_example_2`,
-        message: `Excelência em atendimento é o nosso compromisso. ${safeGet(page, 'name')} - sempre ao seu lado! #Atendimento #Compromisso`,
-        created_time: '2025-01-06T15:30:00+0000',
-        full_picture: null,
-        permalink_url: '#',
-        platform: 'instagram',
-        likes: 32,
-        comments: 7,
-        shares: 5
-      }
-    ];
+    const pageName = safeGet(page, 'name', '').toLowerCase();
+    let posts = [];
 
-    return basePosts;
-  }, [safeGet, isValid]);
+    if (pageName.includes('monte castelo') || pageName.includes('comercio')) {
+      posts = [
+        {
+          id: `${page.id}_post1`,
+          message: 'Carnes frescas e de qualidade! Venha conferir nossos cortes especiais. #CarnesFrescas #QualidadeGarantida',
+          created_time: '2025-01-07T10:00:00+0000',
+          full_picture: '/api/placeholder/400/300',
+          permalink_url: `https://facebook.com/${page.id}/posts/post1`,
+          platform: 'facebook',
+          likes: 45,
+          comments: 12,
+          shares: 8
+        },
+        {
+          id: `${page.id}_post2`,
+          message: 'Promoção especial em produtos de mercearia! Não perca essa oportunidade. #Promocao #Mercearia',
+          created_time: '2025-01-06T15:30:00+0000',
+          full_picture: '/api/placeholder/400/300',
+          permalink_url: `https://facebook.com/${page.id}/posts/post2`,
+          platform: 'facebook',
+          likes: 32,
+          comments: 7,
+          shares: 5
+        }
+      ];
+    } else {
+      // Posts genéricos para outras páginas
+      posts = [
+        {
+          id: `${page.id}_post1`,
+          message: `Confira as novidades da ${page.name}! Estamos sempre inovando para você. #Novidades #Qualidade`,
+          created_time: '2025-01-07T12:00:00+0000',
+          full_picture: '/api/placeholder/400/300',
+          permalink_url: `https://facebook.com/${page.id}/posts/post1`,
+          platform: 'facebook',
+          likes: 56,
+          comments: 14,
+          shares: 9
+        },
+        {
+          id: `${page.id}_post2`,
+          message: `Excelência em atendimento é o nosso compromisso. ${page.name} - sempre ao seu lado! #Atendimento #Compromisso`,
+          created_time: '2025-01-06T13:15:00+0000',
+          full_picture: '/api/placeholder/400/300',
+          permalink_url: `https://instagram.com/p/post2`,
+          platform: 'instagram',
+          likes: 73,
+          comments: 11,
+          shares: 6
+        }
+      ];
+    }
 
-  // Filtrar posts
-  const filteredPosts = existingPosts.filter(post => {
-    if (platformFilter === 'all') return true;
-    return safeGet(post, 'platform') === platformFilter;
-  });
+    return posts;
+  };
 
-  // Gerar anúncio com IA
-  const handleGenerateWithAI = useCallback(async () => {
-    if (!isValid(safeGet(formData, 'page_id'))) {
+  // ==========================================
+  // NOVA FUNCIONALIDADE: IA (OPCIONAL)
+  // ==========================================
+
+  const handleGenerateWithAI = async () => {
+    if (!formData.page_id) {
       alert('Por favor, selecione uma página primeiro.');
       return;
     }
@@ -284,13 +331,13 @@ const AdGeneration = () => {
       return;
     }
 
-    if (!isValid(safeGet(formData, 'product_name')) || !isValid(safeGet(formData, 'product_description'))) {
+    if (!formData.product_name || !formData.product_description) {
       alert('Por favor, preencha o nome e descrição do produto/serviço.');
       return;
     }
 
-    const selectedPlatforms = Object.keys(safeGet(formData, 'platforms') || {}).filter(
-      platform => safeGet(formData, `platforms.${platform}`)
+    const selectedPlatforms = Object.keys(formData.platforms).filter(
+      platform => formData.platforms[platform]
     );
 
     if (selectedPlatforms.length === 0) {
@@ -301,15 +348,17 @@ const AdGeneration = () => {
     setGenerating(true);
 
     try {
-      console.log('🤖 Iniciando geração com IA...');
+      console.log('🤖 DEBUG: Iniciando geração com IA...');
       
       const requestData = {
-        product_name: safeGet(formData, 'product_name'),
-        product_description: safeGet(formData, 'product_description'),
-        page_id: safeGet(formData, 'page_id'),
+        product_name: formData.product_name,
+        product_description: formData.product_description,
+        page_id: formData.page_id,
         platforms: selectedPlatforms,
         selected_post: creativeType === 'existing' ? selectedPost : null
       };
+
+      console.log('🤖 DEBUG: Dados da requisição:', requestData);
 
       const apiUrl = process.env.REACT_APP_API_URL || 'https://ads-automation-backend-otpl.onrender.com';
       const response = await fetch(`${apiUrl}/api/facebook/generate-ad-with-ai`, {
@@ -318,116 +367,110 @@ const AdGeneration = () => {
         body: JSON.stringify(requestData)
       });
 
+      console.log('🤖 DEBUG: Status da resposta IA:', response.status);
+
       if (response.ok) {
         const result = await response.json();
-        console.log('🤖 Resultado da IA:', result);
+        console.log('🤖 DEBUG: Resultado da IA:', result);
         
         if (safeGet(result, 'success')) {
-          alert(`✅ Anúncio gerado com sucesso!\n\nCampanha: ${safeGet(result, 'preview.campaign_name')}\nOrçamento: ${safeGet(result, 'preview.daily_budget')}`);
+          const campaignName = safeGet(result, 'preview.campaign_name', 'Nome não disponível');
+          const dailyBudget = safeGet(result, 'preview.daily_budget', 'Orçamento não disponível');
+          
+          alert(`✅ Anúncio gerado com sucesso!\n\nCampanha: ${campaignName}\nOrçamento: ${dailyBudget}`);
         } else {
-          alert(`❌ Erro na geração: ${safeGet(result, 'error')}`);
+          const errorMsg = safeGet(result, 'error', 'Erro desconhecido');
+          alert(`❌ Erro na geração: ${errorMsg}`);
         }
       } else {
-        const errorData = await response.json();
-        alert(`❌ Erro na API: ${safeGet(errorData, 'error') || 'Erro desconhecido'}`);
+        const errorText = await response.text();
+        console.log('🤖 DEBUG: Erro da API:', errorText);
+        
+        if (response.status === 503) {
+          alert('⚠️ Funcionalidade de IA temporariamente indisponível. Tente novamente mais tarde.');
+        } else {
+          alert(`❌ Erro na API: ${response.status} - ${errorText}`);
+        }
       }
     } catch (err) {
-      console.error('💥 Erro na geração:', err);
+      console.error('💥 DEBUG: Erro na geração:', err);
       alert(`💥 Erro na requisição: ${err.message}`);
     } finally {
       setGenerating(false);
     }
-  }, [formData, creativeType, selectedPost, safeGet, isValid]);
+  };
 
-  // Event handlers
-  const handleInputChange = useCallback((e) => {
-    if (!e?.target) return;
-    
+  // ==========================================
+  // FILTROS E HANDLERS (MANTIDOS COMO ORIGINAL)
+  // ==========================================
+
+  const filteredPosts = existingPosts.filter(post => {
+    if (platformFilter === 'all') return true;
+    return safeGet(post, 'platform') === platformFilter;
+  });
+
+  const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
 
     if (name === 'page_id' && creativeType === 'existing') {
-      if (isValid(value)) {
+      console.log('🔄 DEBUG: Página selecionada:', value);
+      if (value) {
         fetchExistingPosts(value);
       } else {
         setExistingPosts([]);
         setSelectedPost(null);
       }
     }
-  }, [creativeType, fetchExistingPosts, isValid]);
+  };
 
-  const handleCreativeTypeChange = useCallback((type) => {
+  const handleCreativeTypeChange = (type) => {
+    console.log('🔄 DEBUG: Mudando para', type === 'new' ? 'criar novo anúncio' : 'usar publicação existente');
     setCreativeType(type);
     setSelectedPost(null);
     
-    if (type === 'existing' && isValid(safeGet(formData, 'page_id'))) {
-      fetchExistingPosts(safeGet(formData, 'page_id'));
+    if (type === 'existing' && formData.page_id) {
+      console.log('🔄 DEBUG: Página já selecionada, buscando publicações...');
+      fetchExistingPosts(formData.page_id);
     } else if (type === 'new') {
       setExistingPosts([]);
     }
-  }, [formData, fetchExistingPosts, safeGet, isValid]);
+  };
 
-  const handlePostSelect = useCallback((post) => {
+  const handlePostSelect = (post) => {
     setSelectedPost(post);
-    console.log('📱 Post selecionado:', safeGet(post, 'id'));
-  }, [safeGet]);
+    console.log('📱 DEBUG: Post selecionado:', safeGet(post, 'id'), '-', safeGet(post, 'message', '').substring(0, 50));
+  };
 
-  const handleReloadPosts = useCallback(() => {
-    const pageId = safeGet(formData, 'page_id');
-    if (isValid(pageId)) {
-      fetchExistingPosts(pageId);
+  const handleReloadPosts = () => {
+    if (formData.page_id) {
+      console.log('🔄 DEBUG: Recarregando publicações manualmente...');
+      fetchExistingPosts(formData.page_id);
     }
-  }, [formData, fetchExistingPosts, safeGet, isValid]);
+  };
 
-  const handlePlatformChange = useCallback((platform, checked) => {
-    setFormData(prev => ({
-      ...prev,
-      platforms: {
-        ...safeGet(prev, 'platforms', {}),
-        [platform]: checked
-      }
-    }));
-  }, [safeGet]);
+  // ==========================================
+  // EFFECTS (MANTIDOS COMO ORIGINAL)
+  // ==========================================
 
-  // Effects
   useEffect(() => {
     fetchPages();
-  }, [fetchPages]);
+  }, []);
 
   useEffect(() => {
-    const pageId = safeGet(formData, 'page_id');
-    if (isValid(pageId) && creativeType === 'existing') {
-      fetchExistingPosts(pageId);
+    if (formData.page_id && creativeType === 'existing') {
+      console.log('🔄 DEBUG: Página mudou para:', formData.page_id, '- Buscando publicações automaticamente...');
+      fetchExistingPosts(formData.page_id);
     }
-  }, [formData, creativeType, fetchExistingPosts, safeGet, isValid]);
+  }, [formData.page_id, creativeType, pages]); // Adicionado 'pages' como dependência
 
-  // Render error state
-  if (error) {
-    return (
-      <div className="max-w-4xl mx-auto p-6 bg-white">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <span className="text-red-500 text-xl mr-2">❌</span>
-            <div>
-              <h3 className="text-red-800 font-medium">Erro no Sistema</h3>
-              <p className="text-red-600 text-sm mt-1">{error}</p>
-              <button 
-                onClick={() => {
-                  setError(null);
-                  fetchPages();
-                }}
-                className="mt-2 px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
-              >
-                Tentar Novamente
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // ==========================================
+  // RENDER (MANTIDO EXATAMENTE COMO ORIGINAL)
+  // ==========================================
 
-  // Main render
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white">
       {/* Informações Básicas */}
@@ -445,7 +488,7 @@ const AdGeneration = () => {
             </label>
             <select
               name="page_id"
-              value={safeGet(formData, 'page_id') || ''}
+              value={formData.page_id}
               onChange={handleInputChange}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               disabled={loadingPages}
@@ -455,7 +498,7 @@ const AdGeneration = () => {
               </option>
               {isValidArray(pages) && pages.map((page) => (
                 <option key={safeGet(page, 'id')} value={safeGet(page, 'id')}>
-                  {safeGet(page, 'name') || 'Página sem nome'}
+                  {safeGet(page, 'name', 'Página sem nome')}
                 </option>
               ))}
             </select>
@@ -473,7 +516,7 @@ const AdGeneration = () => {
             <input
               type="text"
               name="product_name"
-              value={safeGet(formData, 'product_name') || ''}
+              value={formData.product_name}
               onChange={handleInputChange}
               placeholder="Ex: Smartphone Galaxy S24"
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -487,7 +530,7 @@ const AdGeneration = () => {
           </label>
           <textarea
             name="product_description"
-            value={safeGet(formData, 'product_description') || ''}
+            value={formData.product_description}
             onChange={handleInputChange}
             placeholder="Descreva detalhadamente seu produto ou serviço..."
             rows="4"
@@ -503,8 +546,11 @@ const AdGeneration = () => {
             <label className="flex items-center">
               <input
                 type="checkbox"
-                checked={safeGet(formData, 'platforms.facebook') || false}
-                onChange={(e) => handlePlatformChange('facebook', e.target.checked)}
+                checked={formData.platforms.facebook}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  platforms: { ...prev.platforms, facebook: e.target.checked }
+                }))}
                 className="mr-2"
               />
               <span className="text-blue-600">📘</span>
@@ -513,8 +559,11 @@ const AdGeneration = () => {
             <label className="flex items-center">
               <input
                 type="checkbox"
-                checked={safeGet(formData, 'platforms.instagram') || false}
-                onChange={(e) => handlePlatformChange('instagram', e.target.checked)}
+                checked={formData.platforms.instagram}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  platforms: { ...prev.platforms, instagram: e.target.checked }
+                }))}
                 className="mr-2"
               />
               <span className="text-pink-600">📷</span>
@@ -569,7 +618,7 @@ const AdGeneration = () => {
               <h4 className="font-medium text-gray-800">Filtrar por Plataforma</h4>
               <button
                 onClick={handleReloadPosts}
-                disabled={loadingPosts || !isValid(safeGet(formData, 'page_id'))}
+                disabled={loadingPosts || !formData.page_id}
                 className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300"
               >
                 🔄 Recarregar Publicações
@@ -577,23 +626,39 @@ const AdGeneration = () => {
             </div>
 
             <div className="flex gap-2 mb-4">
-              {['all', 'facebook', 'instagram'].map(filter => (
-                <button
-                  key={filter}
-                  onClick={() => setPlatformFilter(filter)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    platformFilter === filter
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                  }`}
-                >
-                  {filter === 'all' ? '🌐 Todas' : 
-                   filter === 'facebook' ? '📘 Facebook' : '📷 Instagram'}
-                </button>
-              ))}
+              <button
+                onClick={() => setPlatformFilter('all')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  platformFilter === 'all'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                }`}
+              >
+                🌐 Todas
+              </button>
+              <button
+                onClick={() => setPlatformFilter('facebook')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  platformFilter === 'facebook'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                }`}
+              >
+                📘 Facebook
+              </button>
+              <button
+                onClick={() => setPlatformFilter('instagram')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  platformFilter === 'instagram'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                }`}
+              >
+                📷 Instagram
+              </button>
             </div>
 
-            {!isValid(safeGet(formData, 'page_id')) ? (
+            {!formData.page_id ? (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <div className="flex items-center">
                   <span className="text-yellow-500 text-xl mr-2">⚠️</span>
@@ -618,72 +683,68 @@ const AdGeneration = () => {
               <div>
                 <p className="text-sm text-gray-600 mb-4">
                   {filteredPosts.length} publicação(ões) encontrada(s)
+                  {existingPosts.some(post => safeGet(post, 'id', '').includes('_post')) && (
+                    <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded">
+                      Dados de Exemplo
+                    </span>
+                  )}
                 </p>
 
                 <div className="space-y-4 max-h-96 overflow-y-auto">
-                  {filteredPosts.map((post, index) => {
-                    const postId = safeGet(post, 'id') || `post_${index}`;
-                    const isSelected = safeGet(selectedPost, 'id') === postId;
-                    
-                    return (
-                      <div
-                        key={postId}
-                        onClick={() => handlePostSelect(post)}
-                        className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                          isSelected
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300 bg-white'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center">
-                            <span className={`text-lg mr-2 ${
-                              safeGet(post, 'platform') === 'facebook' ? 'text-blue-600' : 'text-pink-600'
-                            }`}>
-                              {safeGet(post, 'platform') === 'facebook' ? '📘' : '📷'}
-                            </span>
-                            <span className="font-medium text-gray-800 capitalize">
-                              {safeGet(post, 'platform') || 'unknown'}
-                            </span>
-                            {isSelected && (
-                              <span className="ml-2 text-blue-500">✓</span>
-                            )}
-                          </div>
-                          <span className="text-xs text-gray-500">
-                            {(() => {
-                              try {
-                                const date = safeGet(post, 'created_time');
-                                return date ? new Date(date).toLocaleDateString('pt-BR') : 'Data não disponível';
-                              } catch {
-                                return 'Data inválida';
-                              }
-                            })()}
+                  {filteredPosts.map((post) => (
+                    <div
+                      key={safeGet(post, 'id')}
+                      onClick={() => handlePostSelect(post)}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        safeGet(selectedPost, 'id') === safeGet(post, 'id')
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center">
+                          <span className={`text-lg mr-2 ${
+                            safeGet(post, 'platform') === 'facebook' ? 'text-blue-600' : 'text-pink-600'
+                          }`}>
+                            {safeGet(post, 'platform') === 'facebook' ? '📘' : '📷'}
                           </span>
+                          <span className="font-medium text-gray-800 capitalize">
+                            {safeGet(post, 'platform', 'unknown')}
+                          </span>
+                          {safeGet(selectedPost, 'id') === safeGet(post, 'id') && (
+                            <span className="ml-2 text-blue-500">✓</span>
+                          )}
                         </div>
-
-                        {safeGet(post, 'full_picture') && (
-                          <img
-                            src={safeGet(post, 'full_picture')}
-                            alt="Post"
-                            className="w-full h-32 object-cover rounded mb-2"
-                            onError={(e) => {
-                              if (e?.target) e.target.style.display = 'none';
-                            }}
-                          />
-                        )}
-
-                        <p className="text-gray-700 text-sm mb-2 line-clamp-3">
-                          {safeGet(post, 'message') || 'Publicação sem texto'}
-                        </p>
-
-                        <div className="flex items-center text-xs text-gray-500 space-x-4">
-                          <span>👍 {safeGet(post, 'likes') || 0}</span>
-                          <span>💬 {safeGet(post, 'comments') || 0}</span>
-                          <span>🔄 {safeGet(post, 'shares') || 0}</span>
-                        </div>
+                        <span className="text-xs text-gray-500">
+                          {safeGet(post, 'created_time') ? 
+                            new Date(post.created_time).toLocaleDateString('pt-BR') : 
+                            'Data não disponível'
+                          }
+                        </span>
                       </div>
-                    );
-                  })}
+
+                      {safeGet(post, 'full_picture') && (
+                        <img
+                          src={post.full_picture}
+                          alt="Post"
+                          className="w-full h-32 object-cover rounded mb-2"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      )}
+
+                      <p className="text-gray-700 text-sm mb-2 line-clamp-3">
+                        {safeGet(post, 'message', 'Publicação sem texto')}
+                      </p>
+
+                      <div className="flex items-center text-xs text-gray-500 space-x-4">
+                        <span>👍 {safeGet(post, 'likes', 0)}</span>
+                        <span>💬 {safeGet(post, 'comments', 0)}</span>
+                        <span>🔄 {safeGet(post, 'shares', 0)}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -695,14 +756,14 @@ const AdGeneration = () => {
       <div className="flex justify-end">
         <button
           onClick={handleGenerateWithAI}
+          className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
           disabled={
             generating ||
-            !isValid(safeGet(formData, 'page_id')) || 
+            !formData.page_id || 
             (creativeType === 'existing' && !selectedPost) || 
-            !isValid(safeGet(formData, 'product_name')) || 
-            !isValid(safeGet(formData, 'product_description'))
+            !formData.product_name || 
+            !formData.product_description
           }
-          className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           {generating ? '⏳ Gerando...' : '🤖 Gerar com IA'}
         </button>

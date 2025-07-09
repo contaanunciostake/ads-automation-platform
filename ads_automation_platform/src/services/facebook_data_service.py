@@ -505,17 +505,6 @@ class FacebookDataService:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-# Instanciar o serviço usando variáveis de ambiente
-FACEBOOK_ACCESS_TOKEN = os.getenv("FACEBOOK_ACCESS_TOKEN")
-FACEBOOK_AD_ACCOUNT_ID = os.getenv("FACEBOOK_AD_ACCOUNT_ID")
-
-facebook_data_service = None
-if FACEBOOK_ACCESS_TOKEN and FACEBOOK_AD_ACCOUNT_ID:
-    facebook_data_service = FacebookDataService(FACEBOOK_ACCESS_TOKEN, FACEBOOK_AD_ACCOUNT_ID)
-else:
-    print("ATENÇÃO: FACEBOOK_ACCESS_TOKEN ou FACEBOOK_AD_ACCOUNT_ID não configurados. O serviço de dados do Facebook não estará disponível.")
-
-
     # ===== NOVOS MÉTODOS PARA MELHORIAS =====
     
     def get_paginas_disponiveis(self) -> Dict[str, Any]:
@@ -639,6 +628,192 @@ else:
                 "error": error_msg,
                 "data": [],
                 "total": 0
+            }
+    
+    def get_publicacoes_pagina(self, pagina_id: str, token_pagina: str = None, limit: int = 20) -> Dict[str, Any]:
+        """
+        Buscar publicações de uma página específica usando o fluxo correto da Graph API
+        
+        Endpoint: GET /{page_id}/posts
+        Token: page_access_token (obtido via /me/accounts)
+        
+        Args:
+            pagina_id (str): ID da página do Facebook
+            token_pagina (str): Token de acesso da página (opcional, será buscado se não fornecido)
+            limit (int): Número máximo de publicações a retornar
+        
+        Returns:
+            Dict com lista de publicações da página
+        """
+        try:
+            print(f"🔍 DEBUG: Iniciando busca de publicações para página {pagina_id}")
+            
+            # Se token da página não foi fornecido, buscar via get_paginas_disponiveis
+            if not token_pagina:
+                print("🔍 DEBUG: Token da página não fornecido, buscando via /me/accounts...")
+                
+                pages_response = self.get_paginas_disponiveis()
+                
+                if not pages_response.get('success'):
+                    return {
+                        "success": False,
+                        "error": f"Erro ao buscar páginas: {pages_response.get('error')}",
+                        "data": [],
+                        "total": 0
+                    }
+                
+                # Encontrar a página específica
+                target_page = None
+                for page in pages_response.get('data', []):
+                    if page.get('id') == pagina_id:
+                        target_page = page
+                        break
+                
+                if not target_page:
+                    return {
+                        "success": False,
+                        "error": f"Página {pagina_id} não encontrada nas páginas disponíveis",
+                        "data": [],
+                        "total": 0
+                    }
+                
+                token_pagina = target_page.get('access_token')
+                if not token_pagina:
+                    return {
+                        "success": False,
+                        "error": f"Token de acesso não encontrado para a página {pagina_id}",
+                        "data": [],
+                        "total": 0
+                    }
+                
+                print(f"✅ DEBUG: Token da página obtido com sucesso")
+            
+            # Buscar publicações usando o token da página
+            print(f"📝 DEBUG: Buscando publicações usando token da página...")
+            
+            # URL da Graph API para buscar posts da página
+            url = f"{self.base_url}/{pagina_id}/posts"
+            
+            # Parâmetros da requisição - USAR TOKEN DA PÁGINA
+            params = {
+                'access_token': token_pagina,  # 🎯 SACADA: Token específico da página
+                'fields': 'message,full_picture,created_time,id,permalink_url,story,type',
+                'limit': limit
+            }
+            
+            print(f"🔍 DEBUG: URL: {url}")
+            print(f"🔍 DEBUG: Campos solicitados: {params['fields']}")
+            print(f"🔍 DEBUG: Usando token da página: {token_pagina[:20]}...")
+            
+            # Fazer requisição para a Graph API
+            response = requests.get(url, params=params, timeout=30)
+            
+            print(f"📥 DEBUG: Status da resposta: {response.status_code}")
+            
+            # Verificar se a requisição foi bem-sucedida
+            response.raise_for_status()
+            
+            # Parsear resposta JSON
+            data = response.json()
+            posts = data.get('data', [])
+            
+            print(f"📊 DEBUG: {len(posts)} publicações encontradas")
+            
+            # Estruturar dados para o frontend
+            structured_posts = []
+            
+            for i, post in enumerate(posts, 1):
+                # Estruturar cada post
+                structured_post = {
+                    'id': post.get('id', ''),
+                    'message': post.get('message', post.get('story', '')),  # Usar story se message não existir
+                    'created_time': post.get('created_time', ''),
+                    'full_picture': post.get('full_picture', ''),
+                    'permalink_url': post.get('permalink_url', ''),
+                    'type': post.get('type', ''),
+                    'platform': 'facebook',
+                    'platform_name': 'Facebook',
+                    'icon': '📘'
+                }
+                
+                # Adicionar à lista
+                structured_posts.append(structured_post)
+                
+                # Log do post para debug
+                message_preview = structured_post['message'][:50] if structured_post['message'] else 'Sem texto'
+                created_date = structured_post['created_time'][:10] if structured_post['created_time'] else 'Data desconhecida'
+                
+                print(f"  📝 Post {i}: {message_preview}...")
+                print(f"     📅 Data: {created_date}")
+                print(f"     🔗 Link: {structured_post['permalink_url']}")
+                if structured_post['full_picture']:
+                    print(f"     🖼️ Imagem: Sim")
+            
+            # Retornar resposta estruturada
+            return {
+                'success': True,
+                'data': structured_posts,
+                'total': len(structured_posts),
+                'page_id': pagina_id,
+                'message': f'Encontradas {len(structured_posts)} publicações'
+            }
+            
+        except requests.exceptions.HTTPError as e:
+            # Erro HTTP (4xx, 5xx)
+            error_msg = f'Erro HTTP na Graph API: {e.response.status_code}'
+            print(f"❌ DEBUG: {error_msg}")
+            
+            try:
+                error_data = e.response.json()
+                if 'error' in error_data:
+                    error_msg += f" - {error_data['error'].get('message', 'Erro desconhecido')}"
+                    print(f"❌ DEBUG: Detalhes do erro: {error_data['error']}")
+            except:
+                pass
+                
+            return {
+                'success': False,
+                'error': error_msg,
+                'data': [],
+                'total': 0
+            }
+            
+        except requests.exceptions.Timeout:
+            # Timeout
+            error_msg = 'Timeout na requisição à Graph API'
+            print(f"⏰ DEBUG: {error_msg}")
+            
+            return {
+                'success': False,
+                'error': error_msg,
+                'data': [],
+                'total': 0
+            }
+            
+        except requests.exceptions.RequestException as e:
+            # Outros erros de requisição
+            error_msg = f'Erro de conexão com a Graph API: {str(e)}'
+            print(f"🌐 DEBUG: {error_msg}")
+            
+            return {
+                'success': False,
+                'error': error_msg,
+                'data': [],
+                'total': 0
+            }
+            
+        except Exception as e:
+            # Erro geral
+            error_msg = f'Erro interno ao buscar publicações: {str(e)}'
+            print(f"💥 DEBUG: {error_msg}")
+            import traceback
+            print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
+            
+            return {
+                'success': False,
+                'error': error_msg,
+                'data': [],
+                'total': 0
             }
     
     def get_business_managers(self) -> Dict[str, Any]:
@@ -952,7 +1127,6 @@ else:
                 "error": str(e)
             }
 
-
     def get_page_posts(self, page_id: str, limit: int = 20) -> Dict[str, Any]:
         """
         Buscar publicações de uma página do Facebook
@@ -1017,14 +1191,14 @@ else:
             }
             
         except requests.exceptions.RequestException as e:
-            logger.error(f"Erro ao buscar posts da página {page_id}: {e}")
+            print(f"Erro ao buscar posts da página {page_id}: {e}")
             return {
                 'success': False,
                 'error': f'Erro na API do Facebook: {str(e)}',
                 'posts': []
             }
         except Exception as e:
-            logger.error(f"Erro inesperado ao buscar posts: {e}")
+            print(f"Erro inesperado ao buscar posts: {e}")
             return {
                 'success': False,
                 'error': f'Erro interno: {str(e)}',
@@ -1115,14 +1289,14 @@ else:
             }
             
         except requests.exceptions.RequestException as e:
-            logger.error(f"Erro ao buscar posts do Instagram para página {page_id}: {e}")
+            print(f"Erro ao buscar posts do Instagram para página {page_id}: {e}")
             return {
                 'success': False,
                 'error': f'Erro na API do Facebook/Instagram: {str(e)}',
                 'posts': []
             }
         except Exception as e:
-            logger.error(f"Erro inesperado ao buscar posts do Instagram: {e}")
+            print(f"Erro inesperado ao buscar posts do Instagram: {e}")
             return {
                 'success': False,
                 'error': f'Erro interno: {str(e)}',
@@ -1219,375 +1393,26 @@ else:
             }
             
         except requests.exceptions.RequestException as e:
-            logger.error(f"Erro ao criar anúncio a partir do post {post_id}: {e}")
+            print(f"Erro ao criar anúncio a partir do post {post_id}: {e}")
             return {
                 'success': False,
                 'error': f'Erro na API do Facebook: {str(e)}'
             }
         except Exception as e:
-            logger.error(f"Erro inesperado ao criar anúncio: {e}")
+            print(f"Erro inesperado ao criar anúncio: {e}")
             return {
                 'success': False,
                 'error': f'Erro interno: {str(e)}'
             }
 
 
-    def get_publicacoes_pagina(self, pagina_id: str, token_pagina: str = None, limit: int = 20) -> Dict[str, Any]:
-        """
-        Buscar publicações de uma página específica usando o fluxo correto da Graph API
-        
-        Endpoint: GET /{page_id}/posts
-        Token: page_access_token (obtido via /me/accounts)
-        
-        Args:
-            pagina_id (str): ID da página do Facebook
-            token_pagina (str): Token de acesso da página (opcional, será buscado se não fornecido)
-            limit (int): Número máximo de publicações a retornar
-        
-        Returns:
-            Dict com lista de publicações da página
-        """
-        try:
-            print(f"🔍 DEBUG: Iniciando busca de publicações para página {pagina_id}")
-            
-            # Se token da página não foi fornecido, buscar via get_paginas_disponiveis
-            if not token_pagina:
-                print("🔍 DEBUG: Token da página não fornecido, buscando via /me/accounts...")
-                
-                pages_response = self.get_paginas_disponiveis()
-                
-                if not pages_response.get('success'):
-                    return {
-                        "success": False,
-                        "error": f"Erro ao buscar páginas: {pages_response.get('error')}",
-                        "data": [],
-                        "total": 0
-                    }
-                
-                # Encontrar a página específica
-                target_page = None
-                for page in pages_response.get('data', []):
-                    if page.get('id') == pagina_id:
-                        target_page = page
-                        break
-                
-                if not target_page:
-                    return {
-                        "success": False,
-                        "error": f"Página {pagina_id} não encontrada nas páginas disponíveis",
-                        "data": [],
-                        "total": 0
-                    }
-                
-                token_pagina = target_page.get('access_token')
-                if not token_pagina:
-                    return {
-                        "success": False,
-                        "error": f"Token de acesso não encontrado para a página {pagina_id}",
-                        "data": [],
-                        "total": 0
-                    }
-                
-                print(f"✅ DEBUG: Token da página obtido com sucesso")
-            
-            # Buscar publicações usando o token da página
-            print(f"📝 DEBUG: Buscando publicações usando token da página...")
-            
-            # URL da Graph API para buscar posts da página
-            url = f"{self.base_url}/{pagina_id}/posts"
-            
-            # Parâmetros da requisição - USAR TOKEN DA PÁGINA
-            params = {
-                'access_token': token_pagina,  # 🎯 SACADA: Token específico da página
-                'fields': 'message,full_picture,created_time,id,permalink_url,story,type',
-                'limit': limit
-            }
-            
-            print(f"🔍 DEBUG: URL: {url}")
-            print(f"🔍 DEBUG: Campos solicitados: {params['fields']}")
-            print(f"🔍 DEBUG: Usando token da página: {token_pagina[:20]}...")
-            
-            # Fazer requisição para a Graph API
-            response = requests.get(url, params=params, timeout=30)
-            
-            print(f"📥 DEBUG: Status da resposta: {response.status_code}")
-            
-            # Verificar se a requisição foi bem-sucedida
-            response.raise_for_status()
-            
-            # Parsear resposta JSON
-            data = response.json()
-            posts = data.get('data', [])
-            
-            print(f"📊 DEBUG: {len(posts)} publicações encontradas")
-            
-            # Estruturar dados para o frontend
-            structured_posts = []
-            
-            for i, post in enumerate(posts, 1):
-                # Estruturar cada post
-                structured_post = {
-                    'id': post.get('id', ''),
-                    'message': post.get('message', post.get('story', '')),  # Usar story se message não existir
-                    'created_time': post.get('created_time', ''),
-                    'full_picture': post.get('full_picture', ''),
-                    'permalink_url': post.get('permalink_url', ''),
-                    'type': post.get('type', ''),
-                    'platform': 'facebook',
-                    'platform_name': 'Facebook',
-                    'icon': '📘'
-                }
-                
-                # Adicionar à lista
-                structured_posts.append(structured_post)
-                
-                # Log do post para debug
-                message_preview = structured_post['message'][:50] if structured_post['message'] else 'Sem texto'
-                created_date = structured_post['created_time'][:10] if structured_post['created_time'] else 'Data desconhecida'
-                
-                print(f"  📝 Post {i}: {message_preview}...")
-                print(f"     📅 Data: {created_date}")
-                print(f"     🔗 Link: {structured_post['permalink_url']}")
-                if structured_post['full_picture']:
-                    print(f"     🖼️ Imagem: Sim")
-            
-            # Retornar resposta estruturada
-            return {
-                'success': True,
-                'data': structured_posts,
-                'total': len(structured_posts),
-                'page_id': pagina_id,
-                'message': f'Encontradas {len(structured_posts)} publicações'
-            }
-            
-        except requests.exceptions.HTTPError as e:
-            # Erro HTTP (4xx, 5xx)
-            error_msg = f'Erro HTTP na Graph API: {e.response.status_code}'
-            print(f"❌ DEBUG: {error_msg}")
-            
-            try:
-                error_data = e.response.json()
-                if 'error' in error_data:
-                    error_msg += f" - {error_data['error'].get('message', 'Erro desconhecido')}"
-                    print(f"❌ DEBUG: Detalhes do erro: {error_data['error']}")
-            except:
-                pass
-                
-            return {
-                'success': False,
-                'error': error_msg,
-                'data': [],
-                'total': 0
-            }
-            
-        except requests.exceptions.Timeout:
-            # Timeout
-            error_msg = 'Timeout na requisição à Graph API'
-            print(f"⏰ DEBUG: {error_msg}")
-            
-            return {
-                'success': False,
-                'error': error_msg,
-                'data': [],
-                'total': 0
-            }
-            
-        except requests.exceptions.RequestException as e:
-            # Outros erros de requisição
-            error_msg = f'Erro de conexão com a Graph API: {str(e)}'
-            print(f"🌐 DEBUG: {error_msg}")
-            
-            return {
-                'success': False,
-                'error': error_msg,
-                'data': [],
-                'total': 0
-            }
-            
-        except Exception as e:
-            # Erro geral
-            error_msg = f'Erro interno ao buscar publicações: {str(e)}'
-            print(f"💥 DEBUG: {error_msg}")
-            import traceback
-            print(f"💥 DEBUG: Traceback: {traceback.format_exc()}")
-            
-            return {
-                'success': False,
-                'error': error_msg,
-                'data': [],
-                'total': 0
-            }
-        """
-        Buscar publicações de uma página do Facebook usando o fluxo correto da Graph API
-        
-        FLUXO CORRETO:
-        1. Se page_access_token não fornecido, busca via /me/accounts para obter token da página
-        2. Usa o page_access_token específico para buscar publicações
-        
-        Args:
-            page_id (str): ID da página do Facebook
-            page_access_token (str): Token de acesso da página (opcional)
-            limit (int): Número máximo de publicações a retornar (padrão: 20)
-        
-        Returns:
-            Dict[str, Any]: Resposta estruturada com as publicações
-        """
-        try:
-            print(f"🔍 DEBUG: Iniciando busca de posts para página {page_id}")
-            
-            # PASSO 1: Obter token da página se não fornecido
-            if not page_access_token:
-                print("🔍 DEBUG: Token da página não fornecido, buscando via /me/accounts...")
-                
-                # Buscar páginas do usuário para obter access_token da página
-                pages_response = self.get_pages()
-                
-                if not pages_response.get('success'):
-                    return {
-                        "success": False,
-                        "error": f"Erro ao buscar páginas: {pages_response.get('error')}"
-                    }
-                
-                # Encontrar a página específica
-                target_page = None
-                for page in pages_response.get('pages', []):
-                    if page.get('id') == page_id:
-                        target_page = page
-                        break
-                
-                if not target_page:
-                    return {
-                        "success": False,
-                        "error": f"Página {page_id} não encontrada nas páginas do usuário"
-                    }
-                
-                page_access_token = target_page.get('access_token')
-                if not page_access_token:
-                    return {
-                        "success": False,
-                        "error": f"Token de acesso não encontrado para a página {page_id}"
-                    }
-                
-                print(f"✅ DEBUG: Token da página obtido com sucesso")
-            
-            # PASSO 2: Buscar publicações usando o token da página
-            print(f"📘 DEBUG: Buscando posts usando token da página...")
-            
-            # URL da Graph API v23.0 para buscar posts da página
-            url = f"https://graph.facebook.com/v23.0/{page_id}/posts"
-            
-            # Parâmetros da requisição - USAR TOKEN DA PÁGINA
-            params = {
-                'access_token': page_access_token,  # 🎯 SACADA: Token específico da página
-                'fields': 'message,created_time,full_picture,permalink_url,id,story,type',
-                'limit': limit
-            }
-            
-            # Log da requisição para debug
-            print(f"🔍 DEBUG: URL: {url}")
-            print(f"🔍 DEBUG: Campos solicitados: {params['fields']}")
-            print(f"🔍 DEBUG: Usando token da página: {page_access_token[:20]}...")
-            
-            # Fazer requisição para a Graph API
-            response = requests.get(url, params=params, timeout=30)
-            
-            # Log da resposta
-            print(f"📥 DEBUG: Status da resposta: {response.status_code}")
-            
-            # Verificar se a requisição foi bem-sucedida
-            response.raise_for_status()
-            
-            # Parsear resposta JSON
-            data = response.json()
-            
-            # Extrair posts da resposta
-            posts = data.get('data', [])
-            
-            print(f"📊 DEBUG: {len(posts)} posts encontrados")
-            
-            # Estruturar dados para o frontend
-            structured_posts = []
-            
-            for post in posts:
-                # Estruturar cada post
-                structured_post = {
-                    'id': post.get('id', ''),
-                    'message': post.get('message', ''),
-                    'created_time': post.get('created_time', ''),
-                    'full_picture': post.get('full_picture', ''),
-                    'permalink_url': post.get('permalink_url', ''),
-                    'platform': 'facebook',
-                    'platform_name': 'Facebook',
-                    'icon': '📘'
-                }
-                
-                # Adicionar à lista
-                structured_posts.append(structured_post)
-                
-                # Log do post para debug
-                print(f"  📘 Post {structured_post['id']}: {structured_post['message'][:50] if structured_post['message'] else 'Sem texto'}...")
-            
-            # Retornar resposta estruturada
-            return {
-                'success': True,
-                'posts': structured_posts,
-                'total': len(structured_posts),
-                'page_id': page_id,
-                'message': f'Encontradas {len(structured_posts)} publicações'
-            }
-            
-        except requests.exceptions.HTTPError as e:
-            # Erro HTTP (4xx, 5xx)
-            error_msg = f'Erro HTTP na Graph API: {e.response.status_code}'
-            print(f"❌ DEBUG: {error_msg}")
-            
-            try:
-                error_data = e.response.json()
-                if 'error' in error_data:
-                    error_msg += f" - {error_data['error'].get('message', 'Erro desconhecido')}"
-            except:
-                pass
-                
-            return {
-                'success': False,
-                'error': error_msg,
-                'posts': [],
-                'total': 0
-            }
-            
-        except requests.exceptions.Timeout:
-            # Timeout da requisição
-            error_msg = 'Timeout na requisição para Graph API'
-            print(f"⏰ DEBUG: {error_msg}")
-            
-            return {
-                'success': False,
-                'error': error_msg,
-                'posts': [],
-                'total': 0
-            }
-            
-        except requests.exceptions.RequestException as e:
-            # Outros erros de requisição
-            error_msg = f'Erro de conexão com Graph API: {str(e)}'
-            print(f"🌐 DEBUG: {error_msg}")
-            
-            return {
-                'success': False,
-                'error': error_msg,
-                'posts': [],
-                'total': 0
-            }
-            
-        except Exception as e:
-            # Erro geral
-            error_msg = f'Erro interno ao buscar posts: {str(e)}'
-            print(f"💥 DEBUG: {error_msg}")
-            
-            return {
-                'success': False,
-                'error': error_msg,
-                'posts': [],
-                'total': 0
-            }
+# Instanciar o serviço usando variáveis de ambiente
+FACEBOOK_ACCESS_TOKEN = os.getenv("FACEBOOK_ACCESS_TOKEN")
+FACEBOOK_AD_ACCOUNT_ID = os.getenv("FACEBOOK_AD_ACCOUNT_ID")
+
+facebook_data_service = None
+if FACEBOOK_ACCESS_TOKEN and FACEBOOK_AD_ACCOUNT_ID:
+    facebook_data_service = FacebookDataService(FACEBOOK_ACCESS_TOKEN, FACEBOOK_AD_ACCOUNT_ID)
+else:
+    print("ATENÇÃO: FACEBOOK_ACCESS_TOKEN ou FACEBOOK_AD_ACCOUNT_ID não configurados. O serviço de dados do Facebook não estará disponível.")
 

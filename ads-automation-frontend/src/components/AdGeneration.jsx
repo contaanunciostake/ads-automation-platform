@@ -1,133 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-// Componente AdEditor simples
-const AdEditor = ({ adData, onSave, onCancel }) => {
-  const [editedAd, setEditedAd] = useState(adData);
-
-  const handleSave = () => {
-    onSave(editedAd);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">✏️ Editar Anúncio</h2>
-          <button
-            onClick={onCancel}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="space-y-6">
-          {/* Informações da Campanha */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-semibold mb-3">📊 Informações da Campanha</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Nome da Campanha</label>
-                <input
-                  type="text"
-                  value={editedAd?.campaign?.name || ''}
-                  onChange={(e) => setEditedAd(prev => ({
-                    ...prev,
-                    campaign: { ...prev.campaign, name: e.target.value }
-                  }))}
-                  className="w-full p-2 border rounded"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Orçamento Diário (R$)</label>
-                <input
-                  type="number"
-                  value={editedAd?.adset?.daily_budget || ''}
-                  onChange={(e) => setEditedAd(prev => ({
-                    ...prev,
-                    adset: { ...prev.adset, daily_budget: parseFloat(e.target.value) }
-                  }))}
-                  className="w-full p-2 border rounded"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Criativo */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-semibold mb-3">🎨 Criativo</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Título Principal</label>
-                <input
-                  type="text"
-                  value={editedAd?.creative?.object_story_spec?.link_data?.name || ''}
-                  onChange={(e) => setEditedAd(prev => ({
-                    ...prev,
-                    creative: {
-                      ...prev.creative,
-                      object_story_spec: {
-                        ...prev.creative?.object_story_spec,
-                        link_data: {
-                          ...prev.creative?.object_story_spec?.link_data,
-                          name: e.target.value
-                        }
-                      }
-                    }
-                  }))}
-                  className="w-full p-2 border rounded"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Texto Principal</label>
-                <textarea
-                  value={editedAd?.creative?.object_story_spec?.link_data?.message || ''}
-                  onChange={(e) => setEditedAd(prev => ({
-                    ...prev,
-                    creative: {
-                      ...prev.creative,
-                      object_story_spec: {
-                        ...prev.creative?.object_story_spec,
-                        link_data: {
-                          ...prev.creative?.object_story_spec?.link_data,
-                          message: e.target.value
-                        }
-                      }
-                    }
-                  }))}
-                  rows="3"
-                  className="w-full p-2 border rounded"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Botões de Ação */}
-          <div className="flex gap-3 justify-end">
-            <button
-              onClick={onCancel}
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={() => onSave(editedAd, 'draft')}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              💾 Salvar Rascunho
-            </button>
-            <button
-              onClick={() => onSave(editedAd, 'publish')}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-            >
-              🚀 Publicar Anúncio
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+import AdEditor from './AdEditor';
 
 const AdGeneration = () => {
   // Estados principais
@@ -135,50 +7,48 @@ const AdGeneration = () => {
     page_id: '',
     product_name: '',
     product_description: '',
-    budget: '',
-    start_date: '',
-    end_date: '',
-    min_age: 18,
-    max_age: 65,
-    gender: 'all',
     platforms: {
       facebook: true,
       instagram: false
     }
   });
 
+  // Estados para dados externos
   const [pages, setPages] = useState([]);
-  const [loadingPages, setLoadingPages] = useState(false);
-  const [creativeType, setCreativeType] = useState('new');
   const [existingPosts, setExistingPosts] = useState([]);
-  const [loadingPosts, setLoadingPosts] = useState(false);
-  const [selectedPost, setSelectedPost] = useState(null);
-  const [platformFilter, setPlatformFilter] = useState('all');
   
-  // Estados para IA
+  // Estados de controle
+  const [loadingPages, setLoadingPages] = useState(false);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [generatingAd, setGeneratingAd] = useState(false);
+  
+  // Estados de UI
+  const [creativeType, setCreativeType] = useState('existing');
+  const [platformFilter, setPlatformFilter] = useState('all');
+  const [selectedPost, setSelectedPost] = useState(null);
+  
+  // Estados para IA e Editor
   const [aiResult, setAiResult] = useState(null);
-  const [loadingAI, setLoadingAI] = useState(false);
+  const [showAiPreview, setShowAiPreview] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
 
-  // useEffect para buscar páginas na inicialização
-  useEffect(() => {
-    fetchPages();
-  }, []);
-
-  // useEffect para buscar publicações quando página muda
-  useEffect(() => {
-    if (formData.page_id && creativeType === 'existing') {
-      console.log('🔄 DEBUG: Página mudou para:', formData.page_id, '- Buscando publicações automaticamente...');
-      fetchExistingPosts(formData.page_id);
+  // Função para acesso seguro a propriedades
+  const safeGet = (obj, path, defaultValue = '') => {
+    try {
+      return path.split('.').reduce((current, key) => {
+        return current && current[key] !== undefined ? current[key] : defaultValue;
+      }, obj);
+    } catch {
+      return defaultValue;
     }
-  }, [formData.page_id, creativeType]);
+  };
 
   // Buscar páginas disponíveis
   const fetchPages = async () => {
     setLoadingPages(true);
     try {
       console.log('🔄 DEBUG: Buscando páginas...');
-      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/pages');
+      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/pages' );
       const result = await response.json();
       
       console.log('📄 DEBUG: Resultado das páginas:', result);
@@ -200,6 +70,11 @@ const AdGeneration = () => {
 
   // Buscar publicações existentes
   const fetchExistingPosts = async (pageId) => {
+    if (!pageId) {
+      setExistingPosts([]);
+      return;
+    }
+
     setLoadingPosts(true);
     try {
       console.log(`🔄 DEBUG: Buscando publicações da página ${pageId}...`);
@@ -234,23 +109,47 @@ const AdGeneration = () => {
   };
 
   // Gerar anúncio com IA
-  const handleGenerateWithAI = async () => {
-    setLoadingAI(true);
+  const generateAdWithAI = async () => {
+    // Validações
+    if (!formData.page_id) {
+      alert('Por favor, selecione uma página');
+      return;
+    }
+
+    if (!formData.product_name || !formData.product_description) {
+      alert('Por favor, preencha o nome e descrição do produto');
+      return;
+    }
+
+    if (creativeType === 'existing' && !selectedPost) {
+      alert('Por favor, selecione uma publicação existente');
+      return;
+    }
+
+    setGeneratingAd(true);
+    setAiResult(null);
+    setShowAiPreview(false);
+
     try {
-      console.log('🤖 DEBUG: Gerando anúncio com IA...');
+      console.log('🤖 DEBUG: Iniciando geração com IA...');
       
+      // Preparar dados para envio
+      const requestData = {
+        product_name: formData.product_name,
+        product_description: formData.product_description,
+        page_id: formData.page_id,
+        platforms: Object.keys(formData.platforms).filter(platform => formData.platforms[platform]),
+        selected_post: creativeType === 'existing' ? selectedPost : null
+      };
+
+      console.log('🤖 DEBUG: Dados enviados:', requestData);
+
       const response = await fetch("https://ads-automation-backend-otpl.onrender.com/api/facebook/generate-ad-with-ai", {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          product_name: formData.product_name,
-          product_description: formData.product_description,
-          page_id: formData.page_id,
-          platforms: Object.keys(formData.platforms).filter(p => formData.platforms[p]),
-          selected_post: creativeType === 'existing' ? selectedPost : null
-        })
+        body: JSON.stringify(requestData)
       });
 
       const result = await response.json();
@@ -258,153 +157,203 @@ const AdGeneration = () => {
 
       if (result.success) {
         setAiResult(result);
+        setShowAiPreview(true);
         console.log('✅ DEBUG: Anúncio gerado com sucesso pela IA');
       } else {
         console.error('❌ DEBUG: Erro na geração com IA:', result.error);
-        alert('❌ Erro ao gerar anúncio: ' + result.error);
+        alert(`Erro ao gerar anúncio com IA: ${result.error}`);
       }
+
     } catch (error) {
       console.error('💥 DEBUG: Erro na requisição de IA:', error);
-      alert('❌ Erro ao gerar anúncio: ' + error.message);
+      alert(`Erro na comunicação com a IA: ${error.message}`);
     } finally {
-      setLoadingAI(false);
+      setGeneratingAd(false);
     }
+  };
+
+  // Abrir editor para edição detalhada
+  const openEditor = () => {
+    setShowEditor(true);
   };
 
   // Salvar rascunho
-  const handleSaveDraft = async (editedAd) => {
-    try {
-      console.log('💾 DEBUG: Salvando rascunho:', editedAd);
-      
-      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/save-ad-draft', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ai_structure: editedAd,
-          page_id: formData.page_id,
-          selected_post: creativeType === 'existing' ? selectedPost : null
-        })
-      });
+const handleSaveDraft = async (editedAd) => {
+  try {
+    console.log('💾 DEBUG: Salvando rascunho:', editedAd);
+    
+    const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/save-ad-draft', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ai_structure: editedAd,
+        page_id: formData.page_id,
+        selected_post: creativeType === 'existing' ? selectedPost : null
+      } )
+    });
 
-      const result = await response.json();
-      
-      if (result.success) {
-        alert('✅ Rascunho salvo com sucesso!');
-        setShowEditor(false);
-      } else {
-        alert('❌ Erro ao salvar rascunho: ' + result.error);
-      }
-    } catch (error) {
-      console.error('💥 DEBUG: Erro ao salvar rascunho:', error);
-      alert('❌ Erro ao salvar rascunho: ' + error.message);
-    }
-  };
-
-  // Publicar anúncio
-  const handlePublishAd = async (editedAd) => {
-    try {
-      console.log('🚀 DEBUG: Publicando anúncio:', editedAd);
-      
-      const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/publish-ad', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ai_structure: editedAd,
-          page_id: formData.page_id,
-          selected_post: creativeType === 'existing' ? selectedPost : null
-        })
-      });
-
-      const result = await response.json();
-      
-      if (result.success) {
-        alert('🎉 Anúncio publicado com sucesso no Facebook!');
-        setShowEditor(false);
-        setAiResult(null); // Limpar resultado da IA
-      } else {
-        alert('❌ Erro ao publicar: ' + result.error);
-      }
-    } catch (error) {
-      console.error('💥 DEBUG: Erro ao publicar:', error);
-      alert('❌ Erro ao publicar: ' + error.message);
-    }
-  };
-
-  // Função unificada para salvar (compatibilidade)
-  const handleSaveAd = async (editedAd, action = 'draft') => {
-    if (action === 'publish') {
-      await handlePublishAd(editedAd);
+    const result = await response.json();
+    
+    if (result.success) {
+      alert('✅ Rascunho salvo com sucesso!');
     } else {
-      await handleSaveDraft(editedAd);
+      alert('❌ Erro ao salvar rascunho: ' + result.error);
     }
+  } catch (error) {
+    console.error('💥 DEBUG: Erro ao salvar rascunho:', error);
+    alert('❌ Erro ao salvar rascunho: ' + error.message);
+  }
+};
+
+// Publicar anúncio
+const handlePublishAd = async (editedAd) => {
+  try {
+    console.log('🚀 DEBUG: Publicando anúncio:', editedAd);
+    
+    const response = await fetch('https://ads-automation-backend-otpl.onrender.com/api/facebook/publish-ad', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ai_structure: editedAd,
+        page_id: formData.page_id,
+        selected_post: creativeType === 'existing' ? selectedPost : null
+      } )
+    });
+
+    const result = await response.json();
+    
+    if (result.success) {
+      alert('🎉 Anúncio publicado com sucesso no Facebook!');
+    } else {
+      alert('❌ Erro ao publicar: ' + result.error);
+    }
+  } catch (error) {
+    console.error('💥 DEBUG: Erro ao publicar:', error);
+    alert('❌ Erro ao publicar: ' + error.message);
+  }
+};
+
+  // Cancelar edição
+  const handleCancelEdit = () => {
+    setShowEditor(false);
   };
 
-  // Outras funções auxiliares
+  // Filtrar publicações por plataforma
+  const filteredPosts = existingPosts.filter(post => {
+    if (platformFilter === 'all') return true;
+    return safeGet(post, 'platform') === platformFilter;
+  });
+
+  // useEffect para buscar páginas na inicialização
+  useEffect(() => {
+    fetchPages();
+  }, []);
+
+  // useEffect para buscar publicações quando página muda
+  useEffect(() => {
+    if (formData.page_id && creativeType === 'existing') {
+      console.log('🔄 DEBUG: Página mudou para:', formData.page_id, '- Buscando publicações automaticamente...');
+      fetchExistingPosts(formData.page_id);
+    }
+  }, [formData.page_id, creativeType]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+
+    // Se mudou a página, buscar publicações automaticamente
+    if (name === 'page_id' && creativeType === 'existing') {
+      console.log('🔄 DEBUG: Página selecionada:', value);
+      if (value) {
+        fetchExistingPosts(value);
+      } else {
+        setExistingPosts([]);
+        setSelectedPost(null);
+      }
+    }
   };
 
   const handleCreativeTypeChange = (type) => {
+    console.log('🔄 DEBUG: Mudando para', type === 'new' ? 'criar novo anúncio' : 'usar publicação existente');
     setCreativeType(type);
     setSelectedPost(null);
-    setExistingPosts([]);
+    setAiResult(null);
+    setShowAiPreview(false);
+    setShowEditor(false);
+    
+    if (type === 'existing' && formData.page_id) {
+      console.log('🔄 DEBUG: Página já selecionada, buscando publicações...');
+      fetchExistingPosts(formData.page_id);
+    } else if (type === 'new') {
+      setExistingPosts([]);
+    }
   };
 
   const handlePostSelect = (post) => {
     setSelectedPost(post);
+    console.log('📱 DEBUG: Post selecionado:', safeGet(post, 'id'), '-', safeGet(post, 'message', '').substring(0, 50));
   };
 
-  // Filtrar publicações por plataforma
-  const filteredPosts = existingPosts.filter(post => {
-    if (platformFilter === 'all') return true;
-    return post.platform === platformFilter;
-  });
+  const handleReloadPosts = () => {
+    if (formData.page_id) {
+      console.log('🔄 DEBUG: Recarregando publicações manualmente...');
+      fetchExistingPosts(formData.page_id);
+    }
+  };
+
+  // Se o editor estiver aberto, mostrar apenas o editor
+  if (showEditor) {
+    return (
+      <AdEditor
+        aiResult={aiResult}
+        onSave={handleSaveAd}
+        onCancel={handleCancelEdit}
+      />
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">🤖 Geração de Anúncios com IA</h1>
-        <p className="text-gray-600">Configure os parâmetros e deixe a IA criar anúncios otimizados automaticamente</p>
-      </div>
-
-      {/* Configuração Básica */}
-      <div className="bg-blue-50 p-6 rounded-lg mb-6">
+      {/* Informações Básicas */}
+      <div className="bg-gray-50 p-6 rounded-lg mb-6">
         <div className="flex items-center mb-4">
-          <span className="text-blue-500 text-xl mr-2">⚙️</span>
-          <h3 className="text-lg font-semibold text-gray-800">Configuração Básica</h3>
+          <span className="text-blue-500 text-xl mr-2">ℹ️</span>
+          <h3 className="text-lg font-semibold text-gray-800">Informações Básicas</h3>
         </div>
+        <p className="text-gray-600 mb-4">Configure as informações principais da campanha</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Página do Facebook
+              Página da Business Manager
             </label>
-            {loadingPages ? (
-              <div className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50">
-                <span className="text-gray-500">🔄 Carregando páginas...</span>
-              </div>
-            ) : (
-              <select
-                name="page_id"
-                value={formData.page_id}
-                onChange={handleInputChange}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Selecione uma página</option>
-                {pages.map((page) => (
-                  <option key={page.id} value={page.id}>
-                    {page.name} ({page.category})
-                  </option>
-                ))}
-              </select>
+            <select
+              name="page_id"
+              value={formData.page_id}
+              onChange={handleInputChange}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={loadingPages}
+            >
+              <option value="">
+                {loadingPages ? 'Carregando páginas...' : 'Selecione uma página'}
+              </option>
+              {pages.map((page) => (
+                <option key={safeGet(page, 'id')} value={safeGet(page, 'id')}>
+                  {safeGet(page, 'name')}
+                </option>
+              ))}
+            </select>
+            {pages.length > 0 && (
+              <p className="text-xs text-gray-500 mt-1">
+                {pages.length} página(s) encontrada(s) na Business Manager
+              </p>
             )}
           </div>
 
@@ -515,15 +464,46 @@ const AdGeneration = () => {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-medium text-gray-800">Filtrar por Plataforma</h4>
-              <select
-                value={platformFilter}
-                onChange={(e) => setPlatformFilter(e.target.value)}
-                className="px-3 py-1 border border-gray-300 rounded text-sm"
+              <button
+                onClick={handleReloadPosts}
+                disabled={loadingPosts || !formData.page_id}
+                className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300"
               >
-                <option value="all">Todas</option>
-                <option value="facebook">Facebook</option>
-                <option value="instagram">Instagram</option>
-              </select>
+                🔄 Recarregar Publicações
+              </button>
+            </div>
+
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setPlatformFilter('all')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  platformFilter === 'all'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                }`}
+              >
+                🌐 Todas
+              </button>
+              <button
+                onClick={() => setPlatformFilter('facebook')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  platformFilter === 'facebook'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                }`}
+              >
+                📘 Facebook
+              </button>
+              <button
+                onClick={() => setPlatformFilter('instagram')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  platformFilter === 'instagram'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                }`}
+              >
+                📷 Instagram
+              </button>
             </div>
 
             {!formData.page_id ? (
@@ -551,14 +531,20 @@ const AdGeneration = () => {
               <div>
                 <p className="text-sm text-gray-600 mb-4">
                   {filteredPosts.length} publicação(ões) encontrada(s)
+                  {existingPosts.some(post => safeGet(post, 'id', '').includes('_post')) && (
+                    <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded">
+                      Dados de Exemplo
+                    </span>
+                  )}
                 </p>
+
                 <div className="space-y-4 max-h-96 overflow-y-auto">
                   {filteredPosts.map((post) => (
                     <div
-                      key={post.id}
+                      key={safeGet(post, 'id')}
                       onClick={() => handlePostSelect(post)}
                       className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                        selectedPost?.id === post.id
+                        safeGet(selectedPost, 'id') === safeGet(post, 'id')
                           ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-200 hover:border-gray-300 bg-white'
                       }`}
@@ -566,35 +552,38 @@ const AdGeneration = () => {
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center">
                           <span className={`text-lg mr-2 ${
-                            post.platform === 'facebook' ? 'text-blue-600' : 'text-pink-600'
+                            safeGet(post, 'platform') === 'facebook' ? 'text-blue-600' : 'text-pink-600'
                           }`}>
-                            {post.platform === 'facebook' ? '📘' : '📷'}
+                            {safeGet(post, 'platform') === 'facebook' ? '📘' : '📷'}
                           </span>
                           <span className="font-medium text-gray-800 capitalize">
-                            {post.platform}
+                            {safeGet(post, 'platform')}
                           </span>
-                          {selectedPost?.id === post.id && (
+                          {safeGet(selectedPost, 'id') === safeGet(post, 'id') && (
                             <span className="ml-2 text-blue-500">✓</span>
                           )}
                         </div>
                         <span className="text-xs text-gray-500">
-                          {new Date(post.created_time).toLocaleDateString('pt-BR')}
+                          {safeGet(post, 'created_time') ? new Date(safeGet(post, 'created_time')).toLocaleDateString('pt-BR') : ''}
                         </span>
                       </div>
-                      {post.full_picture && (
+
+                      {safeGet(post, 'full_picture') && (
                         <img
-                          src={post.full_picture}
+                          src={safeGet(post, 'full_picture')}
                           alt="Post"
                           className="w-full h-32 object-cover rounded mb-2"
                         />
                       )}
+
                       <p className="text-gray-700 text-sm mb-2 line-clamp-3">
-                        {post.message || 'Publicação sem texto'}
+                        {safeGet(post, 'message') || 'Publicação sem texto'}
                       </p>
+
                       <div className="flex items-center text-xs text-gray-500 space-x-4">
-                        <span>👍 {post.likes || 0}</span>
-                        <span>💬 {post.comments || 0}</span>
-                        <span>🔄 {post.shares || 0}</span>
+                        <span>👍 {safeGet(post, 'likes') || 0}</span>
+                        <span>💬 {safeGet(post, 'comments') || 0}</span>
+                        <span>🔄 {safeGet(post, 'shares') || 0}</span>
                       </div>
                     </div>
                   ))}
@@ -605,58 +594,159 @@ const AdGeneration = () => {
         )}
       </div>
 
-      {/* Botão Gerar com IA */}
-      <div className="flex justify-end mb-6">
-        <button
-          onClick={handleGenerateWithAI}
-          disabled={!formData.page_id || (creativeType === 'existing' && !selectedPost) || loadingAI}
-          className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {loadingAI ? '🔄 Gerando...' : '🤖 Gerar com IA'}
-        </button>
-      </div>
+      {/* Preview da IA */}
+      {showAiPreview && aiResult && (
+        <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-lg mb-6 border border-purple-200">
+          <div className="flex items-center mb-4">
+            <span className="text-purple-500 text-xl mr-2">🤖</span>
+            <h3 className="text-lg font-semibold text-gray-800">Anúncio Gerado pela IA</h3>
+            <span className="ml-2 px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">
+              Inteligência Artificial
+            </span>
+          </div>
 
-      {/* Resultado da IA */}
-      {aiResult && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-green-800">✅ Anúncio Gerado com IA</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Preview do Anúncio */}
+            <div className="bg-white p-4 rounded-lg border">
+              <h4 className="font-medium text-gray-800 mb-3">📱 Preview do Anúncio</h4>
+              
+              <div className="space-y-3">
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Título Principal</span>
+                  <p className="font-medium text-gray-800">
+                    {safeGet(aiResult, 'preview.ad_copy.headline') || 'Título gerado pela IA'}
+                  </p>
+                </div>
+                
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Texto Principal</span>
+                  <p className="text-gray-700 text-sm">
+                    {safeGet(aiResult, 'preview.ad_copy.primary_text') || 'Texto principal gerado pela IA'}
+                  </p>
+                </div>
+                
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Call-to-Action</span>
+                  <span className="inline-block px-3 py-1 bg-blue-500 text-white text-sm rounded">
+                    {safeGet(aiResult, 'preview.ad_copy.cta') || 'SAIBA_MAIS'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Configurações da Campanha */}
+            <div className="bg-white p-4 rounded-lg border">
+              <h4 className="font-medium text-gray-800 mb-3">⚙️ Configurações</h4>
+              
+              <div className="space-y-3">
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Nome da Campanha</span>
+                  <p className="text-gray-800">
+                    {safeGet(aiResult, 'preview.campaign_name') || 'Campanha gerada pela IA'}
+                  </p>
+                </div>
+                
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Orçamento Diário</span>
+                  <p className="text-gray-800 font-medium">
+                    {safeGet(aiResult, 'preview.daily_budget') || 'R$ 50,00'}
+                  </p>
+                </div>
+                
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Público-Alvo</span>
+                  <p className="text-gray-700 text-sm">
+                    {safeGet(aiResult, 'preview.target_audience') || 'Público definido pela IA'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Análise da IA */}
+          {safeGet(aiResult, 'ai_analysis') && (
+            <div className="mt-4 bg-white p-4 rounded-lg border">
+              <h4 className="font-medium text-gray-800 mb-3">🧠 Análise da IA</h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Segmentação</span>
+                  <p className="text-gray-700">
+                    {safeGet(aiResult, 'ai_analysis.target_audience_reasoning') || 'Análise de público'}
+                  </p>
+                </div>
+                
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Orçamento</span>
+                  <p className="text-gray-700">
+                    {safeGet(aiResult, 'ai_analysis.budget_reasoning') || 'Análise de orçamento'}
+                  </p>
+                </div>
+                
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Criativo</span>
+                  <p className="text-gray-700">
+                    {safeGet(aiResult, 'ai_analysis.creative_reasoning') || 'Análise do criativo'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Próximos Passos */}
+          <div className="mt-4 bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h4 className="font-medium text-blue-800 mb-2">📋 Próximos Passos</h4>
+            <ul className="text-sm text-blue-700 space-y-1">
+              {safeGet(aiResult, 'next_steps', []).map((step, index) => (
+                <li key={index} className="flex items-center">
+                  <span className="mr-2">•</span>
+                  {step}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Botões de Ação */}
+          <div className="mt-6 flex gap-3 justify-end">
             <button
-              onClick={() => setShowEditor(true)}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              onClick={() => {
+                setShowAiPreview(false);
+                setAiResult(null);
+              }}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            >
+              🔄 Gerar Novamente
+            </button>
+            <button
+              onClick={openEditor}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
             >
               ✏️ Editar Detalhes
             </button>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h4 className="font-medium text-gray-800 mb-2">📊 Informações da Campanha</h4>
-              <p><strong>Nome:</strong> {aiResult.preview?.campaign_name}</p>
-              <p><strong>Orçamento Diário:</strong> {aiResult.preview?.daily_budget}</p>
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-800 mb-2">🎯 Público-Alvo</h4>
-              <p>{aiResult.preview?.target_audience}</p>
-            </div>
-          </div>
-          
-          <div className="mt-4">
-            <h4 className="font-medium text-gray-800 mb-2">📝 Texto do Anúncio</h4>
-            <p><strong>Título:</strong> {aiResult.preview?.ad_copy?.headline}</p>
-            <p><strong>Texto:</strong> {aiResult.preview?.ad_copy?.primary_text}</p>
-            <p><strong>CTA:</strong> {aiResult.preview?.ad_copy?.cta}</p>
-          </div>
         </div>
       )}
 
-      {/* Editor Modal */}
-      {showEditor && aiResult && (
-        <AdEditor
-          adData={aiResult.ai_structure}
-          onSave={handleSaveAd}
-          onCancel={() => setShowEditor(false)}
-        />
+      {/* Botão de Ação Principal */}
+      {!showAiPreview && (
+        <div className="flex justify-end">
+          <button
+            onClick={generateAdWithAI}
+            disabled={!formData.page_id || (creativeType === 'existing' && !selectedPost) || generatingAd}
+            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center"
+          >
+            {generatingAd ? (
+              <>
+                <span className="animate-spin mr-2">🔄</span>
+                Gerando com IA...
+              </>
+            ) : (
+              <>
+                🤖 Gerar com IA
+              </>
+            )}
+          </button>
+        </div>
       )}
     </div>
   );
